@@ -1,0 +1,59 @@
+
+# VF Standard:
+# ============
+# Timestamp   M   YYYY-MM-DD HH:MM:SS
+# System
+# M   Text    System name on which the event occurred
+# List of Values are {COMSAFE_PIL Engine Core, COMSAFE_PIL Engine DB} COMSAFE_PIL Engine Core
+# Process M   Text    The process name which generated this log. Typically a collector name or DB procedure.
+# List of values are {Collector, DB Procedure}    Collector
+# Error Code
+# M   Text    A unique error code to identify the problem.    List of values are configured in DB table CMN_ERRORCD.
+# Severity
+# M   Text    The level of the error classification.
+# List of values are {Error, Warning, Debug, Info,  Unknown}
+# Description
+# O   Text    A description of the error event with a message that corresponds to the error code.         Invalid File received from SFoBI for CENT
+# Comment O   Text    Any comment the application may like to provide to the analysis team to debug the issue Free Text   Error Raised from IMP_CE_ASGN Collector.
+#
+# Individual fields in a single error message is separated by (;). Each messages are separated by a new line operator.
+# COMSAFE_PIL Engine will support two levels for log creation and the below table shows the log levels and the corresponding
+# severity levels of logs that will be generated in the log files.
+# An example log record will look like below:
+# 2017-08-24 17:58:40,623;COMSAFE_PIL Engine Core;Technical;IMPORT;Collector;validation error;PIL22003;Error;DUPLICATE FILE. FILE ALREADY PROCESSED; Error Raised from IMP_CE_ASGN Collector
+
+version: 1
+disable_existing_loggers: False
+
+formatters:
+    simple:
+        format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+handlers:
+    console:
+        class: "logging.StreamHandler"
+        level: "DEBUG"
+        formatter: "simple"
+        stream: "ext://sys.stdout"
+
+    pil_engine:
+        class: "logging.FileHandler"
+        level: "DEBUG"
+        formatter: "simple"
+        filename: "{ref:log_dir}/pil_engine.{timestamp}.log"
+        encoding: "utf8"
+
+    # "log_handler (example)": {
+    #    "class": "logging.handlers.RotatingFileHandler",
+    #    "level": "INFO",
+    #    "formatter": "simple",
+    #    "filename": "{log_dir}/info.log",
+    #    "maxBytes": 10485760,
+    #    "backupCount": 20,
+    #    "encoding": "utf8"
+    # },
+
+root:
+    evel": "DEBUG"
+    handlers:
+        - "console"
+        - "pil_engine"

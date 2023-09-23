@@ -1,0 +1,19 @@
+# ----------------------------------------------------------------------------
+# PIL Database Config
+# ----------------------------------------------------------------------------
+
+DB_USER: !ref [PIL_DB_USER, ???]
+DB_PASS: !ref [PIL_DB_PASS, ???]
+DB_NAME: !ref [PIL_DB_NAME, ???]
+
+# Lazy load the connection string. The actuall value will never be stored in config (not even in memory)
+connection_string: !ref DB_USER "/" !ref DB_PASS "@" !ref DB_NAME
+db_job_name: PIL_IMPORT_FILES
+
+# DB INSERT batch size
+batch_size: 1_000
+
+schematas:
+    pil_engine: !ref DB_USER
+    pil_maintenance: "xxx"
+    pil_e2e: "xxx"

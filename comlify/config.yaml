@@ -1,0 +1,9 @@
+# ----------------------------------------------------------------------------
+# PIL Engine config file
+# ----------------------------------------------------------------------------
+
+a: "a"
+b: b
+c: 'c'
+
+config: "{import: ./conf/config.yaml, {ref: config_env_key}, True}"  # Load into "root" and ignore "config" key.

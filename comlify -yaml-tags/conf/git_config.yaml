@@ -1,0 +1,9 @@
+# ----------------------------------------------------------------------------
+# PIL Engine config file
+# ----------------------------------------------------------------------------
+
+git_exe: "C:\\Program Files\\Git\\cmd\\git.exe"
+# TODO Move the remaining into a separate group
+manual_files_git_repo: "{ref:PROJECT_ROOT}\\PIL-manual-files"
+# temp_dir: ""
+pull_all_script: ".\\bin\\scripts\\git_pull_all.ps1"

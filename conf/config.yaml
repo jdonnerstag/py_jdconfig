@@ -1,0 +1,5 @@
+defaults:
+  - db: mysql
+  - db/mysql/engine: innodb
+  - env: ${oc.env:ENV, "prod"}
+  
