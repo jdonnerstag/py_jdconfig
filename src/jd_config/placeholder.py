@@ -1,36 +1,57 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
+"""Manage everything related to placeholders, such as
+```
+  db_engine: '{ref: db.engine, innodb}'
+```
+
+Placeholders can only occur in yaml values. They are not allowed in keys.
+And it must be a yaml *string* value, surrounded by quotes.
+"""
+
 import logging
 from dataclasses import dataclass
 from typing import Any, Iterator, Union, List
-from .jd_config import CompoundValue
+from .jd_config import CompoundValue, ConfigException
 
-logger = logging.getLogger(__name__)
+__parent__name__ = __name__.rpartition('.')[0]
+logger = logging.getLogger(__parent__name__)
 
 
 ValueType: type = Union[int, float, bool, str, 'Placeholder']
 
 @dataclass
 class Placeholder:
+    """A common base class for all Placeholders
+    """
     name: str
     args: List[ValueType]
 
+
 @dataclass
 class ImportPlaceholder(Placeholder):
+    """Import Placeholder: '{import: <file>[, <replace=False>]}'
+    """
 
     @property
     def file(self) -> str:
+        """The 1st argument: the yaml file to import"""
         return self.args[0]
 
     @property
     def env(self) -> str | None:
+        """The 2nd argument: the environment, e.g. dev, test, prod"""
+
         if len(self.args) > 1:
             return self.args[1]
         return None
 
     @property
     def replace(self) -> bool:
+        """The 3rd argument: False - replace yaml value; True - merge with parent container
+        """
+
         if len(self.args) > 2:
             return bool(self.args[2])
         return False
@@ -38,24 +59,38 @@ class ImportPlaceholder(Placeholder):
 
 @dataclass
 class RefPlaceholder(Placeholder):
+    """Reference Placeholder: '{ref: <path>[, <default>]}'
+    """
 
     @property
     def path(self) -> str:
+        """The 1st argument: path to the reference element"""
         return self.args[0]
 
     @property
     def default(self) -> str | None:
+        """The 2nd argument: A default value'"""
+
         if len(self.args) > 1:
             return self.args[1]
         return None
 
 
-class ValueReaderException(Exception):
-    pass
+class ValueReaderException(ConfigException):
+    """Denote an Exception that occured while parsing a yaml value (wiht placeholder)"""
 
 class ValueReader:
+    """Parse a yaml value
+    """
 
     def parse(self, strval: str, sep: str = ",") -> Iterator[ValueType]:
+        """Parse a yaml value and yield the various parts.
+
+        :param strval: Input yaml string value
+        :param sep: argument separator. Default: ','
+        :return: Generator yielding individual parts of the yaml string value
+        """
+
         stack: List[Placeholder] = []
         _iter = self.tokenize(strval, sep)
         try:
@@ -98,6 +133,13 @@ class ValueReader:
 
 
     def tokenize(self, strval: str, sep: str = ",") -> Iterator[str]:
+        """Tokenize the yaml string value
+
+        :param strval: Input yaml string value
+        :param sep: argument separator. Default: ','
+        :return: Generator yielding individual string tokens
+        """
+
         start = 0
         i = 0
         while i < len(strval):
@@ -126,6 +168,16 @@ class ValueReader:
 
 
     def find_closing_quote(self, strval: str, start: int) -> int:
+        """Given a start position, determine the end of a quote.
+
+        The first character determine the quote, e.g. "'", '"'
+
+        :param strval: Input yaml string value
+        :param start: position where the quote starts
+        :return: position where the quote ends
+
+        """
+
         quote_char = strval[start]
         i = start + 1
         while i < len(strval):
@@ -140,7 +192,12 @@ class ValueReader:
         return i - 1
 
 
-    def convert(self, strval: Any) -> int | float | str:
+    def convert(self, strval: Any) -> int | float | str | bool:
+        """Convert a string into int, float or bool of possible, else
+        return the string value.
+
+        :param strval: Input yaml string value
+        """
         if isinstance(strval, str):
             possible = [convert_bool, int, float, str]
             for func in possible:
@@ -153,6 +210,10 @@ class ValueReader:
 
 
 def convert_bool(strval: str) -> bool:
+    """Convert a string into a bool, if possible. Else throw an Exception.
+
+    :param strval: Input yaml string value
+    """
     bool_vals = {
         "false": False,
         "no": False,
