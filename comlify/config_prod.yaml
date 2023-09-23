@@ -1,6 +1,0 @@
-# ----------------------------------------------------------------------------
-# PIL Engine config file
-# ----------------------------------------------------------------------------
-
-# The default configs are meant to be for production. And all sensitive
-# information are pulled in via env variables. Hence, this file is empty.

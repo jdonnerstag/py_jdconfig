@@ -46,7 +46,7 @@ SFoBI to Dremio:
         - "Filter Dummy-Subscriber IDs"
 
 "SFoBI Commission Period ref-data":
-    task: "pil.tasks.SFoBIComPeriodRefDataTask",
+    task: "pil.tasks.SFoBIComPeriodRefDataTask"
     depends_on:
         - "Filter license events"
     config:

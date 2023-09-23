@@ -42,3 +42,4 @@
   some debugging, tracing/logging. May be a list of add/change/deletes with filename
   and line number? Also when replacing syntax with real values. Why not replace the
   values eagerly? Because if the referenced value changes, then its outdated.
+- Maybe we should additional have std yaml '!include config.yaml'

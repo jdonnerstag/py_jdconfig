@@ -1,7 +1,0 @@
-# ----------------------------------------------------------------------------
-# PIL Engine config file
-# ----------------------------------------------------------------------------
-
-config: !import "./conf/config"   # Load into 'config'
-
-!import "./conf/config"           # Load into "root" and ignore "config" key.

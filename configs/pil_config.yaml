@@ -6,7 +6,7 @@ fn_CENT:
     full: "{ref: data_files_input_dir}/ANO_DWH..DWH_TO_PIL_CENT_{arg:fname}_(VTAG|FULL).*.A901"
     delta: "{ref: data_files_input_dir}/ANO_DWH..DWH_TO_PIL_CENT_{arg:fname}_DELTA.*.A901"
 
-PROJECT_ROOT: C:\\source_code\\COMSAFE
+PROJECT_ROOT: C:/source_code/COMSAFE
 
 # Number of processes used to load multiple files
 # Use a negative number to dynamically determine the pool size based on server
@@ -15,7 +15,7 @@ PROJECT_ROOT: C:\\source_code\\COMSAFE
 process_pool: -1
 
 file_configs:
-    git_repo: "{ref:PROJECT_ROOT}\\PIL-config-2"
+    git_repo: "{ref:PROJECT_ROOT}/PIL-config-2"
     # If "", then use 'config_env_key'
     # if None, then don't checkout branch
     branch: None     # "master", {ref:conf_env_key}
@@ -29,7 +29,7 @@ files:
 
     # Default Root-Directory for output data
     # See pil_flow.py -d command line option
-    PIL_DATA: "{ref:PROJECT_ROOT}\\PIL-data-2"
+    PIL_DATA: "{ref:PROJECT_ROOT}/PIL-data-2"
 
     # The log file containing the details of a specific file import
     # Note that this config requires user provided values, not included in the config
@@ -37,17 +37,17 @@ files:
     log_file: "{ref:log_dir}/{ref:filename}.{ref:timestamp}.log"
 
     # If not provided via the commandline
-    input_files: "c:\\temp\\PIL\\anon_test_data\\*.gz"
+    input_files: "c:/temp/PIL/anon_test_data/*.gz"
 
     # The directory where sorted input files (VTAG, FULL, DELTA) are searched for by default
-    input_files_sorted: "{ref:PROJECT_ROOT}\\VF-data\\12_sorted"
+    input_files_sorted: "{ref:PROJECT_ROOT}/VF-data/12_sorted"
 
     # The directory where FULL files are written to, after applying DELTA files
-    delta_files_applied: "{ref:PROJECT_ROOT}\\VF-data\\15_deltas_applied"
+    delta_files_applied: "{ref:PROJECT_ROOT}/VF-data/15_deltas_applied"
 
-    com_periods: "{ref:PROJECT_ROOT}\\VF-data\\16_com_periods"
+    com_periods: "{ref:PROJECT_ROOT}/VF-data/16_com_periods"
 
-    step1_output: "{ref:PROJECT_ROOT}\\PIL-data-2\\11_input_reviewed"
+    step1_output: "{ref:PROJECT_ROOT}/PIL-data-2/11_input_reviewed"
 
     # The file where errornous records will be appended
     failed_records: "{ref:log_dir}/{ref:filename}.{ref:timestamp}.failed"
@@ -81,11 +81,11 @@ data_files:
         - "{ref:data_files_input_dir}/ANO_DWH..DWH_TO_PIL_ASSIGNMENT_DELTA.*.A901"
 
     CENT:
-        customer_account: {call: fn_CENT, fname, "CUSTOMER_ACCOUNT"}
-        named_account_assign: {call: fn_CENT, fname, "NAMED_ACCOUNT_ASSIGN"}
-        party: {call: fn_CENT, fname, "PARTY"}
-        sales_assignment: {call: fn_CENT fname, "SALES_ASSIGNMENT"}
-        SL_main_resp: {call: fn_CENT, fname, "SL_MAIN_RESP"}
+        customer_account: '{call: fn_CENT, fname, "CUSTOMER_ACCOUNT"}'
+        named_account_assign: '{call: fn_CENT, fname, "NAMED_ACCOUNT_ASSIGN"}'
+        party: '{call: fn_CENT, fname, "PARTY"}'
+        sales_assignment: '{call: fn_CENT fname, "SALES_ASSIGNMENT"}'
+        SL_main_resp: '{call: fn_CENT, fname, "SL_MAIN_RESP"}'
 
 # The list of reference data files that must be loaded before event processing
 pil_input_files: "{ref:git.manual_files_git_repo}/input_files.xlsx"
