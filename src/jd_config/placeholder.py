@@ -10,10 +10,12 @@ Placeholders can only occur in yaml values. They are not allowed in keys.
 And it must be a yaml *string* value, surrounded by quotes.
 """
 
+import os
 import logging
+from datetime import datetime
 from dataclasses import dataclass
-from typing import Any, Iterator, Mapping, Union, List
-from .config_getter import ConfigException
+from typing import Any, Iterator, Mapping, Union
+from .config_getter import ConfigException, ConfigGetter
 from .convert import convert
 
 
@@ -77,6 +79,13 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
+    def resolve(self, data: Mapping):
+        """Resolve the placeholder"""
+
+        obj = ConfigGetter.get(data, self.path, sep = ",", default = self.default_val)
+        return obj.value
+
+
 @dataclass
 class EnvPlaceholder(Placeholder):
     """Environment Variable Placeholder: '{env: <env-var>[, <default>]}'
@@ -87,6 +96,31 @@ class EnvPlaceholder(Placeholder):
 
     def __post_init__(self):
         assert self.env_var
+
+    def resolve(self, _) -> str:
+        """Resolve the placeholder"""
+
+        value = os.environ.get(self.env_var, self.default_val)
+        return value
+
+
+@dataclass
+class TimestampPlaceholder(Placeholder):
+    """Replace yaml value with timestamp: '{timestamp: <format>}'
+    """
+
+    format: str
+
+    def __post_init__(self):
+        assert self.format
+
+    def resolve(self, _) -> str:
+        """Resolve the placeholder"""
+
+        now = datetime.now()
+        value = now.strftime(self.format)
+        return value
+
 
 class ValueReaderException(ConfigException):
     """Denote an Exception that occured while parsing a yaml value (wiht placeholder)"""
@@ -102,7 +136,8 @@ class ValueReader:
             self.registry = {
                 "ref": RefPlaceholder,
                 "import": ImportPlaceholder,
-                "env": EnvPlaceholder
+                "env": EnvPlaceholder,
+                "timestamp": TimestampPlaceholder,
             }
 
 
@@ -161,7 +196,13 @@ class ValueReader:
                 placeholder = self.registry[name](*args)
                 return placeholder
             elif text != sep:
-                value = self.convert(text)
+                if isinstance(text, str) and text.find("{") != -1:
+                    values = list(self.parse(text))
+                    values = [self.convert(x) for x in values]
+                    value = CompoundValue(values)
+                else:
+                    value = self.convert(text)
+                    
                 compound.append(value)
 
         raise ConfigException(f"Unexpected end: '{text}'")

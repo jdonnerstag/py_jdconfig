@@ -9,7 +9,7 @@ import os
 import logging
 import configparser
 from typing import Any,  Mapping, Optional
-from .placeholder import ImportPlaceholder, RefPlaceholder, ValueReader
+from .placeholder import ImportPlaceholder, RefPlaceholder, Placeholder, ValueReader
 from .placeholder import CompoundValue
 from .objwalk import objwalk
 from .config_getter import ConfigGetter, ConfigException, PathType, DEFAULT
@@ -102,15 +102,15 @@ class JDConfig:
 
         _data = self.load_yaml_raw(fname)
 
-        _data = self.process_imports(_data, config_dir)
+        _data = self.post_process(_data, config_dir)
 
         # Make the yaml config data accessible via JDConfig
         self.data = _data
 
         return _data
 
-    def process_imports(self, _data: Mapping, config_dir: os.PathLike) -> Mapping:
-        """Search for import placeholder and execute them
+    def post_process(self, _data: Mapping, config_dir: os.PathLike) -> Mapping:
+        """Replace '{..}' with Placeholders and execute imports if needed.
 
         :param _data: the yaml data loaded already
         :return: the updated yaml data with imports replaced.
@@ -144,15 +144,17 @@ class JDConfig:
         the pieces together for the actuall yaml value.
         """
 
-        if isinstance(value, RefPlaceholder):
-            value = ConfigGetter.get(_data, value.path, sep = ",", default = value.default)
-            if isinstance(value, YamlObj):
-                value = value.value
+        key = value
+        if isinstance(value, Placeholder):
+            value = value.resolve(_data)
 
         if isinstance(value, list):
             value = [self.resolve(x, _data) for x in value]
             value = "".join(value)
             return value
+
+        if value == "???":
+            raise ConfigException(f"Mandatory config value missing: '${key}'")
 
         if isinstance(value, (str, int, float, bool)):
             return value
@@ -163,7 +165,9 @@ class JDConfig:
         """Similar to dict.get(), but with deep path support
         """
 
-        return ConfigGetter.get(self.data, path, default, sep=sep)
+        obj = ConfigGetter.get(self.data, path, default, sep=sep)
+        value = self.resolve(obj.value, self.data)
+        return value
 
 
     def delete(self, path: PathType, *, sep: str=".", exception: bool = True) -> Any:

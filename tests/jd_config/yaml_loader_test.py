@@ -47,3 +47,9 @@ def test_yaml_loader():
     assert ConfigGetter.get(obj, "c.c2.c23").value == 23
     assert ConfigGetter.get(obj, "c.c3[1]").value == 22
     assert ConfigGetter.get(obj, "c.c3[4].c32").value == "c322"
+
+    # Only leafs are YamlObj. Containers (Mapping, Sequence) are provided as is.
+    assert isinstance(ConfigGetter.get(obj, "c"), dict)
+    assert isinstance(ConfigGetter.get(obj, "c.c2"), dict)
+    assert isinstance(ConfigGetter.get(obj, "c.c3"), list)
+    assert isinstance(ConfigGetter.get(obj, "c.c3[4]"), dict)

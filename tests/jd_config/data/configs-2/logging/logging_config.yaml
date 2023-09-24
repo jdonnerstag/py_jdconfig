@@ -17,7 +17,7 @@ handlers:
         class: "logging.FileHandler"
         level: "DEBUG"
         formatter: "simple"
-        filename: "{ref:log_dir}/engine.{timestamp}.log"
+        filename: "{ref:log_dir}/engine.{ref:timestamp}.log"
         encoding: "utf8"
 
     # "log_handler (example)": {

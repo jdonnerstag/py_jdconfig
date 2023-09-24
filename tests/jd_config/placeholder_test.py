@@ -118,3 +118,6 @@ def test_ValueReader():
 
     value = list(ValueReader().parse("{import: ./db/{ref: db}-config.yaml}", sep=","))
     assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"])]
+
+    value = list(ValueReader().parse('{import: "./db/{ref:db}_config.yaml"}', sep=","))
+    assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "_config.yaml"])]

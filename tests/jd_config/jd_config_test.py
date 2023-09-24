@@ -64,21 +64,25 @@ def test_load_jdconfig_1():
     data = cfg.load(file, config_dir)
     assert data
 
-def test_jdconfig_1_placeholders():
+def test_jdconfig_1_placeholders(monkeypatch):
     cfg = JDConfig(ini_file = None)
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
     assert data
 
-    assert cfg.get("DB_USER") == "xxx"
-    assert cfg.get("DB_PASS") == "xxx"
-    assert cfg.get("DB_NAME") == "xxx"
+    monkeypatch.setenv('DB_USER', 'dbuser')
+    monkeypatch.setenv('DB_PASS', 'dbpass')
+    monkeypatch.setenv('DB_NAME', 'dbname')
 
-    assert cfg.get("connection_string") == "xxx"
-    assert cfg.get("db_job_name") == "xxx"
-    assert cfg.get("batch_size") == "xxx"
+    assert cfg.get("DB_USER") == "dbuser"
+    assert cfg.get("DB_PASS") == "dbpass"
+    assert cfg.get("DB_NAME") == "dbname"
 
-    assert cfg.get("schematas.engine") == "xxx"
+    assert cfg.get("connection_string") == "dbuser/dbpass@dbname"
+    assert cfg.get("db_job_name") == "IMPORT_FILES"
+    assert cfg.get("batch_size") ==  1000
+
+    assert cfg.get("schematas.engine") == "dbuser"
     assert cfg.get("schematas.maintenance") == "xxx"
     assert cfg.get("schematas.e2e") == "xxx"
 

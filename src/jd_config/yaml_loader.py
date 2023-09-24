@@ -89,11 +89,12 @@ class MyYamlLoader(yaml.SafeLoader):
         if self.stack:
             last = self.stack[-1]
             last.incr()
-            if isinstance(last, YamlSequence):
-                return self.on_value(node, obj)
+            if isinstance(node, yaml.ScalarNode):
+                if isinstance(last, YamlSequence):
+                    return self.on_value(node, obj)
 
-            if isinstance(last, YamlMapping) and (last.count & 1) == 0:
-                return self.on_value(node, obj)
+                if isinstance(last, YamlMapping) and (last.count & 1) == 0:
+                    return self.on_value(node, obj)
 
         return obj
 
