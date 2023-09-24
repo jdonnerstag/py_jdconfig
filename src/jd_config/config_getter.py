@@ -9,11 +9,13 @@ and the elements.
 
 import logging
 from typing import Any, Iterable, Mapping, Tuple, Type, Sequence
-from .jd_config import ConfigException
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
 
+
+class ConfigException(Exception):
+    """Base class for Config Exceptions"""
 
 DEFAULT = object()
 

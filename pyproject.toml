@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "jd_config"
+version = "0.1.0"
+description = "An Application Config Management package"
+authors = ["Juergen Donnerstag <juergen.donnerstag@gmail.com>"]
+license = "MIT"
+readme = "readme.md"
+repository = "https://github.com/jdonnerstag/jd_config"
+homepage = "https://github.com/jdonnerstag/jd_config"
+keywords = ["python", "config"]
+
+[packages]
+packages = [
+     { include = "jd_config", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+PyYAML = "^6.0.1"
+hydra-core = "^1.3.2"
+
+[tool.poetry.group.test]  # This part can be left out
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = ["./src"]

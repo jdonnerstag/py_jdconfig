@@ -12,7 +12,7 @@ __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
 
 
-def objwalk(obj: Any, path: Tuple=(), memo: Optional[Set] = None) -> Iterator[Tuple, Any]:
+def objwalk(obj: Any, path: Tuple=(), memo: Optional[Set] = None) -> Iterator[Tuple[Tuple, Any]]:
     """A generic function to walk any Mapping- and Sequence- like objects.
 
     Once loaded into memory, Yaml and Json files, are often implemented with

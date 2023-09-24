@@ -8,46 +8,15 @@ Main config package to load and access config values.
 import os
 import logging
 import configparser
-from typing import Any, Iterator, Mapping, Optional
+from typing import Any,  Mapping, Optional
 from .placeholder import ImportPlaceholder, RefPlaceholder, ValueReader
-from .placeholder import ValueType, ValueReaderException
+from .placeholder import CompoundValue
 from .objwalk import objwalk
-from .config_getter import ConfigGetter
+from .config_getter import ConfigGetter, ConfigException
 from .yaml_loader import YamlObj, MyYamlLoader
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
-
-
-class ConfigException(Exception):
-    """Base class for Config Exceptions"""
-
-
-class CompoundValue(list):
-    """A Yaml value that consists of multiple parts.
-
-    E.g. Upon reading the yaml file, a value such as "test-{ref:database}-url"
-    will be preprocessed and split into 3 parts: "test-", <Placeholder>, and "-url".
-    All part together make CompoundValue, with few helper. E.g. resolve
-    the placeholders and determine the actual value.
-    """
-
-    def __init__(self, values: Iterator['ValueType']) -> None:
-        super().__init__(list(values))
-
-    def is_import(self) -> bool:
-        """Determine if one the parts is a '{import:..}' placeholder
-        """
-
-        for elem in self:
-            if isinstance(elem, ImportPlaceholder):
-                # Import Placeholders must be standalone.
-                if len(self) != 1:
-                    raise ValueReaderException("Invalid '{import: ...}', ${elem}")
-
-                return True
-
-        return False
 
 
 class JDConfig:

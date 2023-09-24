@@ -13,10 +13,38 @@ And it must be a yaml *string* value, surrounded by quotes.
 import logging
 from dataclasses import dataclass
 from typing import Any, Iterator, Union, List
-from .jd_config import CompoundValue, ConfigException
+from .config_getter import ConfigException
+
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
+
+
+class CompoundValue(list):
+    """A Yaml value that consists of multiple parts.
+
+    E.g. Upon reading the yaml file, a value such as "test-{ref:database}-url"
+    will be preprocessed and split into 3 parts: "test-", <Placeholder>, and "-url".
+    All part together make CompoundValue, with few helper. E.g. resolve
+    the placeholders and determine the actual value.
+    """
+
+    def __init__(self, values: Iterator['ValueType']) -> None:
+        super().__init__(list(values))
+
+    def is_import(self) -> bool:
+        """Determine if one the parts is a '{import:..}' placeholder
+        """
+
+        for elem in self:
+            if isinstance(elem, ImportPlaceholder):
+                # Import Placeholders must be standalone.
+                if len(self) != 1:
+                    raise ValueReaderException("Invalid '{import: ...}', ${elem}")
+
+                return True
+
+        return False
 
 
 ValueType: type = Union[int, float, bool, str, 'Placeholder']

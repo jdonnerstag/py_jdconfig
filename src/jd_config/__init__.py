@@ -30,10 +30,12 @@ from .yaml_loader import (
 )
 
 from .config_getter import (
+    ConfigException,
     ConfigGetter
 )
 
 from .placeholder import (
+    CompoundValue,
     ValueType,
     Placeholder,
     ImportPlaceholder,
@@ -44,7 +46,5 @@ from .placeholder import (
 )
 
 from .jd_config import (
-    ConfigException,
-    CompoundValue,
     JDConfig
 )
