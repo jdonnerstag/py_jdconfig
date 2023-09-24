@@ -16,9 +16,9 @@ process_pool: -1
 
 file_configs:
     git_repo: "{ref:PROJECT_ROOT}/PIL-config-2"
-    # If "", then use 'config_env_key'
+    # If "", then use 'config_env'
     # if None, then don't checkout branch
-    branch: None     # "master", {ref:conf_env_key}
+    branch: None     # "master", {ref:conf_envkey}
     pull_on_init: False  # True,
     directory: "file_config"
 

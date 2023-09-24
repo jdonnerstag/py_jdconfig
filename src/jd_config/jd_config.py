@@ -23,7 +23,7 @@ class JDConfig:
     """Main class load and access config values.
     """
 
-    def __init__(self, ini_file: str = "config.ini") -> None:
+    def __init__(self, *, ini_file: str = "config.ini") -> None:
         """Initialize.
 
         User and Config specific configurations are kept separate.
@@ -36,7 +36,7 @@ class JDConfig:
         [config]
         config_dir = .
         config_file = config.yaml
-        env_key =
+        env_var =
         default_env = prod
         ```
 
@@ -59,7 +59,7 @@ class JDConfig:
 
         self.config_dir = config.get("config_dir", ".")
         self.config_file = config.get("config_file", "config.yaml")
-        self.env_key = config.get("env_key", None)
+        self.env_var = config.get("env_var", None)
         self.default_env = config.get("default_env", "prod")
 
 
@@ -78,7 +78,10 @@ class JDConfig:
             return loader.get_single_data()
 
 
-    def load(self, fname: Optional[os.PathLike]) -> Mapping:
+    def load(self,
+        fname: Optional[os.PathLike] = None,
+        config_dir: Optional[os.PathLike] = None
+    ) -> Mapping:
         """Load a Yaml config file, determine and load 'imports', and
         pre-process for efficient, yet lazy, key/value resolution.
 
@@ -86,12 +89,26 @@ class JDConfig:
         """
 
         if fname is None:
-            fname = self.config_dir + "/" + self.config_file
-        else:
-            if not os.path.isabs(fname):
-                fname = self.config_dir + "/" + fname
+            fname = self.config_file
+
+        if config_dir is None:
+            config_dir = self.config_dir
+
+        if not os.path.isabs(fname):
+            fname = os.path.join(config_dir, fname)
 
         _data = self.load_yaml_raw(fname)
+
+        _data = self.process_imports(_data, config_dir)
+
+        return _data
+
+    def process_imports(self, _data: Mapping, config_dir: os.PathLike) -> Mapping:
+        """Search for import placeholder and execute them
+
+        :param _data: the yaml data loaded already
+        :return: the updated yaml data with imports replaced.
+        """
 
         imports: dict[Any, ImportPlaceholder] = {}
         for path, obj in objwalk(_data):
@@ -103,7 +120,7 @@ class JDConfig:
 
         for path, obj in imports.items():
             fname = self.resolve(obj.file, _data)
-            import_data = self.load(fname)
+            import_data = self.load(fname, config_dir)
             if obj.replace:
                 ConfigGetter.delete(_data, path)
                 _data.update(import_data)
@@ -111,7 +128,6 @@ class JDConfig:
                 ConfigGetter.set(_data, path, import_data)
 
         return _data
-
 
     def resolve(self, value: Any, _data: Optional[Mapping] = None):
         """Lazily resolve Placeholders

@@ -7,8 +7,10 @@ a path and support dict-like get(), set() and delete() operations
 and the elements.
 """
 
+import re
 import logging
 from typing import Any, Iterable, Mapping, Tuple, Type, Sequence
+from .convert import convert
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
@@ -32,7 +34,6 @@ class ConfigGetter:
         """Walk a path to determine the container (Mapping, Sequence) which holds
         the last key.
 
-        TODO: Support
         'path' is very flexible, e.g. "a.b.c", "a[1].b", "a.1.b", "a/b/c",
         "[a][b][c]", ["a", "b", "c"], ("a", "b", "c",), ["a", "b.c"]
 
@@ -42,12 +43,7 @@ class ConfigGetter:
         :return: The final container and key/index to access the element
         """
 
-        if isinstance(path, str):
-            keys = path.split(sep)
-        elif isinstance(path, int):
-            keys = path
-        else:
-            keys = path
+        keys = cls.normalize_path(path, sep=sep)
 
         assert keys
         last = keys[-1]
@@ -58,14 +54,24 @@ class ConfigGetter:
         return (_data, last)
 
     @classmethod
-    def get(cls, _data: Mapping, path: PathType, *, sep: str=".", default: Any = DEFAULT) -> Any:
+    def get(cls, _data: Mapping, path: PathType, default: Any = DEFAULT, *, sep: str=".") -> Any:
         """Similar to dict.get(), but with deep path support
         """
         try:
             _data, key = cls.walk(_data, path, sep=sep)
-            return _data.get(key, default)
+            return _data[key]
         except Exception as exc:
+            if default is not DEFAULT:
+                return default
+
             raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
+
+    @classmethod
+    def _get_old(cls, _data: Mapping, key: str|int) -> Any:
+        try:
+            return _data[key]
+        except KeyError:
+            return None
 
     @classmethod
     def delete(cls, _data: Mapping, path: PathType, *, sep: str=".", exception: bool = True) -> Any:
@@ -73,17 +79,77 @@ class ConfigGetter:
         """
         try:
             _data, key = cls.walk(_data, path, sep=sep)
+            old_value = cls._get_old(_data, key)
+
             del _data[key]
+            return old_value
+
         except Exception as exc:    # pylint: disable=broad-exception-caught
             if exception:
                 raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
 
+        return None
+
     @classmethod
     def set(cls, _data: Mapping, path: PathType, value: Any, *, sep: str=".") -> Any:
-        """Similar to 'dict[key] = valie', but with deep path support
+        """Similar to 'dict[key] = valie', but with deep path support.
+
+        Limitations:
+          - is not possible to append elements to a Sequence. You need to get() the list
+            and manually append the element.
         """
+
         try:
             _data, key = cls.walk(_data, path, sep=sep)
+            old_value = cls._get_old(_data, key)
+
             _data[key] = value
+            return old_value
+
         except Exception as exc:
             raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
+
+    @classmethod
+    def normalize_path(cls, path: PathType, *, sep: str=".") -> Tuple[str|int, ...]:
+        """Convert flexible path into normalized Tuple
+
+        'path' is very flexible, e.g. "a.b.c", "a[1].b", "a.1.b", "a/b/c",
+        "[a][b][c]", ["a", "b", "c"], ("a", "b", "c",), ["a", "b.c"]
+
+        :param path: the path to identify the element
+        :param sep: 'path' separator. Default: '.'
+        :return: normalized path, with each path segment a tuple element
+
+        """
+        rtn = cls._normalize_path_raw(path, sep)
+        last_len = len(path) if isinstance(path, (list, Tuple)) else 1
+        while last_len != len(rtn):
+            last_len = len(rtn)
+            rtn = cls._normalize_path_raw(rtn, sep)
+
+        return rtn
+
+    @classmethod
+    def _normalize_path_raw(cls, path: PathType, sep: str) -> list[str|int]:
+        """Internal: one iteration of normalizing a path. Might be that it
+        must be called multiple times.
+        """
+        if isinstance(path, str):
+            path = re.sub(r"\[(.*?)\]", f"{sep}\\1", path)
+
+            # Remove all leading separators
+            while path.startswith(sep):
+                path = path[1:]
+
+            keys = path.split(sep)
+        elif isinstance(path, int):
+            keys = [path]
+        elif isinstance(path, Sequence):
+            keys = []
+            for elem in path:
+                keys.extend(cls._normalize_path_raw(elem, sep))
+        else:
+            raise ConfigException(f"Invalid config path: Unknown type: '{path}'")
+
+        keys = [convert(x) for x in keys]
+        return keys

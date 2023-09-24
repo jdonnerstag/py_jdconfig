@@ -2,7 +2,7 @@
 # A typical developer Config
 # ----------------------------------------------------------------------------
 
-config_env_key: {env: PIL_ENV, "dev"}
+config_env: {env: PIL_ENV, "dev"}
 
 PIL_DB_USER: {env: PIL_DB_USER, "dxcadmin"}
 PIL_DB_PASS: {env: PIL_DB_PASS, "dxc-admin"}

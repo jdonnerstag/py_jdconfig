@@ -17,9 +17,9 @@ Please see the readme.md file for details. In summary:
 1. A yaml value that is '???' is mandotory and must be provided via env overlay or CLI args.
 """
 
-from .objwalk import (
-    objwalk
-)
+from .convert import convert, convert_bool
+
+from .objwalk import objwalk
 
 from .yaml_loader import (
     YamlObj,
@@ -29,10 +29,7 @@ from .yaml_loader import (
     MyYamlLoader
 )
 
-from .config_getter import (
-    ConfigException,
-    ConfigGetter
-)
+from .config_getter import ConfigException, ConfigGetter
 
 from .placeholder import (
     CompoundValue,
@@ -41,10 +38,7 @@ from .placeholder import (
     ImportPlaceholder,
     RefPlaceholder,
     ValueReaderException,
-    ValueReader,
-    convert_bool
+    ValueReader
 )
 
-from .jd_config import (
-    JDConfig
-)
+from .jd_config import JDConfig

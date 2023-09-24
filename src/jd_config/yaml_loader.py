@@ -41,6 +41,10 @@ class YamlObj:
 
         return self.value.lower()
 
+    def __getitem__(self, item):
+        """Get the item from the value"""
+
+        return self.value[item]
 
 @dataclass
 class YamlContainer:

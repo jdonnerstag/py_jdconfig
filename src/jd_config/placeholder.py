@@ -14,11 +14,15 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Iterator, Union, List
 from .config_getter import ConfigException
+from .convert import convert
 
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
 
+
+
+ValueType = Union[int, float, bool, str, 'Placeholder']
 
 class CompoundValue(list):
     """A Yaml value that consists of multiple parts.
@@ -29,7 +33,7 @@ class CompoundValue(list):
     the placeholders and determine the actual value.
     """
 
-    def __init__(self, values: Iterator['ValueType']) -> None:
+    def __init__(self, values: Iterator[ValueType]) -> None:
         super().__init__(list(values))
 
     def is_import(self) -> bool:
@@ -38,16 +42,16 @@ class CompoundValue(list):
 
         for elem in self:
             if isinstance(elem, ImportPlaceholder):
+                assert elem.name == "import"    # Else, it is a bug
+
                 # Import Placeholders must be standalone.
                 if len(self) != 1:
-                    raise ValueReaderException("Invalid '{import: ...}', ${elem}")
+                    raise ConfigException("Invalid '{import: ...}', ${elem}")
 
                 return True
 
         return False
 
-
-ValueType: type = Union[int, float, bool, str, 'Placeholder']
 
 @dataclass
 class Placeholder:
@@ -111,7 +115,8 @@ class ValueReader:
     """Parse a yaml value
     """
 
-    def parse(self, strval: str, sep: str = ",") -> Iterator[ValueType]:
+    @classmethod
+    def parse(cls, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
         """Parse a yaml value and yield the various parts.
 
         :param strval: Input yaml string value
@@ -120,7 +125,7 @@ class ValueReader:
         """
 
         stack: List[Placeholder] = []
-        _iter = self.tokenize(strval, sep)
+        _iter = cls.tokenize(strval, sep)
         try:
             while text := next(_iter, None):
                 if text == "{":
@@ -141,7 +146,7 @@ class ValueReader:
                         stack[-1].args.append(placeholder)
                 elif isinstance(text, str) and text.find("{") != -1:
                     values = list(ValueReader().parse(text))
-                    values = [self.convert(x) for x in values]
+                    values = [cls.convert(x) for x in values]
                     value = CompoundValue(values)
                     if not stack:
                         yield value
@@ -149,18 +154,18 @@ class ValueReader:
                         stack[-1].args.append(value)
 
                 else:
+                    value = cls.convert(text)
                     if not stack:
-                        yield text
+                        yield value
                     else:
-                        value = self.convert(text)
                         stack[-1].args.append(value)
 
         except StopIteration as exc:
             raise ValueReaderException(
                 f"Failed to parse yaml value with placeholder: '${strval}'") from exc
 
-
-    def tokenize(self, strval: str, sep: str = ",") -> Iterator[str]:
+    @classmethod
+    def tokenize(cls, strval: str, sep: str = ",") -> Iterator[str]:
         """Tokenize the yaml string value
 
         :param strval: Input yaml string value
@@ -175,7 +180,7 @@ class ValueReader:
             if c == "\\":
                 i += 1
             elif c in ['"', "'"]:
-                i = self.find_closing_quote(strval, i)
+                i = cls.find_closing_quote(strval, i)
                 value = strval[start + 2 : i]
                 yield value
                 start = i + 1
@@ -194,8 +199,8 @@ class ValueReader:
         if value:
             yield value
 
-
-    def find_closing_quote(self, strval: str, start: int) -> int:
+    @classmethod
+    def find_closing_quote(cls, strval: str, start: int) -> int:
         """Given a start position, determine the end of a quote.
 
         The first character determine the quote, e.g. "'", '"'
@@ -220,39 +225,11 @@ class ValueReader:
         return i - 1
 
 
-    def convert(self, strval: Any) -> int | float | str | bool:
+    @classmethod
+    def convert(cls, strval: Any) -> int | float | str | bool:
         """Convert a string into int, float or bool of possible, else
         return the string value.
 
         :param strval: Input yaml string value
         """
-        if isinstance(strval, str):
-            possible = [convert_bool, int, float, str]
-            for func in possible:
-                try:
-                    return func(strval)
-                except (ValueError, KeyError):
-                    continue
-
-        return strval
-
-
-def convert_bool(strval: str) -> bool:
-    """Convert a string into a bool, if possible. Else throw an Exception.
-
-    :param strval: Input yaml string value
-    """
-    bool_vals = {
-        "false": False,
-        "no": False,
-        "0": False,
-        "true": True,
-        "yes": True,
-        "1": True,
-    }
-
-    if len(strval) > 5:
-        raise ValueError(strval)
-
-    text = strval.lower()
-    return bool_vals[text]
+        return convert(strval)
