@@ -37,6 +37,7 @@ from .placeholder import (
     Placeholder,
     ImportPlaceholder,
     RefPlaceholder,
+    EnvPlaceholder,
     ValueReaderException,
     ValueReader
 )

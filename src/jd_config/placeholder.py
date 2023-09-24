@@ -12,7 +12,7 @@ And it must be a yaml *string* value, surrounded by quotes.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Iterator, Union, List
+from typing import Any, Iterator, Mapping, Union, List
 from .config_getter import ConfigException
 from .convert import convert
 
@@ -42,8 +42,6 @@ class CompoundValue(list):
 
         for elem in self:
             if isinstance(elem, ImportPlaceholder):
-                assert elem.name == "import"    # Else, it is a bug
-
                 # Import Placeholders must be standalone.
                 if len(self) != 1:
                     raise ConfigException("Invalid '{import: ...}', ${elem}")
@@ -53,60 +51,42 @@ class CompoundValue(list):
         return False
 
 
-@dataclass
 class Placeholder:
     """A common base class for all Placeholders
     """
-    name: str
-    args: List[ValueType]
-
 
 @dataclass
 class ImportPlaceholder(Placeholder):
     """Import Placeholder: '{import: <file>[, <replace=False>]}'
     """
 
-    @property
-    def file(self) -> str:
-        """The 1st argument: the yaml file to import"""
-        return self.args[0]
+    file: str
+    replace: bool = False
 
-    @property
-    def env(self) -> str | None:
-        """The 2nd argument: the environment, e.g. dev, test, prod"""
-
-        if len(self.args) > 1:
-            return self.args[1]
-        return None
-
-    @property
-    def replace(self) -> bool:
-        """The 3rd argument: False - replace yaml value; True - merge with parent container
-        """
-
-        if len(self.args) > 2:
-            return bool(self.args[2])
-        return False
-
+    def __post_init__(self):
+        assert self.file
 
 @dataclass
 class RefPlaceholder(Placeholder):
     """Reference Placeholder: '{ref: <path>[, <default>]}'
     """
 
-    @property
-    def path(self) -> str:
-        """The 1st argument: path to the reference element"""
-        return self.args[0]
+    path: str
+    default_val: Any = None
 
-    @property
-    def default(self) -> str | None:
-        """The 2nd argument: A default value'"""
+    def __post_init__(self):
+        assert self.path
 
-        if len(self.args) > 1:
-            return self.args[1]
-        return None
+@dataclass
+class EnvPlaceholder(Placeholder):
+    """Environment Variable Placeholder: '{env: <env-var>[, <default>]}'
+    """
 
+    env_var: str
+    default_val: Any = None
+
+    def __post_init__(self):
+        assert self.env_var
 
 class ValueReaderException(ConfigException):
     """Denote an Exception that occured while parsing a yaml value (wiht placeholder)"""
@@ -115,8 +95,18 @@ class ValueReader:
     """Parse a yaml value
     """
 
-    @classmethod
-    def parse(cls, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
+    def __init__(self, registry: dict[str, Placeholder] = None) -> None:
+        self.registry = registry
+
+        if not self.registry:
+            self.registry = {
+                "ref": RefPlaceholder,
+                "import": ImportPlaceholder,
+                "env": EnvPlaceholder
+            }
+
+
+    def parse(self, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
         """Parse a yaml value and yield the various parts.
 
         :param strval: Input yaml string value
@@ -124,45 +114,58 @@ class ValueReader:
         :return: Generator yielding individual parts of the yaml string value
         """
 
-        stack: List[Placeholder] = []
-        _iter = cls.tokenize(strval, sep)
+        _iter = self.tokenize(strval, sep)
         try:
             while text := next(_iter, None):
-                if text == "{":
-                    name = next(_iter)
-                    colon = next(_iter)
-                    assert colon == ":"
-                    placeholder = Placeholder(name, [])
-                    if name == "import":
-                        placeholder.__class__ = ImportPlaceholder
-                    elif name == "ref":
-                        placeholder.__class__ = RefPlaceholder
-                    stack.append(placeholder)
-                elif text == "}" and stack:
-                    placeholder = stack.pop()
-                    if not stack:
-                        yield placeholder
-                    else:
-                        stack[-1].args.append(placeholder)
+                if text == sep:
+                    pass
+                elif text == "{":
+                    placeholder = self.parse_placeholder(_iter, sep)
+                    yield placeholder
                 elif isinstance(text, str) and text.find("{") != -1:
-                    values = list(ValueReader().parse(text))
-                    values = [cls.convert(x) for x in values]
+                    values = list(self.parse(text))
+                    values = [self.convert(x) for x in values]
                     value = CompoundValue(values)
-                    if not stack:
-                        yield value
-                    else:
-                        stack[-1].args.append(value)
-
+                    yield value
                 else:
-                    value = cls.convert(text)
-                    if not stack:
-                        yield value
-                    else:
-                        stack[-1].args.append(value)
+                    value = self.convert(text)
+                    yield value
 
         except StopIteration as exc:
             raise ValueReaderException(
                 f"Failed to parse yaml value with placeholder: '${strval}'") from exc
+
+    def parse_placeholder(self, _iter: Iterator, sep: str) -> Placeholder:
+        """Parse {<name>: <arg-1>, ...} into registered Placeholder objects
+        """
+
+        name = next(_iter)
+        args = []
+        compound = []
+
+        colon = next(_iter)
+        assert colon == ":"
+
+        while text := next(_iter, None):
+            if text in [sep, "}"]:
+                if len(compound) == 1:
+                    args.append(compound[0])
+                else:
+                    args.append(CompoundValue(compound))
+                compound.clear()
+
+            if text == "{":
+                placeholder = self.parse_placeholder(_iter, sep)
+                compound.append(placeholder)
+            elif text == "}":
+                placeholder = self.registry[name](*args)
+                return placeholder
+            elif text != sep:
+                value = self.convert(text)
+                compound.append(value)
+
+        raise ConfigException(f"Unexpected end: '{text}'")
+
 
     @classmethod
     def tokenize(cls, strval: str, sep: str = ",") -> Iterator[str]:
@@ -176,22 +179,21 @@ class ValueReader:
         start = 0
         i = 0
         while i < len(strval):
-            c = strval[i]
-            if c == "\\":
+            ch = strval[i]
+            if ch == "\\":
                 i += 1
-            elif c in ['"', "'"]:
+            elif ch in ['"', "'"]:
                 i = cls.find_closing_quote(strval, i)
                 value = strval[start + 2 : i]
                 yield value
                 start = i + 1
-            elif c in [sep, "{", "}", ":"]:
+            elif ch in [sep, "{", "}", ":"]:
                 value = strval[start : i].strip()
                 if value:
                     yield value
-                start = i + 1
 
-                if c is not sep:
-                    yield c
+                start = i + 1
+                yield ch
 
             i += 1
 

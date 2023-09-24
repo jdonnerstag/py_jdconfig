@@ -12,8 +12,9 @@ from typing import Any,  Mapping, Optional
 from .placeholder import ImportPlaceholder, RefPlaceholder, ValueReader
 from .placeholder import CompoundValue
 from .objwalk import objwalk
-from .config_getter import ConfigGetter, ConfigException
+from .config_getter import ConfigGetter, ConfigException, PathType, DEFAULT
 from .yaml_loader import YamlObj, MyYamlLoader
+
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
@@ -62,6 +63,8 @@ class JDConfig:
         self.env_var = config.get("env_var", None)
         self.default_env = config.get("default_env", "prod")
 
+        # The yaml config data after loading them
+        self.data = None
 
     def load_yaml_raw(self, fname: os.PathLike) -> Mapping:
         """Load a Yaml file with our Loader, but no post-processing
@@ -100,6 +103,9 @@ class JDConfig:
         _data = self.load_yaml_raw(fname)
 
         _data = self.process_imports(_data, config_dir)
+
+        # Make the yaml config data accessible via JDConfig
+        self.data = _data
 
         return _data
 
@@ -152,3 +158,26 @@ class JDConfig:
             return value
 
         raise ConfigException(f"Unable to resolve: '${value}'")
+
+    def get(self, path: PathType, default: Any = DEFAULT, *, sep: str=".") -> Any:
+        """Similar to dict.get(), but with deep path support
+        """
+
+        return ConfigGetter.get(self.data, path, default, sep=sep)
+
+
+    def delete(self, path: PathType, *, sep: str=".", exception: bool = True) -> Any:
+        """Similar to 'del dict[key]', but with deep path support
+        """
+        return ConfigGetter.delete(self.data, path, sep=sep, exception=exception)
+
+
+    def set(self, path: PathType, value: Any, *, sep: str=".") -> Any:
+        """Similar to 'dict[key] = valie', but with deep path support.
+
+        Limitations:
+          - is not possible to append elements to a Sequence. You need to get() the list
+            and manually append the element.
+        """
+
+        return ConfigGetter.set(self.data, path, value, sep=sep)

@@ -64,6 +64,24 @@ def test_load_jdconfig_1():
     data = cfg.load(file, config_dir)
     assert data
 
+def test_jdconfig_1_placeholders():
+    cfg = JDConfig(ini_file = None)
+    config_dir = data_dir("configs-1")
+    data = cfg.load("config.yaml", config_dir)
+    assert data
+
+    assert cfg.get("DB_USER") == "xxx"
+    assert cfg.get("DB_PASS") == "xxx"
+    assert cfg.get("DB_NAME") == "xxx"
+
+    assert cfg.get("connection_string") == "xxx"
+    assert cfg.get("db_job_name") == "xxx"
+    assert cfg.get("batch_size") == "xxx"
+
+    assert cfg.get("schematas.engine") == "xxx"
+    assert cfg.get("schematas.maintenance") == "xxx"
+    assert cfg.get("schematas.e2e") == "xxx"
+
 
 def test_load_jdconfig_2():
     # config-2 is using some import placeholders, including dynamic ones,
