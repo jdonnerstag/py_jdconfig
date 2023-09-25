@@ -8,12 +8,12 @@ Main config package to load and access config values.
 import os
 import logging
 import configparser
-from typing import Any,  Mapping, Optional
-from .placeholder import ImportPlaceholder, RefPlaceholder, Placeholder, ValueReader
+from typing import Any,  Mapping, Optional, Type
+from .placeholder import ImportPlaceholder, Placeholder, ValueReader
 from .placeholder import CompoundValue
 from .objwalk import objwalk
 from .config_getter import ConfigGetter, ConfigException, PathType, DEFAULT
-from .yaml_loader import YamlObj, MyYamlLoader
+from .yaml_loader import MyYamlLoader
 
 
 __parent__name__ = __name__.rpartition('.')[0]
@@ -66,6 +66,17 @@ class JDConfig:
         # The yaml config data after loading them
         self.data = None
 
+        self.value_reader = ValueReader()
+
+    def load_yaml_raw_fd(self, fd) -> Mapping:
+        """Load a Yaml file with our Loader, but no post-processing
+
+        :param fd: a file descriptor
+        :return: A deep dict-like structure, representing the yaml content
+        """
+        loader = MyYamlLoader(fd)
+        return loader.get_single_data()
+
     def load_yaml_raw(self, fname: os.PathLike) -> Mapping:
         """Load a Yaml file with our Loader, but no post-processing
 
@@ -77,9 +88,7 @@ class JDConfig:
         # and decode the bytes. utf-8 is default.
         logger.debug("Config: Load from file: '%s'", fname)
         with open(fname, "rb") as fd:
-            loader = MyYamlLoader(fd)
-            return loader.get_single_data()
-
+            return self.load_yaml_raw_fd(fd)
 
     def load(self,
         fname: Optional[os.PathLike] = None,
@@ -97,10 +106,14 @@ class JDConfig:
         if config_dir is None:
             config_dir = self.config_dir
 
-        if not os.path.isabs(fname):
-            fname = os.path.join(config_dir, fname)
+        if isinstance(fname, str):
+            if not os.path.isabs(fname):
+                fname = os.path.join(config_dir, fname)
 
-        _data = self.load_yaml_raw(fname)
+            _data = self.load_yaml_raw(fname)
+        else:
+            # Assuming it is an IO stream of some sort
+            _data = self.load_yaml_raw_fd(fname)
 
         _data = self.post_process(_data, config_dir)
 
@@ -120,9 +133,16 @@ class JDConfig:
         for path, obj in objwalk(_data):
             value = obj.value
             if isinstance(value, str) and value.find("{") != -1:
-                value = obj.value = CompoundValue(ValueReader().parse(value))
+                value = obj.value = CompoundValue(self.value_reader.parse(value))
                 if value.is_import():
                     imports[path] = value[0]
+
+            if isinstance(value, Placeholder):
+                value.post_load(_data)
+            elif isinstance(value, list):
+                for elem in value:
+                    if isinstance(elem, Placeholder):
+                        elem.post_load(_data)
 
         for path, obj in imports.items():
             fname = self.resolve(obj.file, _data)
@@ -143,6 +163,9 @@ class JDConfig:
         a Placeholder. resolve() lazily resolves the placeholders and joins
         the pieces together for the actuall yaml value.
         """
+
+        # TODO resolve in "current" file and in root. Relative resolve in current
+        # requires to know the anker node.
 
         key = value
         if isinstance(value, Placeholder):
@@ -185,3 +208,10 @@ class JDConfig:
         """
 
         return ConfigGetter.set(self.data, path, value, sep=sep)
+
+
+    def register_placeholder(self, name: str, type_: type) -> None:
+        """Register (add or replace) a placeholder handler
+        """
+
+        self.value_reader.registry[name] = type_

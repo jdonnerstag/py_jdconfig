@@ -12,7 +12,7 @@ Please see the readme.md file for details. In summary:
 1. A config directory can be configured, to keep config files separate
 1. A Yaml !import tag can be used to eagerly load another yaml config file.
 1. Yaml string values support extendable placeholders, like '..{<name>: <val>, ...}..'
-1. Import config file: '{import: <file>[, <env> [, <replace>]]}'
+1. Import config file: '{import: <file>[, <replace>]}'
 1. Reference: '{ref: <path>[, <default>]}'
 1. A yaml value that is '???' is mandotory and must be provided via env overlay or CLI args.
 """

@@ -9,21 +9,21 @@ timestamp: '{timestamp: %Y%m%d-%H%M%S}'
 
 # TODO: Keep for now as example, even though we are not using it right now.
 db: "oracle"
-database: '{import: "./db/{ref:db}_config.yaml", {ref:config_env}}'
+database: '{import: "./db/{ref:db}_config.yaml"}'
 
-git: '{import: "./git_config.yaml", {ref: config_env}}'
+git: '{import: "./git_config.yaml"}'
 
-manual_files: '{import: "./manual_files_config.yaml", {ref: config_env}}'
+manual_files: '{import: "./manual_files_config.yaml"}'
 
-pil: '{import: "./pil_config.yaml", {ref: config_env}}'
+pil: '{import: "./pil_config.yaml"}'
 
-pipeline: '{import: "./pipeline_config.yaml", {ref: config_env}}'
+pipeline: '{import: "./pipeline_config.yaml"}'
 
-commission_nodes: '{import: "./commission_node_config.yaml", {ref: config_env}}'
+commission_nodes: '{import: "./commission_node_config.yaml"}'
 
 # Define once, and re-use further down
 log_dir: "/temp/logs"
-logging: '{import: "./logging/logging_config.yaml", {ref:config_env}}'
+logging: '{import: "./logging/logging_config.yaml"}'
 
 # TODO: I don't think any of them is still valid
 debug:

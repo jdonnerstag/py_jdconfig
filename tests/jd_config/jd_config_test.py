@@ -3,9 +3,12 @@
 
 # pylint: disable=C
 
+from dataclasses import dataclass
+from io import StringIO
 import os
+import re
 import logging
-from jd_config import JDConfig, ConfigGetter
+from jd_config import JDConfig, Placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +90,12 @@ def test_jdconfig_1_placeholders(monkeypatch):
     assert cfg.get("schematas.e2e") == "xxx"
 
 
-def test_load_jdconfig_2():
+def test_post_load():
+    # TODO Test post_load()
+    pass
+
+
+def test_load_jdconfig_2(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
 
@@ -96,3 +104,40 @@ def test_load_jdconfig_2():
     config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml", config_dir)
     assert data
+
+    monkeypatch.setenv('DB_USER', 'dbuser')
+    monkeypatch.setenv('DB_PASS', 'dbpass')
+    monkeypatch.setenv('DB_NAME', 'dbname')
+
+    assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
+    assert cfg.get("db") == "oracle"
+    assert cfg.get("database.DB_USER") == "dbuser"
+    assert cfg.get("database.DB_PASS") == "dbpass"
+    assert cfg.get("database.DB_NAME") == "dbname"
+    assert cfg.get("database.connection_string") == "oracle:dbuser/dbpass@dbname"
+
+    assert cfg.get("debug.log_progress_after") == 20_000
+
+
+@dataclass
+class MyBespokePlaceholder(Placeholder):
+    """This is also a test for a placeholder that does not take any parameters"""
+
+    def resolve(self, _) -> str:
+        return "value"
+
+def test_add_placeholder():
+    cfg = JDConfig(ini_file = None)
+    cfg.register_placeholder("bespoke", MyBespokePlaceholder)
+
+    DATA = """
+    a: aa
+    b: bb
+    c: '{bespoke:}'
+    """
+
+    file_like_io = StringIO(DATA)
+    data = cfg.load(file_like_io)
+    assert data
+
+    assert cfg.get("c") == "value"
