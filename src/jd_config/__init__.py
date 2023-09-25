@@ -19,7 +19,14 @@ Please see the readme.md file for details. In summary:
 
 from .convert import convert, convert_bool
 
-from .objwalk import objwalk
+from .objwalk import (
+    objwalk,
+    NodeEvent,
+    NewMappingEvent,
+    NewSequenceEvent,
+    DropContainerEvent,
+    WalkerEvent
+)
 
 from .yaml_loader import (
     YamlObj,

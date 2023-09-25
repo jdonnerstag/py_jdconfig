@@ -1,0 +1,3 @@
+
+a: "aa"
+b: "{import: imported_config.yaml, true}"

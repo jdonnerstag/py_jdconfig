@@ -8,12 +8,13 @@ Main config package to load and access config values.
 import os
 import logging
 import configparser
-from typing import Any,  Mapping, Optional, Type
+import yaml
+from typing import Any, Iterator,  Mapping, Optional
 from .placeholder import ImportPlaceholder, Placeholder, ValueReader
 from .placeholder import CompoundValue
-from .objwalk import objwalk
+from .objwalk import objwalk, NodeEvent, NewMappingEvent, NewSequenceEvent, DropContainerEvent
 from .config_getter import ConfigGetter, ConfigException, PathType, DEFAULT
-from .yaml_loader import MyYamlLoader
+from .yaml_loader import MyYamlLoader, YamlObj
 
 
 __parent__name__ = __name__.rpartition('.')[0]
@@ -66,7 +67,12 @@ class JDConfig:
         # The yaml config data after loading them
         self.data = None
 
+        # Read string into Placeholders ...
         self.value_reader = ValueReader()
+
+        # The list of yaml files loaded
+        self.files_loaded = []
+        self.file_recursions = []
 
     def load_yaml_raw_fd(self, fd) -> Mapping:
         """Load a Yaml file with our Loader, but no post-processing
@@ -110,12 +116,25 @@ class JDConfig:
             if not os.path.isabs(fname):
                 fname = os.path.join(config_dir, fname)
 
+            fname = os.path.abspath(fname)
+            if fname in self.file_recursions:
+                raise ConfigException(
+                    "File recursion. The following config file gets imported "
+                    f"in circles: '{fname}'")
+
+            self.file_recursions.append(fname)
+            self.files_loaded.append(fname)
+
             _data = self.load_yaml_raw(fname)
         else:
             # Assuming it is an IO stream of some sort
             _data = self.load_yaml_raw_fd(fname)
+            self.files_loaded.append("<data>")
 
         _data = self.post_process(_data, config_dir)
+
+        if isinstance(fname, str):
+            self.file_recursions.pop()
 
         # Make the yaml config data accessible via JDConfig
         self.data = _data
@@ -130,12 +149,12 @@ class JDConfig:
         """
 
         imports: dict[Any, ImportPlaceholder] = {}
-        for path, obj in objwalk(_data):
-            value = obj.value
+        for event in objwalk(_data, nodes_only=True):
+            value = event.value.value
             if isinstance(value, str) and value.find("{") != -1:
-                value = obj.value = CompoundValue(self.value_reader.parse(value))
+                event.value.value = value = CompoundValue(self.value_reader.parse(value))
                 if value.is_import():
-                    imports[path] = value[0]
+                    imports[event.path] = value[0]
 
             if isinstance(value, Placeholder):
                 value.post_load(_data)
@@ -164,9 +183,6 @@ class JDConfig:
         the pieces together for the actuall yaml value.
         """
 
-        # TODO resolve in "current" file and in root. Relative resolve in current
-        # requires to know the anker node.
-
         key = value
         if isinstance(value, Placeholder):
             value = value.resolve(_data)
@@ -185,13 +201,21 @@ class JDConfig:
         raise ConfigException(f"Unable to resolve: '${value}'")
 
     def get(self, path: PathType, default: Any = DEFAULT, *, sep: str=".") -> Any:
-        """Similar to dict.get(), but with deep path support
+        """Similar to dict.get(), but with deep path support.
+
+        Placeholders are automatically resolved.
+        Mappings and Sequences are returned as is.
         """
 
-        obj = ConfigGetter.get(self.data, path, default, sep=sep)
-        value = self.resolve(obj.value, self.data)
-        return value
+        try:
+            obj = ConfigGetter.get(self.data, path, sep=sep)
+            if not isinstance(obj, YamlObj):
+                return obj
 
+            value = self.resolve(obj.value, self.data)
+            return value
+        except:     # pylint: disable=bare-except
+            return default
 
     def delete(self, path: PathType, *, sep: str=".", exception: bool = True) -> Any:
         """Similar to 'del dict[key]', but with deep path support
@@ -209,6 +233,72 @@ class JDConfig:
 
         return ConfigGetter.set(self.data, path, value, sep=sep)
 
+
+    def walk(self, root: Optional[PathType] = None, resolve: bool = True
+        ) -> Iterator[NodeEvent]:
+        """Walk the config items with an optional starting point
+
+        :param root: An optional starting point.
+        :param resolve: If true (default), then resolve all Placeholders
+        :return: Generator, yielding a Tuple
+        """
+
+        obj = self.data
+        if root:
+            obj = self.get(root)
+
+        for event in objwalk(obj, nodes_only=True):
+            if resolve:
+                event.value = self.resolve(event.value.value, self.data)
+
+            yield event
+
+
+    def to_dict(self, root: Optional[PathType] = None, resolve: bool = True) -> dict:
+        """Walk the config items with an optional starting point, and create a
+        dict from it.
+        """
+
+        obj = self.data
+        if root:
+            obj = self.get(root)
+
+        stack = []
+        for event in objwalk(obj, nodes_only=False):
+            if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
+                if isinstance(event, NewMappingEvent):
+                    new = {}
+                else:
+                    new = []
+                stack.append(new)
+                if event.path:
+                    if isinstance(cur, Mapping):
+                        cur[event.path[-1]] = new
+                    else:
+                        cur.append(new)
+                cur = new
+            elif isinstance(event, DropContainerEvent):
+                stack.pop()
+                if stack:
+                    cur = stack[-1]
+            elif isinstance(event, NodeEvent):
+                value = event.value
+                if resolve:
+                    value = self.resolve(event.value.value, self.data)
+
+                if isinstance(cur, Mapping):
+                    cur[event.path[-1]] = value
+                else:
+                    cur.append(value)
+
+        return cur
+
+    def to_yaml(self, root: Optional[PathType] = None, stream = None, **kvargs):
+        """Convert the configs (or part of it), into a yaml document
+        """
+
+        data = self.to_dict(root, resolve=True)
+        return yaml.dump(data, stream, **kvargs)
 
     def register_placeholder(self, name: str, type_: type) -> None:
         """Register (add or replace) a placeholder handler

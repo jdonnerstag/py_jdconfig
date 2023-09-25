@@ -8,7 +8,8 @@ from io import StringIO
 import os
 import re
 import logging
-from jd_config import JDConfig, Placeholder
+import pytest
+from jd_config import JDConfig, Placeholder, ConfigException, YamlObj, NodeEvent
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ def test_load_jdconfig_1():
 
     data = cfg.load()
     assert data
+    assert len(cfg.files_loaded) == 1
+    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-1/config.yaml")
+    assert len(cfg.file_recursions) == 0
 
     # Provide the config file name. Note, that it'll not change or set the
     # config_dir. Any config files imported, are imported relativ to the
@@ -104,6 +108,9 @@ def test_load_jdconfig_2(monkeypatch):
     config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml", config_dir)
     assert data
+    assert len(cfg.files_loaded) == 4
+    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-2/main_config.yaml")
+    assert len(cfg.file_recursions) == 0
 
     monkeypatch.setenv('DB_USER', 'dbuser')
     monkeypatch.setenv('DB_PASS', 'dbpass')
@@ -131,13 +138,123 @@ def test_add_placeholder():
     cfg.register_placeholder("bespoke", MyBespokePlaceholder)
 
     DATA = """
-    a: aa
-    b: bb
-    c: '{bespoke:}'
+        a: aa
+        b: bb
+        c: '{bespoke:}'
     """
 
     file_like_io = StringIO(DATA)
     data = cfg.load(file_like_io)
     assert data
 
+    assert len(cfg.files_loaded) == 1
+    assert cfg.files_loaded[0] == "<data>"
+
     assert cfg.get("c") == "value"
+
+
+def test_load_jdconfig_3():
+    # config-3 has a file recursion
+
+    cfg = JDConfig(ini_file = None)
+    config_dir = data_dir("configs-3")
+
+    with pytest.raises(ConfigException):
+        cfg.load("config.yaml", config_dir)
+
+    assert len(cfg.file_recursions) > 0
+
+
+def test_import_replacement():
+    config_dir = data_dir("configs-4")
+
+    # Default: False. Load into "b"
+    cfg = JDConfig(ini_file = None)
+    data = cfg.load("config-1.yaml", config_dir)
+    assert data
+    assert cfg.get("a") == "aa"
+    assert cfg.get("b.ia") == "iaa"
+    assert cfg.get("b.ib") == "ibb"
+
+    # False. Load into "b"
+    cfg = JDConfig(ini_file = None)
+    data = cfg.load("config-2.yaml", config_dir)
+    assert data
+    assert cfg.get("a") == "aa"
+    assert cfg.get("b.ia") == "iaa"
+    assert cfg.get("b.ib") == "ibb"
+
+    # True. Merge on root level
+    cfg = JDConfig(ini_file = None)
+    data = cfg.load("config-3.yaml", config_dir)
+    assert data
+    assert cfg.get("a") == "aa"
+    assert cfg.get("ia") == "iaa"
+    assert cfg.get("ib") == "ibb"
+    assert cfg.get("b", None) == None   # Does not exist
+
+def test_walk():
+    cfg = JDConfig(ini_file = None)
+
+    DATA = """
+        a: aa
+        b:
+            b1:
+                c1: "1cc"
+                c2: "2cc"
+            b2: 22
+    """
+
+    file_like_io = StringIO(DATA)
+    data = cfg.load(file_like_io)
+    assert data
+
+    data = list(cfg.walk(resolve=True))
+    assert len(data) == 4
+    data.remove(NodeEvent(("a",), "aa"))
+    data.remove(NodeEvent(("b", "b1", "c1"), "1cc"))
+    data.remove(NodeEvent(("b", "b1", "c2"), "2cc"))
+    data.remove(NodeEvent(("b", "b2"), 22))
+
+    data = list(cfg.walk(resolve=False))
+    assert len(data) == 4
+    data.remove(NodeEvent(("a",), YamlObj(2, 12, "<file>", "aa")))
+    data.remove(NodeEvent(("b", "b1", "c1"), YamlObj(5, 21, "<file>", "1cc")))
+    data.remove(NodeEvent(("b", "b1", "c2"), YamlObj(6, 21, "<file>", "2cc")))
+    data.remove(NodeEvent(("b", "b2"), YamlObj(7, 17, "<file>", 22)))
+
+
+def test_to_dict_to_yaml():
+    cfg = JDConfig(ini_file = None)
+
+    DATA = """
+        a: aa
+        b:
+            b1:
+                c1: "1cc"
+                c2: "2cc"
+            b2: 22
+        c:
+        - x
+        - y
+        - z1: zz
+          z2: 2zz
+    """
+
+    file_like_io = StringIO(DATA)
+    data = cfg.load(file_like_io)
+    assert data
+
+    data = cfg.to_dict()
+    assert data["a"] == "aa"
+    assert data["b"]["b1"]["c1"] == "1cc"
+    assert data["b"]["b1"]["c2"] == "2cc"
+    assert data["b"]["b2"] == 22
+    assert data["c"][0] == "x"
+    assert data["c"][1] == "y"
+    assert data["c"][2]["z1"] == "zz"
+    assert data["c"][2]["z2"] == "2zz"
+
+    data = cfg.to_yaml("b.b1")
+    data = re.sub(r"[\r\n]+", r"\n", data)
+    assert data == 'c1: 1cc\nc2: 2cc\n'

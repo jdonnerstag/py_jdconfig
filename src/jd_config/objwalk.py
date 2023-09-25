@@ -5,6 +5,7 @@
 A generic function to walk any Mapping- and Sequence- like objects.
 """
 
+from dataclasses import dataclass
 import logging
 from typing import Any, Mapping, Optional, Sequence, Set, Tuple, Iterator
 
@@ -12,7 +13,42 @@ __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
 
 
-def objwalk(obj: Any, *, _path: Tuple=(), _memo: Optional[Set] = None) -> Iterator[Tuple[Tuple, Any]]:
+@dataclass
+class NodeEvent:
+    """An objwalk node event"""
+    path: Tuple[str|int,...]
+    value: Any
+
+    def is_sequence_node(self) -> bool:
+        """True, if node belongs to a Sequence"""
+        return isinstance(self.path[-1], int)
+
+    def is_mapping_node(self) -> bool:
+        """True, if node belongs to a Mapping"""
+        return not self.is_sequence_node()
+
+@dataclass
+class NewMappingEvent:
+    """Entering a new mapping"""
+    path: Tuple[str|int,...]
+
+@dataclass
+class NewSequenceEvent:
+    """Entering a new Sequence"""
+    path: [str|int,...]
+
+@dataclass
+class DropContainerEvent:
+    """Step out of Mapping or Sequence"""
+
+WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
+
+def objwalk(
+    obj: Any, *,
+    _path: Tuple[str|int,...]=(),
+    _memo: Optional[Set] = None,
+    nodes_only: bool = False
+) -> Iterator[WalkerEvent]:
     """A generic function to walk any Mapping- and Sequence- like objects.
 
     Once loaded into memory, Yaml and Json files, are often implemented with
@@ -32,16 +68,24 @@ def objwalk(obj: Any, *, _path: Tuple=(), _memo: Optional[Set] = None) -> Iterat
     if isinstance(obj, Mapping):
         if id(obj) not in _memo:
             _memo.add(id(obj))
+            if not nodes_only:
+                yield NewMappingEvent(_path)
             for key, value in obj.items():
-                for child in objwalk(value, _path = _path + (key,), _memo = _memo):
+                for child in objwalk(value, _path = _path + (key,), _memo = _memo, nodes_only=nodes_only):
                     yield child
+            if not nodes_only:
+                yield DropContainerEvent()
 
     elif isinstance(obj, (Sequence, Set)) and not isinstance(obj, str):
         if id(obj) not in _memo:
             _memo.add(id(obj))
+            if not nodes_only:
+                yield NewSequenceEvent(_path)
             for index, value in enumerate(obj):
-                for child in objwalk(value, _path = _path + (index,), _memo = _memo):
+                for child in objwalk(value, _path = _path + (index,), _memo = _memo, nodes_only=nodes_only):
                     yield child
+            if not nodes_only:
+                yield DropContainerEvent()
 
     else:
-        yield _path, obj
+        yield NodeEvent(_path, obj)
