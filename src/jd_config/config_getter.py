@@ -10,7 +10,7 @@ and the elements.
 import re
 import logging
 from typing import Any, Iterable, Mapping, Tuple, Type, Sequence, Optional, Union
-from .convert import convert
+from .string_converter_mixin import StringConverterMixin
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
@@ -25,7 +25,7 @@ PathType: Type = str | int | Iterable
 
 WalkResultType: Type = Union[Tuple[Mapping, str], Tuple[Sequence, int]]
 
-class ConfigGetter:
+class ConfigGetter(StringConverterMixin):
     """Dict-like get, set and delete operations on deep Mapping- and Sequence-like structures.
     """
 
@@ -181,5 +181,5 @@ class ConfigGetter:
         else:
             raise ConfigException(f"Invalid config path: Unknown type: '{path}'")
 
-        keys = [convert(x) for x in keys]
+        keys = [cls.convert(x) for x in keys]
         return keys

@@ -7,7 +7,8 @@ Mixin to resolve preprocessed placeholders
 
 import logging
 from typing import Any, Mapping, Optional
-from .placeholder import Placeholder, ValueReader
+from .placeholders import Placeholder
+from .value_reader import ValueReader
 from .config_getter import ConfigException
 
 

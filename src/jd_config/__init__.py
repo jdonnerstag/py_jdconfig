@@ -19,7 +19,7 @@ Please see the readme.md file for details. In summary:
 
 from .config_ini_mixin import ConfigIniMixin
 
-from .convert import convert, convert_bool
+from .string_converter_mixin import StringConverterMixin
 
 from .objwalk import (
     objwalk,
@@ -40,13 +40,16 @@ from .yaml_loader import (
 
 from .config_getter import ConfigException, ConfigGetter
 
-from .placeholder import (
-    CompoundValue,
-    ValueType,
+from .placeholders import (
     Placeholder,
     ImportPlaceholder,
     RefPlaceholder,
     EnvPlaceholder,
+)
+
+from .value_reader import (
+    CompoundValue,
+    ValueType,
     ValueReaderException,
     ValueReader
 )

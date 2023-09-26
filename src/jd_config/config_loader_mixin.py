@@ -8,8 +8,8 @@ Mixin to load yaml config files
 import os
 import logging
 from typing import Any, Mapping, Optional
-from .placeholder import ImportPlaceholder, Placeholder
-from .placeholder import CompoundValue
+from .placeholders import ImportPlaceholder, Placeholder
+from .value_reader import CompoundValue
 from .objwalk import objwalk
 from .config_getter import ConfigGetter, ConfigException
 from .yaml_loader import MyYamlLoader
