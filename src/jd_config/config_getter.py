@@ -9,7 +9,7 @@ and the elements.
 
 import re
 import logging
-from typing import Any, Iterable, Mapping, Tuple, Type, Sequence
+from typing import Any, Iterable, Mapping, Tuple, Type, Sequence, Optional, Union
 from .convert import convert
 
 __parent__name__ = __name__.rpartition('.')[0]
@@ -30,7 +30,7 @@ class ConfigGetter:
     """
 
     @classmethod
-    def walk(cls, _data: Mapping, path: PathType, *, sep: str=".") -> WalkResultType:
+    def walk(cls, _data: Mapping, path: PathType, *, on_missing: Optional[callable] = None, sep: str=".") -> WalkResultType:
         """Walk a path to determine the container (Mapping, Sequence) which holds
         the last key.
 
@@ -48,8 +48,15 @@ class ConfigGetter:
         assert keys
         last = keys[-1]
         key = ""
-        for key in keys[0:-1]:
-            _data = _data[key]
+        for i, key in enumerate(keys[0:-1]):
+            try:
+                _data = _data[key]
+            except:     # pylint: disable=bare-except
+                if callable(on_missing):
+                    _data[key] = new_data = on_missing(_data, key, keys[0 : i])
+                    _data = new_data
+                else:
+                    raise
 
         return (_data, last)
 
@@ -91,7 +98,7 @@ class ConfigGetter:
         return None
 
     @classmethod
-    def set(cls, _data: Mapping, path: PathType, value: Any, *, sep: str=".") -> Any:
+    def set(cls, _data: Mapping, path: PathType, value: Any, *, create_missing: Union[callable, bool, dict]=False, sep: str=".") -> Any:
         """Similar to 'dict[key] = valie', but with deep path support.
 
         Limitations:
@@ -99,8 +106,31 @@ class ConfigGetter:
             and manually append the element.
         """
 
+        def on_missing_handler(_data: Mapping|Sequence, key: str|int, path: tuple) -> Mapping|Sequence:
+            if isinstance(key, int):
+                if isinstance(_data, Sequence):
+                    raise ConfigException(f"Can not create missing [] nodes: '{path}'")
+                else:
+                    raise ConfigException(f"Expected a list but found: '{path}' = {type(_data)}")
+
+            return {}
+
+        def on_missing_handler_dict(_, key: str|int, __) -> Mapping|Sequence:
+            value = create_missing.get(key, dict)
+            if isinstance(value, type):
+                return value()
+
+            return value
+
+        if isinstance(create_missing, bool):
+            on_missing = on_missing_handler if create_missing else None
+        elif callable(create_missing):
+            on_missing = create_missing
+        elif isinstance(create_missing, dict):
+            on_missing = on_missing_handler_dict
+
         try:
-            _data, key = cls.walk(_data, path, sep=sep)
+            _data, key = cls.walk(_data, path, sep=sep, on_missing=on_missing)
             old_value = cls._get_old(_data, key)
 
             _data[key] = value

@@ -16,21 +16,23 @@ logger = logging.getLogger(__name__)
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
 
-def test_jdconfig_config_ini():
+def test_jdconfig_config_ini(monkeypatch):
+
+    monkeypatch.setenv('MY_ENV', 'jd_dev')
 
     # ini_file = None => Apply system defaults
     cfg = JDConfig(ini_file=None)
     assert cfg.config_dir == "."
     assert cfg.config_file == "config.yaml"
-    assert cfg.env_var == None
-    assert cfg.default_env == "prod"
+    assert cfg.env is None
+    assert cfg.default_env is None
 
     # ini_file = None => Apply system defaults
     ini_file = os.path.join(os.path.dirname(__file__), "data", "config.ini")
     cfg = JDConfig(ini_file=ini_file)
     assert cfg.config_dir == "./configs-1"
     assert cfg.config_file == "main_config.yaml"
-    assert cfg.env_var == "MY_ENV"
+    assert cfg.env == "jd_dev"      # validate that ini value interpolation works
     assert cfg.default_env == "dev"
 
 def data_dir(*args):
@@ -105,6 +107,7 @@ def test_load_jdconfig_2(monkeypatch):
 
     # Apply config_dir to set working directory for relativ yaml imports
     cfg = JDConfig(ini_file = None)
+    cfg.env = None  # Make sure, we are not even trying to load an env file
     config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml", config_dir)
     assert data
@@ -258,3 +261,29 @@ def test_to_dict_to_yaml():
     data = cfg.to_yaml("b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
     assert data == 'c1: 1cc\nc2: 2cc\n'
+
+
+def test_load_jdconfig_2_with_env(monkeypatch):
+
+    monkeypatch.setenv('DB_USER', 'dbuser')
+    monkeypatch.setenv('DB_PASS', 'dbpass')
+    monkeypatch.setenv('DB_NAME', 'dbname')
+
+    cfg = JDConfig(ini_file = None)
+    cfg.env = "jd_dev"  # Apply own env specific changes
+
+    config_dir = data_dir("configs-2")
+    data = cfg.load("main_config.yaml", config_dir)
+    assert data
+    assert len(cfg.files_loaded) == 4
+    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-2/main_config.yaml")
+    assert len(cfg.file_recursions) == 0
+
+    assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
+    assert cfg.get("db") == "oracle"
+    assert cfg.get("database.DB_USER") == "dbuser"
+    assert cfg.get("database.DB_PASS") == "dbpass"
+    assert cfg.get("database.DB_NAME") == "dbname"
+    assert cfg.get("database.connection_string") == "oracle:dbuser/dbpass@dbname"
+
+    assert cfg.get("debug.log_progress_after") == 20_000

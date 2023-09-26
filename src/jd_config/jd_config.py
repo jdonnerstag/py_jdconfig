@@ -8,8 +8,8 @@ Main config package to load and access config values.
 import os
 import logging
 import configparser
-import yaml
 from typing import Any, Iterator,  Mapping, Optional
+import yaml
 from .placeholder import ImportPlaceholder, Placeholder, ValueReader
 from .placeholder import CompoundValue
 from .objwalk import objwalk, NodeEvent, NewMappingEvent, NewSequenceEvent, DropContainerEvent
@@ -19,6 +19,14 @@ from .yaml_loader import MyYamlLoader, YamlObj
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
+
+
+class EnvInterpolation(configparser.BasicInterpolation):
+    """Interpolation which expands environment variables in values."""
+
+    def before_get(self, parser, section, option, value, defaults):
+        value = super().before_get(parser, section, option, value, defaults)
+        return os.path.expandvars(value)
 
 
 class JDConfig:
@@ -49,7 +57,7 @@ class JDConfig:
         :param ini_file: Path to JDConfig config file. Default: 'config.ini'
         """
 
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=EnvInterpolation())
         if ini_file:
             logger.debug("Config: Load ini-file: '%s'", ini_file)
             config.read(ini_file)
@@ -61,8 +69,8 @@ class JDConfig:
 
         self.config_dir = config.get("config_dir", ".")
         self.config_file = config.get("config_file", "config.yaml")
-        self.env_var = config.get("env_var", None)
-        self.default_env = config.get("default_env", "prod")
+        self.default_env = config.get("default_env", None)
+        self.env = config.get("env", self.default_env)
 
         # The yaml config data after loading them
         self.data = None
@@ -97,6 +105,26 @@ class JDConfig:
             return self.load_yaml_raw_fd(fd)
 
     def load(self,
+        fname: Optional[os.PathLike] = None,
+        config_dir: Optional[os.PathLike] = None
+    ) -> Mapping:
+        """Load a Yaml config file, and if an env var is defined, also load
+        the environment specific overlay.
+        """
+        # Load the yaml file, including all imports
+        _data = self.load_one_file(fname, config_dir)
+
+        if self.env:
+            fname, oldext = os.path.splitext(fname)
+            fname = fname + "-" + self.env + oldext
+            data_2 = self.load_one_file(fname, config_dir)
+            _data.update(data_2)
+
+        # Make the yaml config data accessible via JDConfig
+        self.data = _data
+        return _data
+
+    def load_one_file(self,
         fname: Optional[os.PathLike] = None,
         config_dir: Optional[os.PathLike] = None
     ) -> Mapping:
@@ -135,9 +163,6 @@ class JDConfig:
 
         if isinstance(fname, str):
             self.file_recursions.pop()
-
-        # Make the yaml config data accessible via JDConfig
-        self.data = _data
 
         return _data
 
@@ -223,7 +248,7 @@ class JDConfig:
         return ConfigGetter.delete(self.data, path, sep=sep, exception=exception)
 
 
-    def set(self, path: PathType, value: Any, *, sep: str=".") -> Any:
+    def set(self, path: PathType, value: Any, *, create_missing: [callable, bool, dict]=True, sep: str=".") -> Any:
         """Similar to 'dict[key] = valie', but with deep path support.
 
         Limitations:
@@ -231,7 +256,7 @@ class JDConfig:
             and manually append the element.
         """
 
-        return ConfigGetter.set(self.data, path, value, sep=sep)
+        return ConfigGetter.set(self.data, path, value, create_missing=create_missing, sep=sep)
 
 
     def walk(self, root: Optional[PathType] = None, resolve: bool = True

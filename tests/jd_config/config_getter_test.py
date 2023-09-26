@@ -4,7 +4,7 @@
 # pylint: disable=C
 
 import logging
-from typing import List, Mapping
+from typing import List, Mapping, Sequence
 from jd_config import ConfigGetter, ConfigException
 import pytest
 
@@ -93,6 +93,43 @@ def test_set():
 
     assert ConfigGetter.set(DATA, "c.c3[4].a", 200) == None
     assert ConfigGetter.get(DATA, "c.c3[4].a") == 200
+
+    # Parts of the tree are missing
+    with pytest.raises(ConfigException):
+        ConfigGetter.set(DATA, "z.a.b", 11)
+
+    assert ConfigGetter.set(DATA, "z.a.b", 11, create_missing=True) == None
+    assert ConfigGetter.get(DATA, "z.a.b") == 11
+
+    # 'a' is not a mapping. Even with create_missing, it will not change the structure
+    with pytest.raises(ConfigException):
+        ConfigGetter.set(DATA, "a.new", 11, create_missing=True)
+
+    # Cannot create lists. It actually will wrongly create {x: a: {0: 22}}. 'a' will not be a list.
+    # TODO At least the given syntax 'a[0]' should give a hint that a list is expected? Though
+    # maps are allowed to use this syntax as well.
+    ConfigGetter.set(DATA, "x.a[0]", 22, create_missing=True)
+    assert ConfigGetter.get(DATA, "x.a[0]") == 22
+
+    # This won't work: {x: a: {0: ..}}  0 is not subscriptable
+    with pytest.raises(ConfigException):
+        ConfigGetter.set(DATA, "x.a[0].b", 22, create_missing=True)
+
+    def missing_1(_data: Mapping|Sequence, key: str|int, _):
+        if key == "a":
+            return [None] * 1
+
+        return {}
+
+    assert ConfigGetter.set(DATA, "y.a[0]", 12, create_missing=missing_1) == None
+    assert ConfigGetter.get(DATA, "y.a[0]") == 12
+
+    assert ConfigGetter.set(DATA, "w.a[0]", 13, create_missing={"a": [None] * 1}) == None
+    assert ConfigGetter.get(DATA, "w.a[0]") == 13
+
+    # My preference and most easiest way
+    assert ConfigGetter.set(DATA, "v.a[0].b", 14, create_missing={"a": [{}]}) == None
+    assert ConfigGetter.get(DATA, "v.a[0].b") == 14
 
 def test_delete():
     assert ConfigGetter.delete(DATA, "a") == "aa"
