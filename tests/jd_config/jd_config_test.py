@@ -275,15 +275,19 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml", config_dir)
     assert data
-    assert len(cfg.files_loaded) == 4
+    assert len(cfg.files_loaded) == 5
     assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-2/main_config.yaml")
-    assert len(cfg.file_recursions) == 0
+    assert cfg.files_loaded[4].replace("\\", "/").endswith("/configs-2/main_config-jd_dev.yaml")
+    assert len(cfg.file_recursions) == 3
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
-    assert cfg.get("db") == "oracle"
-    assert cfg.get("database.DB_USER") == "dbuser"
-    assert cfg.get("database.DB_PASS") == "dbpass"
-    assert cfg.get("database.DB_NAME") == "dbname"
-    assert cfg.get("database.connection_string") == "oracle:dbuser/dbpass@dbname"
+    assert cfg.get("db") == "mysql"
+    assert cfg.get("database.driver") == "mysql"
+    assert cfg.get("database.user") == "omry"
+    assert cfg.get("database.password") == "secret"
+    assert cfg.get("database.DB_USER", None) == None
+    assert cfg.get("database.DB_PASS", None) == None
+    assert cfg.get("database.DB_NAME", None) == None
+    assert cfg.get("database.connection_string", None) == None
 
     assert cfg.get("debug.log_progress_after") == 20_000
