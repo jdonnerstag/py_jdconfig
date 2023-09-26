@@ -14,7 +14,8 @@ logger = logging.getLogger(__parent__name__)
 
 
 class EnvInterpolation(configparser.BasicInterpolation):
-    """Interpolation which expands environment variables in values."""
+    """Interpolation which expands environment variables in values.
+    """
 
     def before_get(self, parser, section, option, value, defaults):
         value = super().before_get(parser, section, option, value, defaults)
@@ -23,6 +24,8 @@ class EnvInterpolation(configparser.BasicInterpolation):
 
 class ConfigIniMixin:
     """A mixin to load the Config specific configurations.
+
+    Dependencies: None
     """
 
     def __init__(self, *, ini_file: str = "config.ini") -> None:

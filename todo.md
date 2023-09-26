@@ -50,6 +50,7 @@
   evaluation of {..} constructs.
 - I don't think we need / should support {import: ..., replace=True}
 - we are using get(), but not yet obj[] and obj.x.y.n
+- Support env sepcific yaml config files in working directory (not required to be in config dir)
 
 Done:
 - OmegaConf can use directories, e.g. to support mssql, postgres, oracle, or

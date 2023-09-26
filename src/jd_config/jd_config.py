@@ -6,16 +6,23 @@ Main config package to load and access config values.
 """
 
 import logging
-from .config_ini import ConfigIniMixin
-from .deep_access import DeepAccessMixin
-from .config_loader import YamlFileLoaderMixin
-
+from .config_ini_mixin import ConfigIniMixin
+from .deep_access_mixin import DeepAccessMixin
+from .config_loader_mixin import YamlFileLoaderMixin
+from .deep_export_mixin import DeepExportMixin
+from .resolver_mixin import ResolverMixin
 
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class JDConfig(ConfigIniMixin, YamlFileLoaderMixin, DeepAccessMixin):
+class JDConfig(
+    ConfigIniMixin,
+    YamlFileLoaderMixin,
+    ResolverMixin,
+    DeepAccessMixin,
+    DeepExportMixin,
+):
     """Main class load and access config values.
     """
 
@@ -42,11 +49,16 @@ class JDConfig(ConfigIniMixin, YamlFileLoaderMixin, DeepAccessMixin):
 
         :param ini_file: Path to JDConfig config file. Default: 'config.ini'
         """
+
+        # The yaml config data after loading them
+        self.data = None
+
         ConfigIniMixin.__init__(self, ini_file=ini_file)
+
+        ResolverMixin.__init__(self)
 
         DeepAccessMixin.__init__(self)
 
         YamlFileLoaderMixin.__init__(self)
 
-        # The yaml config data after loading them
-        self.data = None
+        DeepExportMixin.__init__(self)

@@ -11,7 +11,7 @@ from typing import Any
 __parent__name__ = __name__.rpartition('.')[0]
 logger = logging.getLogger(__parent__name__)
 
-
+# TODO make it a mixin?
 def convert(strval: Any) -> int | float | str | bool:
     """Convert a string into int, float or bool of possible, else
     return the string value.

@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 """
-Main config package to load and access config values.
+Mixin to load yaml config files
 """
 
 import os
@@ -20,12 +20,19 @@ logger = logging.getLogger(__parent__name__)
 
 
 class YamlFileLoaderMixin:
-    """Load the yaml config files and process the placeholders
+    """Load the yaml config files and process the placeholders.
+
+    Dependencies:
+    - self.data: the config object structure
+    - self.resolve(): a method to lazily resolve placeholders
     """
 
     def __init__(self) -> None:
         """Initialize.
         """
+
+        assert hasattr(self, "data"), "Mixin depends on self.data"
+        assert hasattr(self, "resolve"), "Mixin depends on self.resolve()"
 
         # The list of yaml files loaded
         self.files_loaded = []

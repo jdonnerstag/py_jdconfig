@@ -23,7 +23,7 @@ DEFAULT = object()
 
 PathType: Type = str | int | Iterable
 
-WalkResultType: Type = Tuple[Tuple[Mapping, str] | Tuple[Sequence, int]]
+WalkResultType: Type = Union[Tuple[Mapping, str], Tuple[Sequence, int]]
 
 class ConfigGetter:
     """Dict-like get, set and delete operations on deep Mapping- and Sequence-like structures.

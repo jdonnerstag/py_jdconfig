@@ -17,7 +17,7 @@ Please see the readme.md file for details. In summary:
 1. A yaml value that is '???' is mandotory and must be provided via env overlay or CLI args.
 """
 
-from .config_ini import ConfigIniMixin
+from .config_ini_mixin import ConfigIniMixin
 
 from .convert import convert, convert_bool
 
@@ -51,7 +51,8 @@ from .placeholder import (
     ValueReader
 )
 
-from .deep_access import DeepAccessMixin
-from .config_loader import YamlFileLoaderMixin
-
+from .deep_access_mixin import DeepAccessMixin
+from .config_loader_mixin import YamlFileLoaderMixin
+from .deep_export_mixin import DeepExportMixin
+from .resolver_mixin import ResolverMixin
 from .jd_config import JDConfig
