@@ -34,6 +34,11 @@ class YamlFileLoaderMixin:
         assert hasattr(self, "data"), "Mixin depends on self.data"
         assert hasattr(self, "resolve"), "Mixin depends on self.resolve()"
 
+        # TODO I'd prefer a mixin without these dependencies
+        assert hasattr(self, "env"), "Mixin depends on self.env"
+        assert hasattr(self, "config_file"), "Mixin depends on self.config_file"
+        assert hasattr(self, "config_dir"), "Mixin depends on self.config_file"
+
         # The list of yaml files loaded
         self.files_loaded = []
         self.file_recursions = []
@@ -85,6 +90,7 @@ class YamlFileLoaderMixin:
         # Make the yaml config data accessible via JDConfig
         self.data = _data
         return _data
+
 
     def load_one_file(self,
         fname: Optional[os.PathLike] = None,

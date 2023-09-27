@@ -9,12 +9,24 @@ import os
 import re
 import logging
 import pytest
-from jd_config import JDConfig, Placeholder, ConfigException, YamlObj, NodeEvent
+from jd_config import Placeholder, ConfigException, YamlObj, NodeEvent, YamlFileLoaderMixin
+from jd_config import ResolverMixin, ConfigIniMixin, DeepAccessMixin
+
 
 logger = logging.getLogger(__name__)
 
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
+
+
+class MyMixinTestClass(YamlFileLoaderMixin, ResolverMixin, ConfigIniMixin, DeepAccessMixin):
+    def __init__(self) -> None:
+        self.data = None
+
+        ConfigIniMixin.__init__(self, ini_file = None)
+        ResolverMixin.__init__(self)
+        YamlFileLoaderMixin.__init__(self)
+        DeepAccessMixin.__init__(self)
 
 
 def data_dir(*args):
@@ -24,7 +36,7 @@ def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
     # Use the config.ini configs to load the config files
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     cfg.config_dir = data_dir("configs-1")
     cfg.config_file = "config.yaml"
     cfg.default_env = "dev"
@@ -38,7 +50,7 @@ def test_load_jdconfig_1():
     # Provide the config file name. Note, that it'll not change or set the
     # config_dir. Any config files imported, are imported relativ to the
     # config_dir configured (or preset) in config.ini
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     file = data_dir("configs-1", "config.yaml")
     data = cfg.load(file)
     assert data
@@ -46,7 +58,7 @@ def test_load_jdconfig_1():
     # Provide a filename and a config_dir. All config imports, will be executed
     # relativ to the config_dir provided.
     # The config file might still be relativ or absolut.
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
     assert data
@@ -56,7 +68,7 @@ def test_load_jdconfig_1():
     assert data
 
 def test_jdconfig_1_placeholders(monkeypatch):
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
     assert data
@@ -88,7 +100,7 @@ def test_load_jdconfig_2(monkeypatch):
     # where the actually path refers to config value.
 
     # Apply config_dir to set working directory for relativ yaml imports
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     cfg.env = None  # Make sure, we are not even trying to load an env file
     config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml", config_dir)
@@ -119,7 +131,7 @@ class MyBespokePlaceholder(Placeholder):
         return "value"
 
 def test_add_placeholder():
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     cfg.register_placeholder("bespoke", MyBespokePlaceholder)
 
     DATA = """
@@ -141,7 +153,7 @@ def test_add_placeholder():
 def test_load_jdconfig_3():
     # config-3 has a file recursion
 
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     config_dir = data_dir("configs-3")
 
     with pytest.raises(ConfigException):
@@ -154,7 +166,7 @@ def test_import_replacement():
     config_dir = data_dir("configs-4")
 
     # Default: False. Load into "b"
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     data = cfg.load("config-1.yaml", config_dir)
     assert data
     assert cfg.get("a") == "aa"
@@ -162,7 +174,7 @@ def test_import_replacement():
     assert cfg.get("b.ib") == "ibb"
 
     # False. Load into "b"
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     data = cfg.load("config-2.yaml", config_dir)
     assert data
     assert cfg.get("a") == "aa"
@@ -170,7 +182,7 @@ def test_import_replacement():
     assert cfg.get("b.ib") == "ibb"
 
     # True. Merge on root level
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     data = cfg.load("config-3.yaml", config_dir)
     assert data
     assert cfg.get("a") == "aa"
@@ -180,7 +192,7 @@ def test_import_replacement():
 
 
 def test_walk():
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
 
     DATA = """
         a: aa
@@ -216,7 +228,7 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     monkeypatch.setenv('DB_PASS', 'dbpass')
     monkeypatch.setenv('DB_NAME', 'dbname')
 
-    cfg = JDConfig(ini_file = None)
+    cfg = MyMixinTestClass()
     cfg.env = "jd_dev"  # Apply own env specific changes
 
     config_dir = data_dir("configs-2")

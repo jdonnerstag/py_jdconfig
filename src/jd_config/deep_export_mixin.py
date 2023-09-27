@@ -28,6 +28,7 @@ class DeepExportMixin:
     def __init__(self) -> None:
         assert hasattr(self, "data"), "Mixin depends on self.data"
         assert hasattr(self, "resolve"), "Mixin depends on self.resolve()"
+        assert hasattr(self, "get"), "Mixin depends on self.get()"
 
 
     def to_dict(self, root: Optional[PathType] = None, resolve: bool = True) -> dict:
@@ -40,6 +41,7 @@ class DeepExportMixin:
             obj = self.get(root)
 
         stack = []
+        cur = {}
         for event in objwalk(obj, nodes_only=False):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 if isinstance(event, NewMappingEvent):
@@ -60,7 +62,9 @@ class DeepExportMixin:
             elif isinstance(event, NodeEvent):
                 value = event.value
                 if resolve:
-                    value = self.resolve(event.value.value, self.data)
+                    if hasattr(value, "value"):
+                        value = value.value
+                    value = self.resolve(value, self.data)
 
                 if isinstance(cur, Mapping):
                     cur[event.path[-1]] = value

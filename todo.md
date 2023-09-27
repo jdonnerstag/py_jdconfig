@@ -1,6 +1,7 @@
 
 # Todos / Requirements
 
+- adjust tests to meet new source structure (mixins)
 - I want to easily support multiple envs (e.g. dev, test, prod, ..)
   - It should be possible to commit them all into github, without them interfering
   - Many configs are the same across all envs, but infra is different. Make it easy
@@ -51,6 +52,8 @@
 - I don't think we need / should support {import: ..., replace=True}
 - we are using get(), but not yet obj[] and obj.x.y.n
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
+- Do we need items(), iter(), keys(), [key] for the config items?
+- Do we need ".." or "*" or "**" support, in a find() like function?
 
 Done:
 - OmegaConf can use directories, e.g. to support mssql, postgres, oracle, or
@@ -85,3 +88,22 @@ Done:
 - yaml tags, e.g. !import, !env etc.. These tags are eagerly executed in yaml (add_constructor).
   With our syntax {xyz:..}, they become strings and we must analyze them ourselves.
 - I like OmegaConf {xyz:..} constructs. But I don't like {oc.env:...}
+
+# Nice to know
+
+- Dynamically add a base class (or mixin)
+  ```
+    p.__class__ = type('GentlePerson',(Person,Gentleman),{})
+    class Gentleman(object):
+      def introduce_self(self):
+        return "Hello, my name is %s" % self.name
+
+    class Person(object):
+      def __init__(self, name):
+        self.name = name
+
+    p = Person("John")
+    p.__class__ = type('GentlePerson',(Person,Gentleman),{})
+    print(p.introduce_self())
+    # "Hello, my name is John"
+  ```
