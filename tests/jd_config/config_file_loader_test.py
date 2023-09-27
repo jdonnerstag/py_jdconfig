@@ -6,11 +6,13 @@
 from dataclasses import dataclass
 from io import StringIO
 import os
+from pathlib import Path
 import re
 import logging
+from typing import Mapping
 import pytest
-from jd_config import Placeholder, ConfigException, YamlObj, NodeEvent, YamlFileLoaderMixin
-from jd_config import ResolverMixin, ConfigIniMixin, DeepAccessMixin
+from jd_config import Placeholder, ConfigException, YamlObj, NodeEvent, ConfigFileLoader
+from jd_config import ResolverMixin, DeepAccessMixin
 
 
 logger = logging.getLogger(__name__)
@@ -19,58 +21,87 @@ logger = logging.getLogger(__name__)
 # show logs: pytest --log-cli-level=DEBUG
 
 
-class MyMixinTestClass(YamlFileLoaderMixin, ResolverMixin, ConfigIniMixin, DeepAccessMixin):
+class MyMixinTestClass(ResolverMixin, DeepAccessMixin):
     def __init__(self) -> None:
         self.data = None
 
-        ConfigIniMixin.__init__(self, ini_file = None)
         ResolverMixin.__init__(self)
-        YamlFileLoaderMixin.__init__(self)
         DeepAccessMixin.__init__(self)
 
+        # Why this approach and not a Mixin/Base Class. ConfigFileLoader
+        # is comparatively large with a number of functions. Functions
+        # which I consider private, but python has not means to mark them
+        # private. This is a more explicit approach.
+        self.config_file_loader = ConfigFileLoader(dependencies=self)
 
-def data_dir(*args):
-    return os.path.join(os.path.dirname(__file__), "data", *args)
+    def load(self, fname: Path|StringIO, config_dir: Path|None, env: str|None = None) -> Mapping:
+        self.data = self.config_file_loader.load(fname, config_dir, env)
+        return self.data
+
+    @property
+    def files_loaded(self):
+        return self.config_file_loader.files_loaded
+
+    @property
+    def file_recursions(self):
+        return self.config_file_loader.file_recursions
+
+
+def data_dir(*args) -> Path:
+    path = os.path.join(os.path.dirname(__file__), "data", *args)
+    path = Path(path).relative_to(Path.cwd())
+    return path
+
 
 def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
-    # Use the config.ini configs to load the config files
     cfg = MyMixinTestClass()
-    cfg.config_dir = data_dir("configs-1")
-    cfg.config_file = "config.yaml"
-    cfg.default_env = "dev"
-
-    data = cfg.load()
+    data = cfg.load(Path("config.yaml"), config_dir=data_dir("configs-1"))
     assert data
     assert len(cfg.files_loaded) == 1
-    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-1/config.yaml")
+    assert cfg.files_loaded[0].parts[-2:] == ("configs-1", "config.yaml")
     assert len(cfg.file_recursions) == 0
 
-    # Provide the config file name. Note, that it'll not change or set the
-    # config_dir. Any config files imported, are imported relativ to the
-    # config_dir configured (or preset) in config.ini
+    # With an absolute filename, the config_dir is ignored. Which however
+    # only works as long as not {import: ..} placeholders are used.
     cfg = MyMixinTestClass()
     file = data_dir("configs-1", "config.yaml")
-    data = cfg.load(file)
+    data = cfg.load(file.absolute(), config_dir=Path("/this/likely/does/not/exist"))
     assert data
 
-    # Provide a filename and a config_dir. All config imports, will be executed
-    # relativ to the config_dir provided.
-    # The config file might still be relativ or absolut.
+    # It shouldn't matter
+    data = cfg.load(file.absolute(), config_dir=None)
+    assert data
+
+
+# TODO This test should go into placeholder_test?
+def test_jd_config_1_mandatory_values():
     cfg = MyMixinTestClass()
-    config_dir = data_dir("configs-1")
-    data = cfg.load("config.yaml", config_dir)
+    data = cfg.load(Path("config.yaml"), config_dir=data_dir("configs-1"))
     assert data
 
-    file = os.path.abspath(data_dir("configs-1", "config.yaml"))
-    data = cfg.load(file, config_dir)
-    assert data
+    # Should fail, as value is marked mandatory with ???
+    with pytest.raises(ConfigException):
+        cfg.get("DB_USER")
 
+    # Providing a default will not help. ??? Mandates a config value.
+    # get(.., <default>) only applies to missing keys. But DB_USER exists.
+    with pytest.raises(ConfigException):
+        cfg.get("DB_USER", "xxx")
+
+    # Should fail, as value is marked mandatory with ???
+    with pytest.raises(ConfigException):
+        cfg.get("DB_PASS")
+
+    # DB_NAME has a default configure in the the yaml file.
+    assert cfg.get("DB_NAME") == "my_default_db"
+
+
+# TODO This test should go into placeholder_test?
 def test_jdconfig_1_placeholders(monkeypatch):
     cfg = MyMixinTestClass()
-    config_dir = data_dir("configs-1")
-    data = cfg.load("config.yaml", config_dir)
+    data = cfg.load(Path("config.yaml"), data_dir("configs-1"))
     assert data
 
     monkeypatch.setenv('DB_USER', 'dbuser')
@@ -95,18 +126,17 @@ def test_post_load():
     pass
 
 
+# TODO This test should go into placeholder_test?
 def test_load_jdconfig_2(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
 
     # Apply config_dir to set working directory for relativ yaml imports
     cfg = MyMixinTestClass()
-    cfg.env = None  # Make sure, we are not even trying to load an env file
-    config_dir = data_dir("configs-2")
-    data = cfg.load("main_config.yaml", config_dir)
+    data = cfg.load(Path("main_config.yaml"), data_dir("configs-2"))
     assert data
     assert len(cfg.files_loaded) == 4
-    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-2/main_config.yaml")
+    assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert len(cfg.file_recursions) == 0
 
     monkeypatch.setenv('DB_USER', 'dbuser')
@@ -130,6 +160,7 @@ class MyBespokePlaceholder(Placeholder):
     def resolve(self, _) -> str:
         return "value"
 
+# TODO This test should go into placeholder_test?
 def test_add_placeholder():
     cfg = MyMixinTestClass()
     cfg.register_placeholder("bespoke", MyBespokePlaceholder)
@@ -141,7 +172,7 @@ def test_add_placeholder():
     """
 
     file_like_io = StringIO(DATA)
-    data = cfg.load(file_like_io)
+    data = cfg.load(file_like_io, None)
     assert data
 
     assert len(cfg.files_loaded) == 1
@@ -151,23 +182,19 @@ def test_add_placeholder():
 
 
 def test_load_jdconfig_3():
+
     # config-3 has a file recursion
-
     cfg = MyMixinTestClass()
-    config_dir = data_dir("configs-3")
-
     with pytest.raises(ConfigException):
-        cfg.load("config.yaml", config_dir)
+        cfg.load(Path("config.yaml"), data_dir("configs-3"))
 
     assert len(cfg.file_recursions) > 0
 
 
 def test_import_replacement():
-    config_dir = data_dir("configs-4")
-
     # Default: False. Load into "b"
     cfg = MyMixinTestClass()
-    data = cfg.load("config-1.yaml", config_dir)
+    data = cfg.load(Path("config-1.yaml"), data_dir("configs-4"))
     assert data
     assert cfg.get("a") == "aa"
     assert cfg.get("b.ia") == "iaa"
@@ -175,7 +202,7 @@ def test_import_replacement():
 
     # False. Load into "b"
     cfg = MyMixinTestClass()
-    data = cfg.load("config-2.yaml", config_dir)
+    data = cfg.load(Path("config-2.yaml"), data_dir("configs-4"))
     assert data
     assert cfg.get("a") == "aa"
     assert cfg.get("b.ia") == "iaa"
@@ -183,14 +210,15 @@ def test_import_replacement():
 
     # True. Merge on root level
     cfg = MyMixinTestClass()
-    data = cfg.load("config-3.yaml", config_dir)
+    data = cfg.load(Path("config-3.yaml"), data_dir("configs-4"))
     assert data
     assert cfg.get("a") == "aa"
     assert cfg.get("ia") == "iaa"
     assert cfg.get("ib") == "ibb"
-    assert cfg.get("b", None) == None   # Does not exist
+    assert cfg.get("b", None) is None   # Does not exist
 
 
+# TODO This test should go into placeholder_test?
 def test_walk():
     cfg = MyMixinTestClass()
 
@@ -204,7 +232,7 @@ def test_walk():
     """
 
     file_like_io = StringIO(DATA)
-    data = cfg.load(file_like_io)
+    data = cfg.load(file_like_io, None)
     assert data
 
     data = list(cfg.walk(resolve=True))
@@ -229,24 +257,21 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     monkeypatch.setenv('DB_NAME', 'dbname')
 
     cfg = MyMixinTestClass()
-    cfg.env = "jd_dev"  # Apply own env specific changes
-
-    config_dir = data_dir("configs-2")
-    data = cfg.load("main_config.yaml", config_dir)
+    data = cfg.load(Path("main_config.yaml"), data_dir("configs-2"), env="jd_dev")
     assert data
     assert len(cfg.files_loaded) == 5
-    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-2/main_config.yaml")
-    assert cfg.files_loaded[4].replace("\\", "/").endswith("/configs-2/main_config-jd_dev.yaml")
-    assert len(cfg.file_recursions) == 3
+    assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
+    assert cfg.files_loaded[4].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
+    assert len(cfg.file_recursions) == 0
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
     assert cfg.get("db") == "mysql"
     assert cfg.get("database.driver") == "mysql"
     assert cfg.get("database.user") == "omry"
     assert cfg.get("database.password") == "secret"
-    assert cfg.get("database.DB_USER", None) == None
-    assert cfg.get("database.DB_PASS", None) == None
-    assert cfg.get("database.DB_NAME", None) == None
-    assert cfg.get("database.connection_string", None) == None
+    assert cfg.get("database.DB_USER", None) is None
+    assert cfg.get("database.DB_PASS", None) is None
+    assert cfg.get("database.DB_NAME", None) is None
+    assert cfg.get("database.connection_string", None) is None
 
     assert cfg.get("debug.log_progress_after") == 20_000

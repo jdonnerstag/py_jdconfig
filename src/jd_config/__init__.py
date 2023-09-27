@@ -55,7 +55,7 @@ from .value_reader import (
 )
 
 from .deep_access_mixin import DeepAccessMixin
-from .config_loader_mixin import YamlFileLoaderMixin
+from .config_file_loader import ConfigFileLoader
 from .deep_export_mixin import DeepExportMixin
 from .resolver_mixin import ResolverMixin
 from .jd_config import JDConfig

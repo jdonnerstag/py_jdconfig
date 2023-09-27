@@ -54,6 +54,8 @@
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
 - Do we need items(), iter(), keys(), [key] for the config items?
 - Do we need ".." or "*" or "**" support, in a find() like function?
+- Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
+- Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
 
 Done:
 - OmegaConf can use directories, e.g. to support mssql, postgres, oracle, or
