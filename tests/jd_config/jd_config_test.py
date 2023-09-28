@@ -32,7 +32,7 @@ def test_load_jdconfig_1():
     data = cfg.load()
     assert data
     assert len(cfg.files_loaded) == 1
-    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-1/config.yaml")
+    assert cfg.files_loaded[0].parts[-2:] == ("configs-1", "config.yaml")
     assert len(cfg.file_recursions) == 0
 
     # Provide the config file name. Note, that it'll not change or set the
@@ -94,7 +94,7 @@ def test_load_jdconfig_2(monkeypatch):
     data = cfg.load("main_config.yaml", config_dir)
     assert data
     assert len(cfg.files_loaded) == 4
-    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-2/main_config.yaml")
+    assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert len(cfg.file_recursions) == 0
 
     monkeypatch.setenv('DB_USER', 'dbuser')
@@ -223,8 +223,8 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     data = cfg.load("main_config.yaml", config_dir)
     assert data
     assert len(cfg.files_loaded) == 5
-    assert cfg.files_loaded[0].replace("\\", "/").endswith("/configs-2/main_config.yaml")
-    assert cfg.files_loaded[4].replace("\\", "/").endswith("/configs-2/main_config-jd_dev.yaml")
+    assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
+    assert cfg.files_loaded[4].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
     assert len(cfg.file_recursions) == 3
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))

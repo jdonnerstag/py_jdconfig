@@ -27,9 +27,9 @@ def test_ValueType():
     assert isinstance(RefPlaceholder(path="db"), Placeholder)
     assert isinstance(EnvPlaceholder(env_var="ENV"), Placeholder)
 
-    assert isinstance(ImportPlaceholder("test.yaml", False), ValueType)
+    assert isinstance(ImportPlaceholder("test.yaml"), ValueType)
     assert isinstance(RefPlaceholder("db.engine"), ValueType)
-    assert isinstance(EnvPlaceholder("ENV"), ValueType)
+    assert isinstance(EnvPlaceholder("ENV", "default"), ValueType)
 
     # File names are mandatory
     with pytest.raises(Exception):
@@ -79,9 +79,6 @@ def test_ValueReader():
     # Nested placeholders
     value = list(ValueReader().parse("{ref: test}-{ref: db, {ref: db_default, mysql}}", sep=","))
     assert value == [RefPlaceholder("test"), "-", RefPlaceholder("db", RefPlaceholder("db_default", "mysql"))]
-
-    value = list(ValueReader().parse("{import: ./db/{ref: db}-config.yaml, true}", sep=","))
-    assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"], True)]
 
     value = list(ValueReader().parse("{import: ./db/{ref: db}-config.yaml}", sep=","))
     assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"])]

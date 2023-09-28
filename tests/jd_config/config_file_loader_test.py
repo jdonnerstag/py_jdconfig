@@ -191,33 +191,6 @@ def test_load_jdconfig_3():
     assert len(cfg.file_recursions) > 0
 
 
-def test_import_replacement():
-    # Default: False. Load into "b"
-    cfg = MyMixinTestClass()
-    data = cfg.load(Path("config-1.yaml"), data_dir("configs-4"))
-    assert data
-    assert cfg.get("a") == "aa"
-    assert cfg.get("b.ia") == "iaa"
-    assert cfg.get("b.ib") == "ibb"
-
-    # False. Load into "b"
-    cfg = MyMixinTestClass()
-    data = cfg.load(Path("config-2.yaml"), data_dir("configs-4"))
-    assert data
-    assert cfg.get("a") == "aa"
-    assert cfg.get("b.ia") == "iaa"
-    assert cfg.get("b.ib") == "ibb"
-
-    # True. Merge on root level
-    cfg = MyMixinTestClass()
-    data = cfg.load(Path("config-3.yaml"), data_dir("configs-4"))
-    assert data
-    assert cfg.get("a") == "aa"
-    assert cfg.get("ia") == "iaa"
-    assert cfg.get("ib") == "ibb"
-    assert cfg.get("b", None) is None   # Does not exist
-
-
 # TODO This test should go into placeholder_test?
 def test_walk():
     cfg = MyMixinTestClass()
@@ -261,7 +234,7 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert data
     assert len(cfg.files_loaded) == 5
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
-    assert cfg.files_loaded[4].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
+    assert cfg.files_loaded[1].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
     assert len(cfg.file_recursions) == 0
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))

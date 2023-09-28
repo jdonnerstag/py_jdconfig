@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 def test_ImportPlaceholder():
     obj = ImportPlaceholder(file="xxx")
     assert obj.file == "xxx"
-    assert obj.replace == False
 
     # Filename is missing
     with pytest.raises(Exception):
@@ -27,7 +26,7 @@ def test_ImportPlaceholder():
 def test_RefPlaceholder():
     obj = RefPlaceholder(path="db")
     assert obj.path == "db"
-    assert obj.default_val == None
+    assert obj.default_val is None
 
     # Filename is missing
     with pytest.raises(Exception):
@@ -37,7 +36,7 @@ def test_RefPlaceholder():
 def test_EnvPlaceholder():
     obj = EnvPlaceholder(env_var="ENV")
     assert obj.env_var == "ENV"
-    assert obj.default_val == None
+    assert obj.default_val is None
 
     # Filename is missing
     with pytest.raises(Exception):

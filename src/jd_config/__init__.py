@@ -23,6 +23,7 @@ from .string_converter_mixin import StringConverterMixin
 
 from .objwalk import (
     objwalk,
+    deep_update,
     NodeEvent,
     NewMappingEvent,
     NewSequenceEvent,

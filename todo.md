@@ -31,6 +31,7 @@
     - extend config.ini to hold the "db" variable. Requires env specific config.ini support. Which is tricky, because config.ini defines the env name. It also diludes config.ini, which should be jdconfig configs only (not user configs).
   - Changing "db" in your app, it will not reload the dynamic imports.
     Which requires that we remember the import node, and the import placeholder details, incl the ref var. Would this also work when overloading with env? It would still first load the main imports, and then import the env one.
+  - Always allow to manually load and attach a config.
 - I like structured configs with dataclass and pydantic
 - support making a subtree read-only
 - We construct one config "dict", not multiple layers as we had earlier. But we need
@@ -56,6 +57,8 @@
 - Do we need ".." or "*" or "**" support, in a find() like function?
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
 - Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
+- When dumping config, allow to add file, line, col as comment for debugging.
+- For debugging, log placeholder replacements
 
 Done:
 - OmegaConf can use directories, e.g. to support mssql, postgres, oracle, or

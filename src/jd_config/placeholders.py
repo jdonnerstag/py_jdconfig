@@ -46,7 +46,6 @@ class ImportPlaceholder(Placeholder):
     """
 
     file: str
-    replace: bool = False
 
     def __post_init__(self):
         assert self.file
