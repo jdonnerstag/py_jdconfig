@@ -13,10 +13,8 @@ PROJECT_ROOT: C:\\source_code\\COMSAFE
 # Number of processes used to load multiple files
 # Use a negative number to dynamically determine the pool size based on server
 # CPU, core and threads sizes. E.g. -1 => leave 1 core to the OS
-# TODO: Keep for now as example, even though we are not using it right now.
 process_pool: -1
 
-# TODO: I don't think any of them is still valid
 debug:
     log_progress_after: 20_000
     DISABLED stop_after: 100_000

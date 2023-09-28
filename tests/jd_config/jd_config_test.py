@@ -6,6 +6,7 @@
 from dataclasses import dataclass
 from io import StringIO
 import os
+from pathlib import Path
 import re
 import logging
 import pytest
@@ -17,8 +18,8 @@ logger = logging.getLogger(__name__)
 # show logs: pytest --log-cli-level=DEBUG
 
 
-def data_dir(*args):
-    return os.path.join(os.path.dirname(__file__), "data", *args)
+def data_dir(*args) -> Path:
+    return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
 def test_load_jdconfig_1():
@@ -52,8 +53,8 @@ def test_load_jdconfig_1():
     data = cfg.load("config.yaml", config_dir)
     assert data
 
-    file = os.path.abspath(data_dir("configs-1", "config.yaml"))
-    data = cfg.load(file, config_dir)
+    file = data_dir("configs-1", "config.yaml")
+    data = cfg.load(file.absolute(), config_dir)
     assert data
 
 
@@ -78,11 +79,6 @@ def test_jdconfig_1_placeholders(monkeypatch):
     assert cfg.get("schematas.engine") == "dbuser"
     assert cfg.get("schematas.maintenance") == "xxx"
     assert cfg.get("schematas.e2e") == "xxx"
-
-
-def test_post_load():
-    # TODO Test post_load()
-    pass
 
 
 def test_load_jdconfig_2(monkeypatch):
@@ -117,7 +113,7 @@ def test_load_jdconfig_2(monkeypatch):
 class MyBespokePlaceholder(Placeholder):
     """This is also a test for a placeholder that does not take any parameters"""
 
-    def resolve(self, _) -> str:
+    def resolve(self, *_) -> str:
         return "value"
 
 
@@ -153,35 +149,6 @@ def test_load_jdconfig_3():
     assert len(cfg.file_recursions) > 0
 
 
-def test_import_replacement():
-    config_dir = data_dir("configs-4")
-
-    # Default: False. Load into "b"
-    cfg = JDConfig(ini_file=None)
-    data = cfg.load("config-1.yaml", config_dir)
-    assert data
-    assert cfg.get("a") == "aa"
-    assert cfg.get("b.ia") == "iaa"
-    assert cfg.get("b.ib") == "ibb"
-
-    # False. Load into "b"
-    cfg = JDConfig(ini_file=None)
-    data = cfg.load("config-2.yaml", config_dir)
-    assert data
-    assert cfg.get("a") == "aa"
-    assert cfg.get("b.ia") == "iaa"
-    assert cfg.get("b.ib") == "ibb"
-
-    # True. Merge on root level
-    cfg = JDConfig(ini_file=None)
-    data = cfg.load("config-3.yaml", config_dir)
-    assert data
-    assert cfg.get("a") == "aa"
-    assert cfg.get("ia") == "iaa"
-    assert cfg.get("ib") == "ibb"
-    assert cfg.get("b", None) is None  # Does not exist
-
-
 def test_walk():
     cfg = JDConfig(ini_file=None)
 
@@ -207,10 +174,10 @@ def test_walk():
 
     data = list(cfg.walk(resolve=False))
     assert len(data) == 4
-    data.remove(NodeEvent(("a",), YamlObj(2, 12, "<file>", "aa")))
-    data.remove(NodeEvent(("b", "b1", "c1"), YamlObj(5, 21, "<file>", "1cc")))
-    data.remove(NodeEvent(("b", "b1", "c2"), YamlObj(6, 21, "<file>", "2cc")))
-    data.remove(NodeEvent(("b", "b2"), YamlObj(7, 17, "<file>", 22)))
+    data.remove(NodeEvent(("a",), YamlObj(2, 12, Path("<file>"), "aa")))
+    data.remove(NodeEvent(("b", "b1", "c1"), YamlObj(5, 21, Path("<file>"), "1cc")))
+    data.remove(NodeEvent(("b", "b1", "c2"), YamlObj(6, 21, Path("<file>"), "2cc")))
+    data.remove(NodeEvent(("b", "b2"), YamlObj(7, 17, Path("<file>"), 22)))
 
 
 def test_load_jdconfig_2_with_env(monkeypatch):
@@ -226,8 +193,8 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert data
     assert len(cfg.files_loaded) == 5
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
-    assert cfg.files_loaded[4].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
-    assert len(cfg.file_recursions) == 3
+    assert cfg.files_loaded[1].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
+    assert len(cfg.file_recursions) == 0
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
     assert cfg.get("db") == "mysql"

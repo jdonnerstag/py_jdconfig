@@ -50,7 +50,7 @@ class ImportPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.file
 
-    def resolve(self, data: Mapping, data_2: Optional[Mapping] = None):
+    def resolve(self, *_):
         pass     # Nothing to do
 
 
@@ -70,22 +70,31 @@ class RefPlaceholder(Placeholder):
         self.file_root = _data
 
     def resolve(self, data: Mapping, data_2: Optional[Mapping] = None):
-        # 1. Search in the yaml file which contains the reference
-        if self.file_root:
-            try:
-                obj = ConfigGetter.get(self.file_root, self.path, sep = ",")
-                return obj.value
-            except:     # pylint: disable=bare-except  # noqa: E722
-                pass
+        # TODO I'm a little unclear on the right order.
+        #  1. CLI -> that is pretty clear  (where are the CLI data?)
+        #  2. The env file provide
+        #  3. The local file
+        #  4. The main file
+        # Maybe resolve should receive a list of Mappings?
 
-        if data_2:
+        # Search in the env file, if provided
+        if data_2:  # env file (2)
             try:
                 obj = ConfigGetter.get(data_2, self.path, sep = ",")
                 return obj.value
             except:     # pylint: disable=bare-except  # noqa: E722
                 pass
 
-        # 2. Search starting from the root of all the config files.
+        # Search in the yaml file which contains the reference
+        if self.file_root:  # local file (3)
+            try:
+                obj = ConfigGetter.get(self.file_root, self.path, sep = ",")
+                return obj.value
+            except:     # pylint: disable=bare-except  # noqa: E722
+                pass
+
+        # Search starting from the root of all the config files.
+        # Main file (4)
         obj = ConfigGetter.get(data, self.path, sep = ",", default = self.default_val)
         return obj.value
 
@@ -101,7 +110,7 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, _, __) -> str:
+    def resolve(self, *_) -> str:
         value = os.environ.get(self.env_var, self.default_val)
         return value
 
@@ -116,7 +125,7 @@ class TimestampPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.format
 
-    def resolve(self, _, __) -> str:
+    def resolve(self, *_) -> str:
         now = datetime.now()
         value = now.strftime(self.format)
         return value

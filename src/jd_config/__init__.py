@@ -40,6 +40,7 @@ from .placeholders import (
     ImportPlaceholder,
     RefPlaceholder,
     EnvPlaceholder,
+    TimestampPlaceholder,
 )
 
 from .value_reader import CompoundValue, ValueType, ValueReaderException, ValueReader

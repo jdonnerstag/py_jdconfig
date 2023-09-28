@@ -8,7 +8,7 @@ Main config package to load and access config values.
 from io import StringIO
 import logging
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Optional
 from .config_ini_mixin import ConfigIniMixin
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader
@@ -19,12 +19,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class JDConfig(
-    ConfigIniMixin,
-    ResolverMixin,
-    DeepAccessMixin,
-    DeepExportMixin,
-):
+class JDConfig(ConfigIniMixin, ResolverMixin, DeepAccessMixin, DeepExportMixin):
     """Main class load and access config values."""
 
     def __init__(self, *, ini_file: str = "config.ini") -> None:
@@ -60,8 +55,6 @@ class JDConfig(
 
         DeepAccessMixin.__init__(self)
 
-        ConfigFileLoader.__init__(self)
-
         DeepExportMixin.__init__(self)
 
         # Why this approach and not a Mixin/Base Class. ConfigFileLoader
@@ -79,10 +72,16 @@ class JDConfig(
         return self.config_file_loader.file_recursions
 
     def load(
-        self, fname: Path | StringIO, config_dir: Path, env: str | None = None
+        self, fname: Optional[Path | StringIO] = None, config_dir: Optional[Path] = None, env: str | None = None
     ) -> Mapping:
-        fname = fname or self.config_file
-        config_dir = config_dir or self.config_dir
+
+        if fname is None:
+            fname = self.config_file
+
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        config_dir = Path(config_dir or self.config_dir)
         env = env or self.env
 
         # Make the yaml config data accessible via JDConfig

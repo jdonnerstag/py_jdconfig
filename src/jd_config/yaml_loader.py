@@ -10,6 +10,7 @@ A slightly extended version of yaml.SafeLoader. It extends the yaml values
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 import yaml
 
@@ -25,7 +26,7 @@ class YamlObj:
 
     line: int
     column: int
-    file: str
+    file: Path
     value: Any
 
     def replace(self, _old, _new):
@@ -109,7 +110,7 @@ class MyYamlLoader(yaml.SafeLoader):
         return YamlObj(
             node.start_mark.line + 1,
             node.start_mark.column + 1,
-            node.start_mark.name,
+            Path(node.start_mark.name),
             obj,
         )
 
