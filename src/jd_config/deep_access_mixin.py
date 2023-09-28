@@ -6,13 +6,13 @@ Provide getter and setter to access deep config structures.
 """
 
 import logging
-from typing import Any, Iterator,  Optional
+from typing import Any, Iterator, Optional
 from .objwalk import objwalk, NodeEvent
 from .config_getter import ConfigGetter, PathType, DEFAULT
 from .yaml_loader import YamlObj
 
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
@@ -28,8 +28,7 @@ class DeepAccessMixin:
         assert hasattr(self, "data"), "Mixin depends on self.data"
         assert hasattr(self, "resolve"), "Mixin depends on self.resolve()"
 
-
-    def get(self, path: PathType, default: Any = DEFAULT, *, sep: str=".") -> Any:
+    def get(self, path: PathType, default: Any = DEFAULT, *, sep: str = ".") -> Any:
         """Similar to dict.get(), but with deep path support.
 
         Placeholders are automatically resolved.
@@ -43,14 +42,18 @@ class DeepAccessMixin:
         value = self.resolve(obj.value, self.data)
         return value
 
-
-    def delete(self, path: PathType, *, sep: str=".", exception: bool = True) -> Any:
-        """Similar to 'del dict[key]', but with deep path support
-        """
+    def delete(self, path: PathType, *, sep: str = ".", exception: bool = True) -> Any:
+        """Similar to 'del dict[key]', but with deep path support"""
         return ConfigGetter.delete(self.data, path, sep=sep, exception=exception)
 
-
-    def set(self, path: PathType, value: Any, *, create_missing: [callable, bool, dict]=True, sep: str=".") -> Any:
+    def set(
+        self,
+        path: PathType,
+        value: Any,
+        *,
+        create_missing: [callable, bool, dict] = True,
+        sep: str = "."
+    ) -> Any:
         """Similar to 'dict[key] = valie', but with deep path support.
 
         Limitations:
@@ -58,10 +61,13 @@ class DeepAccessMixin:
             and manually append the element.
         """
 
-        return ConfigGetter.set(self.data, path, value, create_missing=create_missing, sep=sep)
+        return ConfigGetter.set(
+            self.data, path, value, create_missing=create_missing, sep=sep
+        )
 
-
-    def walk(self, root: Optional[PathType] = None, resolve: bool = True) -> Iterator[NodeEvent]:
+    def walk(
+        self, root: Optional[PathType] = None, resolve: bool = True
+    ) -> Iterator[NodeEvent]:
         """Walk the config items with an optional starting point
 
         :param root: An optional starting point.

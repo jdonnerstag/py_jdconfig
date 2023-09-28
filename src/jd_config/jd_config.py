@@ -7,16 +7,15 @@ Main config package to load and access config values.
 
 from io import StringIO
 import logging
-import os
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Mapping
 from .config_ini_mixin import ConfigIniMixin
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader
 from .deep_export_mixin import DeepExportMixin
 from .resolver_mixin import ResolverMixin
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
@@ -26,8 +25,7 @@ class JDConfig(
     DeepAccessMixin,
     DeepExportMixin,
 ):
-    """Main class load and access config values.
-    """
+    """Main class load and access config values."""
 
     def __init__(self, *, ini_file: str = "config.ini") -> None:
         """Initialize.
@@ -80,9 +78,9 @@ class JDConfig(
     def file_recursions(self):
         return self.config_file_loader.file_recursions
 
-
-    def load(self, fname: Path|StringIO, config_dir: Path, env: str|None = None) -> Mapping:
-
+    def load(
+        self, fname: Path | StringIO, config_dir: Path, env: str | None = None
+    ) -> Mapping:
         fname = fname or self.config_file
         config_dir = config_dir or self.config_dir
         env = env or self.env

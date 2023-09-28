@@ -32,6 +32,7 @@ DATA = """
     - c32: c322
 """
 
+
 def test_yaml_loader():
     file_like_io = StringIO(DATA)
     loader = MyYamlLoader(file_like_io)

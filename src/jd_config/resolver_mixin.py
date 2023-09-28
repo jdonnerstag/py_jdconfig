@@ -12,7 +12,7 @@ from .value_reader import ValueReader
 from .config_getter import ConfigException
 
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
@@ -23,19 +23,20 @@ class ResolverMixin:
     """
 
     def __init__(self) -> None:
-
         # Read string into Placeholders ...
         self.value_reader = ValueReader()
 
-
     def register_placeholder(self, name: str, type_: type) -> None:
-        """Register (add or replace) a placeholder handler
-        """
+        """Register (add or replace) a placeholder handler"""
 
         self.value_reader.registry[name] = type_
 
-
-    def resolve(self, value: Any, _data: Optional[Mapping] = None):
+    def resolve(
+        self,
+        value: Any,
+        data_1: Optional[Mapping] = None,
+        data_2: Optional[Mapping] = None,
+    ):
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -46,10 +47,10 @@ class ResolverMixin:
 
         key = value
         if isinstance(value, Placeholder):
-            value = value.resolve(_data)
+            value = value.resolve(data_1, data_2)
 
         if isinstance(value, list):
-            value = [self.resolve(x, _data) for x in value]
+            value = [self.resolve(x, data_1, data_2) for x in value]
             value = "".join(value)
             return value
 

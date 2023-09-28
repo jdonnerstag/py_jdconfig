@@ -14,13 +14,20 @@ import logging
 from typing import Iterator, Union
 from .config_getter import ConfigException
 from .string_converter_mixin import StringConverterMixin
-from .placeholders import Placeholder, ImportPlaceholder, RefPlaceholder, EnvPlaceholder, TimestampPlaceholder
+from .placeholders import (
+    Placeholder,
+    ImportPlaceholder,
+    RefPlaceholder,
+    EnvPlaceholder,
+    TimestampPlaceholder,
+)
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 ValueType = Union[int, float, bool, str, Placeholder]
+
 
 class CompoundValue(list):
     """A Yaml value that consists of multiple parts.
@@ -35,8 +42,7 @@ class CompoundValue(list):
         super().__init__(list(values))
 
     def is_import(self) -> bool:
-        """Determine if one the parts is a '{import:..}' placeholder
-        """
+        """Determine if one the parts is a '{import:..}' placeholder"""
 
         for elem in self:
             if isinstance(elem, ImportPlaceholder):
@@ -54,8 +60,7 @@ class ValueReaderException(ConfigException):
 
 
 class ValueReader(StringConverterMixin):
-    """Parse a yaml value
-    """
+    """Parse a yaml value"""
 
     def __init__(self, registry: dict[str, Placeholder] = None) -> None:
         self.registry = registry
@@ -67,7 +72,6 @@ class ValueReader(StringConverterMixin):
                 "env": EnvPlaceholder,
                 "timestamp": TimestampPlaceholder,
             }
-
 
     def parse(self, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
         """Parse a yaml value and yield the various parts.
@@ -96,11 +100,11 @@ class ValueReader(StringConverterMixin):
 
         except StopIteration as exc:
             raise ValueReaderException(
-                f"Failed to parse yaml value with placeholder: '${strval}'") from exc
+                f"Failed to parse yaml value with placeholder: '${strval}'"
+            ) from exc
 
     def parse_placeholder(self, _iter: Iterator, sep: str) -> Placeholder:
-        """Parse {<name>: <arg-1>, ...} into registered Placeholder objects
-        """
+        """Parse {<name>: <arg-1>, ...} into registered Placeholder objects"""
 
         name = next(_iter)
         args = []
@@ -135,7 +139,6 @@ class ValueReader(StringConverterMixin):
 
         raise ConfigException(f"Unexpected end: '{text}'")
 
-
     @classmethod
     def tokenize(cls, strval: str, sep: str = ",") -> Iterator[str]:
         """Tokenize the yaml string value
@@ -157,7 +160,7 @@ class ValueReader(StringConverterMixin):
                 yield value
                 start = i + 1
             elif ch in [sep, "{", "}", ":"]:
-                value = strval[start : i].strip()
+                value = strval[start:i].strip()
                 if value:
                     yield value
 
@@ -166,7 +169,7 @@ class ValueReader(StringConverterMixin):
 
             i += 1
 
-        value = strval[start : ].strip()
+        value = strval[start:].strip()
         if value:
             yield value
 

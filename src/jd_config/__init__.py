@@ -28,16 +28,10 @@ from .objwalk import (
     NewMappingEvent,
     NewSequenceEvent,
     DropContainerEvent,
-    WalkerEvent
+    WalkerEvent,
 )
 
-from .yaml_loader import (
-    YamlObj,
-    YamlContainer,
-    YamlMapping,
-    YamlSequence,
-    MyYamlLoader
-)
+from .yaml_loader import YamlObj, YamlContainer, YamlMapping, YamlSequence, MyYamlLoader
 
 from .config_getter import ConfigException, ConfigGetter
 
@@ -48,12 +42,7 @@ from .placeholders import (
     EnvPlaceholder,
 )
 
-from .value_reader import (
-    CompoundValue,
-    ValueType,
-    ValueReaderException,
-    ValueReader
-)
+from .value_reader import CompoundValue, ValueType, ValueReaderException, ValueReader
 
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader

@@ -9,13 +9,12 @@ import os
 import logging
 import configparser
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 class EnvInterpolation(configparser.BasicInterpolation):
-    """Interpolation which expands environment variables in values.
-    """
+    """Interpolation which expands environment variables in values."""
 
     def before_get(self, parser, section, option, value, defaults):
         value = super().before_get(parser, section, option, value, defaults)

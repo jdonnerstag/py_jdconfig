@@ -12,12 +12,13 @@ import logging
 from typing import Any, Iterable, Mapping, Tuple, Type, Sequence, Optional, Union
 from .string_converter_mixin import StringConverterMixin
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 class ConfigException(Exception):
     """Base class for Config Exceptions"""
+
 
 DEFAULT = object()
 
@@ -25,12 +26,21 @@ PathType: Type = str | int | Iterable
 
 WalkResultType: Type = Union[Tuple[Mapping, str], Tuple[Sequence, int]]
 
+
 class ConfigGetter(StringConverterMixin):
-    """Dict-like get, set and delete operations on deep Mapping- and Sequence-like structures.
+    """Dict-like get, set and delete operations on deep Mapping-
+    and Sequence-like structures.
     """
 
     @classmethod
-    def walk(cls, _data: Mapping, path: PathType, *, on_missing: Optional[callable] = None, sep: str=".") -> WalkResultType:
+    def walk(
+        cls,
+        _data: Mapping,
+        path: PathType,
+        *,
+        on_missing: Optional[callable] = None,
+        sep: str = ".",
+    ) -> WalkResultType:
         """Walk a path to determine the container (Mapping, Sequence) which holds
         the last key.
 
@@ -51,9 +61,9 @@ class ConfigGetter(StringConverterMixin):
         for i, key in enumerate(keys[0:-1]):
             try:
                 _data = _data[key]
-            except:     # pylint: disable=bare-except
+            except:  # pylint: disable=bare-except  # noqa: E722
                 if callable(on_missing):
-                    _data[key] = new_data = on_missing(_data, key, keys[0 : i])
+                    _data[key] = new_data = on_missing(_data, key, keys[0:i])
                     _data = new_data
                 else:
                     raise
@@ -61,9 +71,10 @@ class ConfigGetter(StringConverterMixin):
         return (_data, last)
 
     @classmethod
-    def get(cls, _data: Mapping, path: PathType, default: Any = DEFAULT, *, sep: str=".") -> Any:
-        """Similar to dict.get(), but with deep path support
-        """
+    def get(
+        cls, _data: Mapping, path: PathType, default: Any = DEFAULT, *, sep: str = "."
+    ) -> Any:
+        """Similar to dict.get(), but with deep path support"""
         try:
             _data, key = cls.walk(_data, path, sep=sep)
             return _data[key]
@@ -74,16 +85,17 @@ class ConfigGetter(StringConverterMixin):
             raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
 
     @classmethod
-    def _get_old(cls, _data: Mapping, key: str|int) -> Any:
+    def _get_old(cls, _data: Mapping, key: str | int) -> Any:
         try:
             return _data[key]
         except KeyError:
             return None
 
     @classmethod
-    def delete(cls, _data: Mapping, path: PathType, *, sep: str=".", exception: bool = True) -> Any:
-        """Similar to 'del dict[key]', but with deep path support
-        """
+    def delete(
+        cls, _data: Mapping, path: PathType, *, sep: str = ".", exception: bool = True
+    ) -> Any:
+        """Similar to 'del dict[key]', but with deep path support"""
         try:
             _data, key = cls.walk(_data, path, sep=sep)
             old_value = cls._get_old(_data, key)
@@ -91,14 +103,22 @@ class ConfigGetter(StringConverterMixin):
             del _data[key]
             return old_value
 
-        except Exception as exc:    # pylint: disable=broad-exception-caught
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             if exception:
                 raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
 
         return None
 
     @classmethod
-    def set(cls, _data: Mapping, path: PathType, value: Any, *, create_missing: Union[callable, bool, dict]=False, sep: str=".") -> Any:
+    def set(
+        cls,
+        _data: Mapping,
+        path: PathType,
+        value: Any,
+        *,
+        create_missing: Union[callable, bool, dict] = False,
+        sep: str = ".",
+    ) -> Any:
         """Similar to 'dict[key] = valie', but with deep path support.
 
         Limitations:
@@ -106,16 +126,20 @@ class ConfigGetter(StringConverterMixin):
             and manually append the element.
         """
 
-        def on_missing_handler(_data: Mapping|Sequence, key: str|int, path: tuple) -> Mapping|Sequence:
+        def on_missing_handler(
+            _data: Mapping | Sequence, key: str | int, path: tuple
+        ) -> Mapping | Sequence:
             if isinstance(key, int):
                 if isinstance(_data, Sequence):
                     raise ConfigException(f"Can not create missing [] nodes: '{path}'")
                 else:
-                    raise ConfigException(f"Expected a list but found: '{path}' = {type(_data)}")
+                    raise ConfigException(
+                        f"Expected a list but found: '{path}' = {type(_data)}"
+                    )
 
             return {}
 
-        def on_missing_handler_dict(_, key: str|int, __) -> Mapping|Sequence:
+        def on_missing_handler_dict(_, key: str | int, __) -> Mapping | Sequence:
             value = create_missing.get(key, dict)
             if isinstance(value, type):
                 return value()
@@ -140,7 +164,7 @@ class ConfigGetter(StringConverterMixin):
             raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
 
     @classmethod
-    def normalize_path(cls, path: PathType, *, sep: str=".") -> Tuple[str|int, ...]:
+    def normalize_path(cls, path: PathType, *, sep: str = ".") -> Tuple[str | int, ...]:
         """Convert flexible path into normalized Tuple
 
         'path' is very flexible, e.g. "a.b.c", "a[1].b", "a.1.b", "a/b/c",
@@ -160,7 +184,7 @@ class ConfigGetter(StringConverterMixin):
         return rtn
 
     @classmethod
-    def _normalize_path_raw(cls, path: PathType, sep: str) -> list[str|int]:
+    def _normalize_path_raw(cls, path: PathType, sep: str) -> list[str | int]:
         """Internal: one iteration of normalizing a path. Might be that it
         must be called multiple times.
         """

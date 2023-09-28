@@ -34,7 +34,9 @@ class MyMixinTestClass(ResolverMixin, DeepAccessMixin):
         # private. This is a more explicit approach.
         self.config_file_loader = ConfigFileLoader(dependencies=self)
 
-    def load(self, fname: Path|StringIO, config_dir: Path|None, env: str|None = None) -> Mapping:
+    def load(
+        self, fname: Path | StringIO, config_dir: Path | None, env: str | None = None
+    ) -> Mapping:
         self.data = self.config_file_loader.load(fname, config_dir, env)
         return self.data
 
@@ -104,9 +106,9 @@ def test_jdconfig_1_placeholders(monkeypatch):
     data = cfg.load(Path("config.yaml"), data_dir("configs-1"))
     assert data
 
-    monkeypatch.setenv('DB_USER', 'dbuser')
-    monkeypatch.setenv('DB_PASS', 'dbpass')
-    monkeypatch.setenv('DB_NAME', 'dbname')
+    monkeypatch.setenv("DB_USER", "dbuser")
+    monkeypatch.setenv("DB_PASS", "dbpass")
+    monkeypatch.setenv("DB_NAME", "dbname")
 
     assert cfg.get("DB_USER") == "dbuser"
     assert cfg.get("DB_PASS") == "dbpass"
@@ -114,7 +116,7 @@ def test_jdconfig_1_placeholders(monkeypatch):
 
     assert cfg.get("connection_string") == "dbuser/dbpass@dbname"
     assert cfg.get("db_job_name") == "IMPORT_FILES"
-    assert cfg.get("batch_size") ==  1000
+    assert cfg.get("batch_size") == 1000
 
     assert cfg.get("schematas.engine") == "dbuser"
     assert cfg.get("schematas.maintenance") == "xxx"
@@ -132,16 +134,17 @@ def test_load_jdconfig_2(monkeypatch):
     # where the actually path refers to config value.
 
     # Apply config_dir to set working directory for relativ yaml imports
+    # Test explicitly w/o env. There is another test to test with env
     cfg = MyMixinTestClass()
-    data = cfg.load(Path("main_config.yaml"), data_dir("configs-2"))
+    data = cfg.load(Path("main_config.yaml"), data_dir("configs-2"), env=None)
     assert data
     assert len(cfg.files_loaded) == 4
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert len(cfg.file_recursions) == 0
 
-    monkeypatch.setenv('DB_USER', 'dbuser')
-    monkeypatch.setenv('DB_PASS', 'dbpass')
-    monkeypatch.setenv('DB_NAME', 'dbname')
+    monkeypatch.setenv("DB_USER", "dbuser")
+    monkeypatch.setenv("DB_PASS", "dbpass")
+    monkeypatch.setenv("DB_NAME", "dbname")
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
     assert cfg.get("db") == "oracle"
@@ -157,8 +160,9 @@ def test_load_jdconfig_2(monkeypatch):
 class MyBespokePlaceholder(Placeholder):
     """This is also a test for a placeholder that does not take any parameters"""
 
-    def resolve(self, _) -> str:
+    def resolve(self, _, __) -> str:
         return "value"
+
 
 # TODO This test should go into placeholder_test?
 def test_add_placeholder():
@@ -182,7 +186,6 @@ def test_add_placeholder():
 
 
 def test_load_jdconfig_3():
-
     # config-3 has a file recursion
     cfg = MyMixinTestClass()
     with pytest.raises(ConfigException):
@@ -224,10 +227,9 @@ def test_walk():
 
 
 def test_load_jdconfig_2_with_env(monkeypatch):
-
-    monkeypatch.setenv('DB_USER', 'dbuser')
-    monkeypatch.setenv('DB_PASS', 'dbpass')
-    monkeypatch.setenv('DB_NAME', 'dbname')
+    monkeypatch.setenv("DB_USER", "dbuser")
+    monkeypatch.setenv("DB_PASS", "dbpass")
+    monkeypatch.setenv("DB_NAME", "dbname")
 
     cfg = MyMixinTestClass()
     data = cfg.load(Path("main_config.yaml"), data_dir("configs-2"), env="jd_dev")

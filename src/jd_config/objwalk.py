@@ -10,14 +10,15 @@ import logging
 from typing import Any, Mapping, Optional, Sequence, Set, Tuple, Iterator, Union
 from .config_getter import ConfigGetter
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 @dataclass
 class NodeEvent:
     """An objwalk node event"""
-    path: Tuple[str|int,...]
+
+    path: Tuple[str | int, ...]
     value: Any
 
     def is_sequence_node(self) -> bool:
@@ -28,25 +29,33 @@ class NodeEvent:
         """True, if node belongs to a Mapping"""
         return not self.is_sequence_node()
 
+
 @dataclass
 class NewMappingEvent:
     """Entering a new mapping"""
-    path: Tuple[str|int,...]
+
+    path: Tuple[str | int, ...]
+
 
 @dataclass
 class NewSequenceEvent:
     """Entering a new Sequence"""
-    path: [str|int,...]
+
+    path: [str | int, ...]
+
 
 @dataclass
 class DropContainerEvent:
     """Step out of Mapping or Sequence"""
 
+
 WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
 
+
 def objwalk(
-    obj: Any, *,
-    _path: Tuple[str|int,...]=(),
+    obj: Any,
+    *,
+    _path: Tuple[str | int, ...] = (),
     _memo: Optional[Set] = None,
     nodes_only: bool = False
 ) -> Iterator[WalkerEvent]:
@@ -72,7 +81,9 @@ def objwalk(
             if not nodes_only:
                 yield NewMappingEvent(_path)
             for key, value in obj.items():
-                for child in objwalk(value, _path = _path + (key,), _memo = _memo, nodes_only=nodes_only):
+                for child in objwalk(
+                    value, _path=_path + (key,), _memo=_memo, nodes_only=nodes_only
+                ):
                     yield child
             if not nodes_only:
                 yield DropContainerEvent()
@@ -83,7 +94,9 @@ def objwalk(
             if not nodes_only:
                 yield NewSequenceEvent(_path)
             for index, value in enumerate(obj):
-                for child in objwalk(value, _path = _path + (index,), _memo = _memo, nodes_only=nodes_only):
+                for child in objwalk(
+                    value, _path=_path + (index,), _memo=_memo, nodes_only=nodes_only
+                ):
                     yield child
             if not nodes_only:
                 yield DropContainerEvent()
@@ -92,7 +105,11 @@ def objwalk(
         yield NodeEvent(_path, obj)
 
 
-def deep_update(obj: Mapping, updates: Mapping|None, create_missing: Union[callable, bool, dict]=True) -> Mapping:
+def deep_update(
+    obj: Mapping,
+    updates: Mapping | None,
+    create_missing: Union[callable, bool, dict] = True,
+) -> Mapping:
     """Deep update the 'obj' with the leafs from 'updates
 
     :param obj: The dict that will be updated

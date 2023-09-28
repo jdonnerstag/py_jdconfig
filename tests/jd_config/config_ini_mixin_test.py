@@ -14,8 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def test_jdconfig_config_ini(monkeypatch):
-
-    monkeypatch.setenv('MY_ENV', 'jd_dev')
+    monkeypatch.setenv("MY_ENV", "jd_dev")
 
     # ini_file = None => Apply system defaults
     cfg = ConfigIniMixin(ini_file=None)
@@ -29,5 +28,5 @@ def test_jdconfig_config_ini(monkeypatch):
     cfg = ConfigIniMixin(ini_file=ini_file)
     assert cfg.config_dir == "./configs-1"
     assert cfg.config_file == "main_config.yaml"
-    assert cfg.env == "jd_dev"      # validate that ini value interpolation works
+    assert cfg.env == "jd_dev"  # validate that ini value interpolation works
     assert cfg.default_env == "dev"

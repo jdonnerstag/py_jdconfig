@@ -36,7 +36,7 @@ class Placeholder(ABC):
         """
 
     @abstractmethod
-    def resolve(self, data: Mapping):
+    def resolve(self, data: Mapping, data_2: Optional[Mapping] = None):
         """Resolve the placeholder"""
 
 
@@ -50,7 +50,7 @@ class ImportPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.file
 
-    def resolve(self, data: Mapping):
+    def resolve(self, data: Mapping, data_2: Optional[Mapping] = None):
         pass     # Nothing to do
 
 
@@ -69,13 +69,20 @@ class RefPlaceholder(Placeholder):
     def post_load(self, _data: Mapping) -> None:
         self.file_root = _data
 
-    def resolve(self, data: Mapping):
+    def resolve(self, data: Mapping, data_2: Optional[Mapping] = None):
         # 1. Search in the yaml file which contains the reference
         if self.file_root:
             try:
                 obj = ConfigGetter.get(self.file_root, self.path, sep = ",")
                 return obj.value
-            except:     # pylint: disable=bare-except
+            except:     # pylint: disable=bare-except  # noqa: E722
+                pass
+
+        if data_2:
+            try:
+                obj = ConfigGetter.get(data_2, self.path, sep = ",")
+                return obj.value
+            except:     # pylint: disable=bare-except  # noqa: E722
                 pass
 
         # 2. Search starting from the root of all the config files.
@@ -94,7 +101,7 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, _) -> str:
+    def resolve(self, _, __) -> str:
         value = os.environ.get(self.env_var, self.default_val)
         return value
 
@@ -109,7 +116,7 @@ class TimestampPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.format
 
-    def resolve(self, _) -> str:
+    def resolve(self, _, __) -> str:
         now = datetime.now()
         value = now.strftime(self.format)
         return value

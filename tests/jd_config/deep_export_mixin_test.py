@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 def data_dir(*args):
     return os.path.join(os.path.dirname(__file__), "data", *args)
 
+
 class MyMixinTestClass(DeepExportMixin, ResolverMixin, DeepAccessMixin):
     def __init__(self) -> None:
         self.data = None
@@ -38,7 +39,7 @@ def test_to_dict_to_yaml():
             },
             "b2": 22,
         },
-        "c": [ "x", "y", {"z1": "zz", "z2": "2zz"}]
+        "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
     }
 
     data = cfg.to_dict()
@@ -53,4 +54,4 @@ def test_to_dict_to_yaml():
 
     data = cfg.to_yaml("b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
-    assert data == 'c1: 1cc\nc2: 2cc\n'
+    assert data == "c1: 1cc\nc2: 2cc\n"

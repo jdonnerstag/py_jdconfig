@@ -20,11 +20,12 @@ logger = logging.getLogger(__name__)
 def data_dir(*args):
     return os.path.join(os.path.dirname(__file__), "data", *args)
 
+
 def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
     # Use the config.ini configs to load the config files
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     cfg.config_dir = data_dir("configs-1")
     cfg.config_file = "config.yaml"
     cfg.default_env = "dev"
@@ -38,7 +39,7 @@ def test_load_jdconfig_1():
     # Provide the config file name. Note, that it'll not change or set the
     # config_dir. Any config files imported, are imported relativ to the
     # config_dir configured (or preset) in config.ini
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     file = data_dir("configs-1", "config.yaml")
     data = cfg.load(file)
     assert data
@@ -46,7 +47,7 @@ def test_load_jdconfig_1():
     # Provide a filename and a config_dir. All config imports, will be executed
     # relativ to the config_dir provided.
     # The config file might still be relativ or absolut.
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
     assert data
@@ -55,15 +56,16 @@ def test_load_jdconfig_1():
     data = cfg.load(file, config_dir)
     assert data
 
+
 def test_jdconfig_1_placeholders(monkeypatch):
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
     assert data
 
-    monkeypatch.setenv('DB_USER', 'dbuser')
-    monkeypatch.setenv('DB_PASS', 'dbpass')
-    monkeypatch.setenv('DB_NAME', 'dbname')
+    monkeypatch.setenv("DB_USER", "dbuser")
+    monkeypatch.setenv("DB_PASS", "dbpass")
+    monkeypatch.setenv("DB_NAME", "dbname")
 
     assert cfg.get("DB_USER") == "dbuser"
     assert cfg.get("DB_PASS") == "dbpass"
@@ -71,7 +73,7 @@ def test_jdconfig_1_placeholders(monkeypatch):
 
     assert cfg.get("connection_string") == "dbuser/dbpass@dbname"
     assert cfg.get("db_job_name") == "IMPORT_FILES"
-    assert cfg.get("batch_size") ==  1000
+    assert cfg.get("batch_size") == 1000
 
     assert cfg.get("schematas.engine") == "dbuser"
     assert cfg.get("schematas.maintenance") == "xxx"
@@ -88,7 +90,7 @@ def test_load_jdconfig_2(monkeypatch):
     # where the actually path refers to config value.
 
     # Apply config_dir to set working directory for relativ yaml imports
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     cfg.env = None  # Make sure, we are not even trying to load an env file
     config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml", config_dir)
@@ -97,9 +99,9 @@ def test_load_jdconfig_2(monkeypatch):
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert len(cfg.file_recursions) == 0
 
-    monkeypatch.setenv('DB_USER', 'dbuser')
-    monkeypatch.setenv('DB_PASS', 'dbpass')
-    monkeypatch.setenv('DB_NAME', 'dbname')
+    monkeypatch.setenv("DB_USER", "dbuser")
+    monkeypatch.setenv("DB_PASS", "dbpass")
+    monkeypatch.setenv("DB_NAME", "dbname")
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
     assert cfg.get("db") == "oracle"
@@ -118,8 +120,9 @@ class MyBespokePlaceholder(Placeholder):
     def resolve(self, _) -> str:
         return "value"
 
+
 def test_add_placeholder():
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     cfg.register_placeholder("bespoke", MyBespokePlaceholder)
 
     DATA = """
@@ -141,7 +144,7 @@ def test_add_placeholder():
 def test_load_jdconfig_3():
     # config-3 has a file recursion
 
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     config_dir = data_dir("configs-3")
 
     with pytest.raises(ConfigException):
@@ -154,7 +157,7 @@ def test_import_replacement():
     config_dir = data_dir("configs-4")
 
     # Default: False. Load into "b"
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     data = cfg.load("config-1.yaml", config_dir)
     assert data
     assert cfg.get("a") == "aa"
@@ -162,7 +165,7 @@ def test_import_replacement():
     assert cfg.get("b.ib") == "ibb"
 
     # False. Load into "b"
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     data = cfg.load("config-2.yaml", config_dir)
     assert data
     assert cfg.get("a") == "aa"
@@ -170,17 +173,17 @@ def test_import_replacement():
     assert cfg.get("b.ib") == "ibb"
 
     # True. Merge on root level
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     data = cfg.load("config-3.yaml", config_dir)
     assert data
     assert cfg.get("a") == "aa"
     assert cfg.get("ia") == "iaa"
     assert cfg.get("ib") == "ibb"
-    assert cfg.get("b", None) == None   # Does not exist
+    assert cfg.get("b", None) is None  # Does not exist
 
 
 def test_walk():
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
 
     DATA = """
         a: aa
@@ -211,12 +214,11 @@ def test_walk():
 
 
 def test_load_jdconfig_2_with_env(monkeypatch):
+    monkeypatch.setenv("DB_USER", "dbuser")
+    monkeypatch.setenv("DB_PASS", "dbpass")
+    monkeypatch.setenv("DB_NAME", "dbname")
 
-    monkeypatch.setenv('DB_USER', 'dbuser')
-    monkeypatch.setenv('DB_PASS', 'dbpass')
-    monkeypatch.setenv('DB_NAME', 'dbname')
-
-    cfg = JDConfig(ini_file = None)
+    cfg = JDConfig(ini_file=None)
     cfg.env = "jd_dev"  # Apply own env specific changes
 
     config_dir = data_dir("configs-2")
@@ -232,9 +234,9 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert cfg.get("database.driver") == "mysql"
     assert cfg.get("database.user") == "omry"
     assert cfg.get("database.password") == "secret"
-    assert cfg.get("database.DB_USER", None) == None
-    assert cfg.get("database.DB_PASS", None) == None
-    assert cfg.get("database.DB_NAME", None) == None
-    assert cfg.get("database.connection_string", None) == None
+    assert cfg.get("database.DB_USER", None) is None
+    assert cfg.get("database.DB_PASS", None) is None
+    assert cfg.get("database.DB_NAME", None) is None
+    assert cfg.get("database.connection_string", None) is None
 
     assert cfg.get("debug.log_progress_after") == 20_000

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any
 import yaml
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
@@ -46,6 +46,7 @@ class YamlObj:
 
         return self.value[item]
 
+
 @dataclass
 class YamlContainer:
     """Base class for YamlMapping and YamlSequece"""
@@ -59,16 +60,18 @@ class YamlContainer:
         self.count += 1
         return self.count
 
+
 @dataclass
 class YamlMapping(YamlContainer):
     "The parent container is YamlMapping"
+
 
 @dataclass
 class YamlSequence(YamlContainer):
     "The parent container is YamlSequence"
 
 
-#pylint: disable=too-many-ancestors
+# pylint: disable=too-many-ancestors
 class MyYamlLoader(yaml.SafeLoader):
     """A slightly extended version of yaml.SafeLoader. It extends the yaml values
     (not the keys) with meta information about the yaml file, line and colum
@@ -107,7 +110,7 @@ class MyYamlLoader(yaml.SafeLoader):
             node.start_mark.line + 1,
             node.start_mark.column + 1,
             node.start_mark.name,
-            obj
+            obj,
         )
 
     def construct_sequence(self, node, deep=False):

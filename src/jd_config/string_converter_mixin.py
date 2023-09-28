@@ -8,7 +8,7 @@ import logging
 from typing import Any
 
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
@@ -35,7 +35,6 @@ class StringConverterMixin:
                     continue
 
         return strval
-
 
     @classmethod
     def convert_bool(cls, strval: str) -> bool:

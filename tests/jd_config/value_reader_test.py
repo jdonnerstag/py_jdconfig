@@ -41,6 +41,7 @@ def test_ValueType():
     with pytest.raises(Exception):
         EnvPlaceholder(env_var="")
 
+
 def test_CompoundValue():
     obj = CompoundValue([1, 2, 3, 4])
     assert len(obj) == 4
@@ -77,8 +78,14 @@ def test_ValueReader():
     assert value == [RefPlaceholder("test"), "-", RefPlaceholder("db")]
 
     # Nested placeholders
-    value = list(ValueReader().parse("{ref: test}-{ref: db, {ref: db_default, mysql}}", sep=","))
-    assert value == [RefPlaceholder("test"), "-", RefPlaceholder("db", RefPlaceholder("db_default", "mysql"))]
+    value = list(
+        ValueReader().parse("{ref: test}-{ref: db, {ref: db_default, mysql}}", sep=",")
+    )
+    assert value == [
+        RefPlaceholder("test"),
+        "-",
+        RefPlaceholder("db", RefPlaceholder("db_default", "mysql")),
+    ]
 
     value = list(ValueReader().parse("{import: ./db/{ref: db}-config.yaml}", sep=","))
     assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"])]

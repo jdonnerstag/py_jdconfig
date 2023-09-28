@@ -7,12 +7,20 @@ Mixin to export deep config data
 
 import logging
 from typing import Mapping, Optional
+
 import yaml
-from .objwalk import objwalk, NodeEvent, NewMappingEvent, NewSequenceEvent, DropContainerEvent
+
 from .config_getter import PathType
 
+from .objwalk import (
+    DropContainerEvent,
+    NewMappingEvent,
+    NewSequenceEvent,
+    NodeEvent,
+    objwalk,
+)
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
@@ -29,7 +37,6 @@ class DeepExportMixin:
         assert hasattr(self, "data"), "Mixin depends on self.data"
         assert hasattr(self, "resolve"), "Mixin depends on self.resolve()"
         assert hasattr(self, "get"), "Mixin depends on self.get()"
-
 
     def to_dict(self, root: Optional[PathType] = None, resolve: bool = True) -> dict:
         """Walk the config items with an optional starting point, and create a
@@ -73,9 +80,8 @@ class DeepExportMixin:
 
         return cur
 
-    def to_yaml(self, root: Optional[PathType] = None, stream = None, **kvargs):
-        """Convert the configs (or part of it), into a yaml document
-        """
+    def to_yaml(self, root: Optional[PathType] = None, stream=None, **kvargs):
+        """Convert the configs (or part of it), into a yaml document"""
 
         data = self.to_dict(root, resolve=True)
         return yaml.dump(data, stream, **kvargs)
