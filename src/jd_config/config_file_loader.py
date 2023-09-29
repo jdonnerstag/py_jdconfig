@@ -78,7 +78,7 @@ class ConfigFileLoader:
         data_1 = self.post_process_imports(data_1, data_2, config_dir)
 
         if data_2:
-            data_1 = ConfigGetter.deep_update(data_1, data_2)
+            data_1 = ConfigGetter._deep_update(data_1, data_2)
 
         return data_1
 

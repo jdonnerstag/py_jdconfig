@@ -24,6 +24,7 @@
 - Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
 - When dumping config, allow to add file, line, col as comment for debugging.
 - For debugging, log placeholder replacements
+- We need a more efficient walk implementation. One that supports `a.b[2]` but also `c..c2[*]``
 
 Done:
 

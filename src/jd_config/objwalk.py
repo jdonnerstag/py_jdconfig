@@ -35,12 +35,22 @@ class NewMappingEvent:
 
     path: Tuple[str | int, ...]
 
+    @classmethod
+    def new(cls):
+        """Create a new dict"""
+        return {}
+
 
 @dataclass
 class NewSequenceEvent:
     """Entering a new Sequence"""
 
     path: [str | int, ...]
+
+    @classmethod
+    def new(cls):
+        """Create a new list"""
+        return []
 
 
 @dataclass
