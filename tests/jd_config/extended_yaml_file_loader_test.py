@@ -5,7 +5,7 @@
 
 from io import StringIO
 import logging
-from jd_config import MyYamlLoader, YamlObj, ConfigGetter
+from jd_config import MyYamlSafeLoader, YamlObj, ConfigGetter
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ DATA = """
 
 def test_yaml_loader():
     file_like_io = StringIO(DATA)
-    loader = MyYamlLoader(file_like_io)
+    loader = MyYamlSafeLoader(file_like_io)
     obj = loader.get_single_data()
 
     assert isinstance(ConfigGetter.get(obj, "a"), YamlObj)

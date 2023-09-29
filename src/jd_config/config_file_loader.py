@@ -10,10 +10,9 @@ import logging
 from pathlib import Path
 from typing import Mapping, Optional
 from .placeholders import ImportPlaceholder, Placeholder
-from .value_reader import CompoundValue
 from .objwalk import objwalk
 from .config_getter import ConfigGetter, ConfigException
-from .yaml_loader import MyYamlLoader
+from .extended_yaml_file_loader import MyYamlSafeLoader
 
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -126,7 +125,7 @@ class ConfigFileLoader:
         :param fd: a file descriptor
         :return: A deep dict-like structure, representing the yaml content
         """
-        loader = MyYamlLoader(file_descriptor)
+        loader = MyYamlSafeLoader(file_descriptor)
         return loader.get_single_data()
 
     def load_yaml_raw_with_filename(self, fname: Path) -> Mapping:
@@ -157,7 +156,7 @@ class ConfigFileLoader:
         for event in objwalk(data, nodes_only=True):
             value = event.value.value
             if isinstance(value, str) and value.find("{") != -1:
-                event.value.value = value = CompoundValue(value_reader(value))
+                event.value.value = value = list(value_reader(value))
 
             if isinstance(value, list):
                 for elem in value:

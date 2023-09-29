@@ -3,6 +3,7 @@
 
 """Manage everything related to placeholders, such as
 ```
+  db_user: '{env: DB_USER, ???}'
   db_engine: '{ref: db.engine, innodb}'
 ```
 
@@ -11,7 +12,7 @@ And it must be a yaml *string* value, surrounded by quotes.
 """
 
 import logging
-from typing import Iterator, Union
+from typing import Iterator, Optional, Union
 from .config_getter import ConfigException
 from .string_converter_mixin import StringConverterMixin
 from .placeholders import (
@@ -29,49 +30,26 @@ logger = logging.getLogger(__parent__name__)
 ValueType = Union[int, float, bool, str, Placeholder]
 
 
-class CompoundValue(list):
-    """A Yaml value that consists of multiple parts.
-
-    E.g. Upon reading the yaml file, a value such as "test-{ref:database}-url"
-    will be preprocessed and split into 3 parts: "test-", <Placeholder>, and "-url".
-    All part together make CompoundValue, with few helper. E.g. resolve
-    the placeholders and determine the actual value.
-    """
-
-    def __init__(self, values: Iterator[ValueType]) -> None:
-        super().__init__(list(values))
-
-    def is_import(self) -> bool:
-        """Determine if one the parts is a '{import:..}' placeholder"""
-
-        for elem in self:
-            if isinstance(elem, ImportPlaceholder):
-                # Import Placeholders must be standalone.
-                if len(self) != 1:
-                    raise ConfigException("Invalid '{import: ...}', ${elem}")
-
-                return True
-
-        return False
-
-
 class ValueReaderException(ConfigException):
-    """Denote an Exception that occured while parsing a yaml value (wiht placeholder)"""
+    """Denote an Exception that occured while parsing a yaml value (with placeholder)"""
 
 
 class ValueReader(StringConverterMixin):
-    """Parse a yaml value"""
+    """Maintain a registry of supported placeholders and parse a yaml value
+    into its constituent parts
+    """
 
-    def __init__(self, registry: dict[str, Placeholder] = None) -> None:
+    def __init__(self, registry: Optional[dict[str, Placeholder]] = None) -> None:
         self.registry = registry
 
-        if not self.registry:
+        if not registry:
             self.registry = {
                 "ref": RefPlaceholder,
                 "import": ImportPlaceholder,
                 "env": EnvPlaceholder,
                 "timestamp": TimestampPlaceholder,
             }
+
 
     def parse(self, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
         """Parse a yaml value and yield the various parts.
@@ -91,8 +69,7 @@ class ValueReader(StringConverterMixin):
                     yield placeholder
                 elif isinstance(text, str) and text.find("{") != -1:
                     values = list(self.parse(text))
-                    values = [self.convert(x) for x in values]
-                    value = CompoundValue(values)
+                    value = list(self.convert(x) for x in values)
                     yield value
                 else:
                     value = self.convert(text)
@@ -102,6 +79,7 @@ class ValueReader(StringConverterMixin):
             raise ValueReaderException(
                 f"Failed to parse yaml value with placeholder: '${strval}'"
             ) from exc
+
 
     def parse_placeholder(self, _iter: Iterator, sep: str) -> Placeholder:
         """Parse {<name>: <arg-1>, ...} into registered Placeholder objects"""
@@ -118,7 +96,7 @@ class ValueReader(StringConverterMixin):
                 if len(compound) == 1:
                     args.append(compound[0])
                 elif len(compound) > 1:
-                    args.append(CompoundValue(compound))
+                    args.append(list(compound))
                 compound.clear()
 
             if text == "{":
@@ -129,15 +107,15 @@ class ValueReader(StringConverterMixin):
                 return placeholder
             elif text != sep:
                 if isinstance(text, str) and text.find("{") != -1:
-                    values = list(self.parse(text))
-                    values = [self.convert(x) for x in values]
-                    value = CompoundValue(values)
+                    value = list(self.parse(text))
+                    value = [self.convert(x) for x in value]
                 else:
                     value = self.convert(text)
 
                 compound.append(value)
 
         raise ConfigException(f"Unexpected end: '{text}'")
+
 
     @classmethod
     def tokenize(cls, strval: str, sep: str = ",") -> Iterator[str]:
@@ -151,7 +129,7 @@ class ValueReader(StringConverterMixin):
         start = 0
         i = 0
         while i < len(strval):
-            ch = strval[i]
+            ch = strval[i]  # pylint: disable=invalid-name
             if ch == "\\":
                 i += 1
             elif ch in ['"', "'"]:
@@ -173,6 +151,7 @@ class ValueReader(StringConverterMixin):
         if value:
             yield value
 
+
     @classmethod
     def find_closing_quote(cls, strval: str, start: int) -> int:
         """Given a start position, determine the end of a quote.
@@ -182,7 +161,6 @@ class ValueReader(StringConverterMixin):
         :param strval: Input yaml string value
         :param start: position where the quote starts
         :return: position where the quote ends
-
         """
 
         quote_char = strval[start]

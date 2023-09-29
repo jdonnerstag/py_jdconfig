@@ -42,7 +42,7 @@ class ResolverMixin:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
-        a CompoundValue will be created, for every yaml value that contains
+        a list will be created, for every yaml value that contains
         a Placeholder. resolve() lazily resolves the placeholders and joins
         the pieces together for the actuall yaml value.
         """

@@ -73,7 +73,7 @@ class YamlSequence(YamlContainer):
 
 
 # pylint: disable=too-many-ancestors
-class MyYamlLoader(yaml.SafeLoader):
+class MyYamlSafeLoader(yaml.SafeLoader):
     """A slightly extended version of yaml.SafeLoader. It extends the yaml values
     (not the keys) with meta information about the yaml file, line and colum
     (start and end position).

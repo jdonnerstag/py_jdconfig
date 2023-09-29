@@ -7,7 +7,7 @@
   and line number? Also when replacing syntax with real values. Why not replace the
   values eagerly? => Because if the referenced value changes, then its outdated.
 - Maybe we should additional have std yaml '!include config.yaml'
-- Error handling must be much improved
+- Error handling can be improved
 - I'm no longer 100% convinced that keeping filename, line, and col is adding lots of value
   Can we make this flexible, such as that we have 2 implementations and both are working fine?
 - It happens regularly to me, that I forget to put quotes around {..}.

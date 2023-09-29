@@ -31,7 +31,13 @@ from .objwalk import (
     WalkerEvent,
 )
 
-from .yaml_loader import YamlObj, YamlContainer, YamlMapping, YamlSequence, MyYamlLoader
+from .extended_yaml_file_loader import (
+    YamlObj,
+    YamlContainer,
+    YamlMapping,
+    YamlSequence,
+    MyYamlSafeLoader,
+)
 
 from .config_getter import ConfigException, ConfigGetter
 
@@ -43,7 +49,7 @@ from .placeholders import (
     TimestampPlaceholder,
 )
 
-from .value_reader import CompoundValue, ValueType, ValueReaderException, ValueReader
+from .value_reader import ValueType, ValueReaderException, ValueReader
 
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader

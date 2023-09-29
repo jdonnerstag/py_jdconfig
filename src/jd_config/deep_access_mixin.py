@@ -9,7 +9,7 @@ import logging
 from typing import Any, Iterator, Optional
 from .objwalk import objwalk, NodeEvent
 from .config_getter import ConfigGetter, PathType, DEFAULT
-from .yaml_loader import YamlObj
+from .extended_yaml_file_loader import YamlObj
 
 
 __parent__name__ = __name__.rpartition(".")[0]

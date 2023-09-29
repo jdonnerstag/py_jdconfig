@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import logging
 
 import pytest
-from jd_config import CompoundValue, ConfigException, ValueType, ValueReader
+from jd_config import ValueType, ValueReader
 from jd_config import Placeholder, RefPlaceholder, ImportPlaceholder, EnvPlaceholder
 
 logger = logging.getLogger(__name__)
@@ -40,20 +40,6 @@ def test_ValueType():
 
     with pytest.raises(Exception):
         EnvPlaceholder(env_var="")
-
-
-def test_CompoundValue():
-    obj = CompoundValue([1, 2, 3, 4])
-    assert len(obj) == 4
-    assert obj.is_import() is False
-
-    obj = CompoundValue([ImportPlaceholder(file="some_path")])
-    assert obj.is_import() is True
-
-    # If there is a ImportPlaceholder's, nothing is allowed
-    with pytest.raises(ConfigException):
-        obj = CompoundValue(["something else", ImportPlaceholder(file="some_path")])
-        obj.is_import()
 
 
 def test_ValueReader():
@@ -91,15 +77,15 @@ def test_ValueReader():
     assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"])]
 
     # Value with quotes
-    value = list(ValueReader().parse('{import: "./db/{ref:db}_config.yaml"}', sep=","))
-    assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "_config.yaml"])]
+    value = list(ValueReader().parse('{import: "./db/{ref:db}-config.yaml"}', sep=","))
+    assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"])]
 
 
 @dataclass
 class MyBespokePlaceholder(Placeholder):
     """This is also a test for a placeholder that does not take any parameters"""
 
-    def resolve(self, _) -> str:
+    def resolve(self, *_) -> str:
         return "value"
 
 
