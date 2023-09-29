@@ -12,7 +12,7 @@ import logging
 from typing import Any, Iterable, Mapping, Tuple, Type, Sequence, Optional, Union
 
 from .string_converter_mixin import StringConverterMixin
-from .objwalk import objwalk
+from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -196,7 +196,7 @@ class ConfigGetter(StringConverterMixin):
         if not updates:
             return obj
 
-        for event in objwalk(updates, nodes_only=True):
+        for event in ObjectWalker.objwalk(updates, nodes_only=True):
             ConfigGetter.set(
                 obj, event.path, event.value, create_missing=create_missing
             )
@@ -310,7 +310,7 @@ class ConfigGetter(StringConverterMixin):
         if not keys:
             return []
 
-        for event in objwalk(data, nodes_only=True):
+        for event in ObjectWalker.objwalk(data, nodes_only=True):
             if cls._match_path(event.path, keys):
                 return event.path
 

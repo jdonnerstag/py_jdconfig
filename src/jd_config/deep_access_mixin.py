@@ -7,7 +7,7 @@ Provide getter and setter to access deep config structures.
 
 import logging
 from typing import Any, Iterator, Optional
-from .objwalk import objwalk, NodeEvent
+from .objwalk import ObjectWalker, NodeEvent
 from .config_getter import ConfigGetter, PathType, DEFAULT
 from .extended_yaml_file_loader import YamlObj
 
@@ -79,7 +79,7 @@ class DeepAccessMixin:
         if root:
             obj = self.get(root)
 
-        for event in objwalk(obj, nodes_only=True):
+        for event in ObjectWalker.objwalk(obj, nodes_only=True):
             if resolve:
                 event.value = self.resolve(event.value.value, self.data)
 

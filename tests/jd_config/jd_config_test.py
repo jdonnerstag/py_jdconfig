@@ -119,7 +119,7 @@ class MyBespokePlaceholder(Placeholder):
 
 def test_add_placeholder():
     cfg = JDConfig(ini_file=None)
-    cfg.register_placeholder("bespoke", MyBespokePlaceholder)
+    cfg.register_placeholder_handler("bespoke", MyBespokePlaceholder)
 
     DATA = """
         a: aa

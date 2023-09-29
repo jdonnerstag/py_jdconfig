@@ -4,7 +4,7 @@
 # pylint: disable=C
 
 import logging
-from jd_config import objwalk
+from jd_config import ObjectWalker
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ DATA = dict(
 
 
 def test_objwalk():
-    data = list(x.path for x in objwalk(DATA, nodes_only=True))
+    data = list(x.path for x in ObjectWalker.objwalk(DATA, nodes_only=True))
     assert len(data) == 14
 
     data.remove(("a",))

@@ -20,13 +20,12 @@ from typing import Any, Mapping, Optional
 from .config_getter import ConfigGetter
 
 
-__parent__name__ = __name__.rpartition('.')[0]
+__parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 class Placeholder(ABC):
-    """A common base class for all Placeholders
-    """
+    """A common base class for all Placeholders"""
 
     def post_load(self, _data: Mapping) -> None:
         """A hook that gets invoked after the yaml file has been loaded.
@@ -37,16 +36,15 @@ class Placeholder(ABC):
         """
 
     @abstractmethod
-    def resolve(self, data: Mapping, data_2: Optional[Mapping] = None):
+    def resolve(self, data_1: Mapping, data_2: Optional[Mapping] = None):
         """Resolve the placeholder"""
 
 
 @dataclass
 class ImportPlaceholder(Placeholder):
-    """Import Placeholder: '{import: <file>[, <replace=False>]}'
-    """
+    """Import Placeholder: '{import: <file>[, <replace=False>]}'"""
 
-    file: str|list
+    file: str | list
 
     def __post_init__(self):
         assert self.file
@@ -55,13 +53,12 @@ class ImportPlaceholder(Placeholder):
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
     def resolve(self, *_):
-        pass     # Nothing to do
+        pass  # Nothing to do
 
 
 @dataclass
 class RefPlaceholder(Placeholder):
-    """Reference Placeholder: '{ref: <path>[, <default>]}'
-    """
+    """Reference Placeholder: '{ref: <path>[, <default>]}'"""
 
     path: str
     default_val: Any = None
@@ -73,10 +70,10 @@ class RefPlaceholder(Placeholder):
     def post_load(self, _data: Mapping) -> None:
         self.file_root = _data
 
-    def resolve(self, data: Mapping, data_2: Optional[Mapping] = None):
-        # TODO I'm a little unclear on the right order.
+    def resolve(self, data_1: Mapping, data_2: Optional[Mapping] = None):
+        # Search order:
         #  1. CLI -> that is pretty clear  (where are the CLI data?)
-        #  2. The env file provide
+        #  2. The env file
         #  3. The local file
         #  4. The main file
         # Maybe resolve should receive a list of Mappings?
@@ -84,29 +81,28 @@ class RefPlaceholder(Placeholder):
         # Search in the env file, if provided
         if data_2:  # env file (2)
             try:
-                obj = ConfigGetter.get(data_2, self.path, sep = ",")
+                obj = ConfigGetter.get(data_2, self.path, sep=",")
                 return obj.value
-            except:     # pylint: disable=bare-except  # noqa: E722
+            except:  # pylint: disable=bare-except  # noqa: E722
                 pass
 
         # Search in the yaml file which contains the reference
         if self.file_root:  # local file (3)
             try:
-                obj = ConfigGetter.get(self.file_root, self.path, sep = ",")
+                obj = ConfigGetter.get(self.file_root, self.path, sep=",")
                 return obj.value
-            except:     # pylint: disable=bare-except  # noqa: E722
+            except:  # pylint: disable=bare-except  # noqa: E722
                 pass
 
         # Search starting from the root of all the config files.
         # Main file (4)
-        obj = ConfigGetter.get(data, self.path, sep = ",", default = self.default_val)
+        obj = ConfigGetter.get(data_1, self.path, sep=",", default=self.default_val)
         return obj.value
 
 
 @dataclass
 class EnvPlaceholder(Placeholder):
-    """Environment Variable Placeholder: '{env: <env-var>[, <default>]}'
-    """
+    """Environment Variable Placeholder: '{env: <env-var>[, <default>]}'"""
 
     env_var: str
     default_val: Any = None
@@ -121,8 +117,7 @@ class EnvPlaceholder(Placeholder):
 
 @dataclass
 class TimestampPlaceholder(Placeholder):
-    """Replace yaml value with timestamp: '{timestamp: <format>}'
-    """
+    """Replace yaml value with timestamp: '{timestamp: <format>}'"""
 
     format: str
 

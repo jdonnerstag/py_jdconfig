@@ -51,55 +51,66 @@ class DropContainerEvent:
 WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
 
 
-def objwalk(
-    obj: Any,
-    *,
-    _path: Tuple[str | int, ...] = (),
-    _memo: Optional[Set] = None,
-    nodes_only: bool = False
-) -> Iterator[WalkerEvent]:
-    """A generic function to walk any Mapping- and Sequence- like objects.
+class ObjectWalker:
+    """A generic function to walk any Mapping- and Sequence- like objects."""
 
-    Once loaded into memory, Yaml and Json files, are often implemented with
-    nested dict- and list-like object structures.
+    @classmethod
+    def objwalk(
+        cls,
+        obj: Any,
+        *,
+        _path: Tuple[str | int, ...] = (),
+        _memo: Optional[Set] = None,
+        nodes_only: bool = False
+    ) -> Iterator[WalkerEvent]:
+        """A generic function to walk any Mapping- and Sequence- like objects.
 
-    'objwalk' walks the structure depth first. Only leaf-nodes are yielded.
+        Once loaded into memory, Yaml and Json files, are often implemented with
+        nested dict- and list-like object structures.
 
-    :param obj: The root container to start walking.
-    :param _path: internal use only.
-    :param _memo: internal use only.
-    :return: 'objwalk' is a generator function, yielding the elements path and obj.
-    """
+        'objwalk' walks the structure depth first. Only leaf-nodes are yielded.
 
-    if _memo is None:
-        _memo = set()
+        :param obj: The root container to start walking.
+        :param _path: internal use only.
+        :param _memo: internal use only.
+        :return: 'objwalk' is a generator function, yielding the elements path and obj.
+        """
 
-    if isinstance(obj, Mapping):
+        # Detect recursion
+        if _memo is None:
+            _memo = set()
+
+        if isinstance(obj, Mapping):
+            yield from cls._on_mapping(obj, _path, _memo, nodes_only)
+        elif isinstance(obj, (Sequence, Set)) and not isinstance(obj, str):
+            yield from cls._on_sequence(obj, _path, _memo, nodes_only)
+        else:
+            yield NodeEvent(_path, obj)
+
+    @classmethod
+    def _on_mapping(cls, obj, path_, _memo, nodes_only) -> Iterator[WalkerEvent]:
         if id(obj) not in _memo:
             _memo.add(id(obj))
             if not nodes_only:
-                yield NewMappingEvent(_path)
+                yield NewMappingEvent(path_)
             for key, value in obj.items():
-                for child in objwalk(
-                    value, _path=_path + (key,), _memo=_memo, nodes_only=nodes_only
+                for child in cls.objwalk(
+                    value, _path=path_ + (key,), _memo=_memo, nodes_only=nodes_only
                 ):
                     yield child
             if not nodes_only:
                 yield DropContainerEvent()
 
-    elif isinstance(obj, (Sequence, Set)) and not isinstance(obj, str):
+    @classmethod
+    def _on_sequence(cls, obj, path_, _memo, nodes_only) -> Iterator[WalkerEvent]:
         if id(obj) not in _memo:
             _memo.add(id(obj))
             if not nodes_only:
-                yield NewSequenceEvent(_path)
+                yield NewSequenceEvent(path_)
             for index, value in enumerate(obj):
-                for child in objwalk(
-                    value, _path=_path + (index,), _memo=_memo, nodes_only=nodes_only
+                for child in cls.objwalk(
+                    value, _path=path_ + (index,), _memo=_memo, nodes_only=nodes_only
                 ):
                     yield child
             if not nodes_only:
                 yield DropContainerEvent()
-
-    else:
-        yield NodeEvent(_path, obj)
-

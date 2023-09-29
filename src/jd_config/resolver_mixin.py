@@ -26,7 +26,7 @@ class ResolverMixin:
         # Read string into Placeholders ...
         self.value_reader = ValueReader()
 
-    def register_placeholder(self, name: str, type_: type) -> None:
+    def register_placeholder_handler(self, name: str, type_: type) -> None:
         """Register (add or replace) a placeholder handler"""
 
         self.value_reader.registry[name] = type_
@@ -37,7 +37,7 @@ class ResolverMixin:
         data_1: Optional[Mapping] = None,
         data_2: Optional[Mapping] = None,
         *,
-        _memo: list|None = None
+        _memo: list | None = None,
     ):
         """Lazily resolve Placeholders
 
@@ -47,6 +47,7 @@ class ResolverMixin:
         the pieces together for the actuall yaml value.
         """
 
+        # Used to detected recursions in resolving placeholders
         if _memo is None:
             _memo = []
 

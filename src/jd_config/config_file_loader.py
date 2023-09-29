@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import Mapping, Optional
 from .placeholders import ImportPlaceholder, Placeholder
-from .objwalk import objwalk
+from .objwalk import ObjectWalker
 from .config_getter import ConfigGetter, ConfigException
 from .extended_yaml_file_loader import MyYamlSafeLoader
 
@@ -153,7 +153,7 @@ class ConfigFileLoader:
         assert callable(self.dependencies.value_reader.parse)
         value_reader = self.dependencies.value_reader.parse
 
-        for event in objwalk(data, nodes_only=True):
+        for event in ObjectWalker.objwalk(data, nodes_only=True):
             value = event.value.value
             if isinstance(value, str) and value.find("{") != -1:
                 event.value.value = value = list(value_reader(value))
@@ -172,7 +172,7 @@ class ConfigFileLoader:
         assert hasattr(self.dependencies, "resolve")
         assert callable(self.dependencies.resolve)
 
-        for event in objwalk(data_1, nodes_only=True):
+        for event in ObjectWalker.objwalk(data_1, nodes_only=True):
             value = event.value.value  # NodeEvent.YamlObj.value
             if not isinstance(value, list):
                 continue

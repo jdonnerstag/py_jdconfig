@@ -12,7 +12,7 @@ from typing import Mapping
 import pytest
 from jd_config import Placeholder, ConfigException, YamlObj, NodeEvent, ConfigFileLoader
 from jd_config import ResolverMixin, EnvPlaceholder, RefPlaceholder
-from jd_config import TimestampPlaceholder, objwalk
+from jd_config import TimestampPlaceholder, ObjectWalker
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ def test_load_jdconfig_1():
     assert data["DB_NAME"].value == [EnvPlaceholder("DB_NAME", "my_default_db")]
 
 
-def test_load_jdconfig_2_and_post_load(monkeypatch):
+def test_load_jdconfig_2_and_post_load():
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
 
@@ -129,7 +129,7 @@ def test_add_placeholder():
     # they properly parsed and replaced.
 
     cfg = MyMixinTestClass()
-    cfg.register_placeholder("bespoke", MyBespokePlaceholder)
+    cfg.register_placeholder_handler("bespoke", MyBespokePlaceholder)
 
     DATA = """
         a: aa
@@ -173,7 +173,7 @@ def test_walk():
     data = cfg.load(file_like_io, None)
     assert data
 
-    data = list(objwalk(data, nodes_only=True))
+    data = list(ObjectWalker.objwalk(data, nodes_only=True))
     assert len(data) == 4
     data.remove(NodeEvent(("a",), YamlObj(2, 12, Path("<file>"), "aa")))
     data.remove(NodeEvent(("b", "b1", "c1"), YamlObj(5, 21, Path("<file>"), "1cc")))

@@ -17,7 +17,7 @@ from .objwalk import (
     NewMappingEvent,
     NewSequenceEvent,
     NodeEvent,
-    objwalk,
+    ObjectWalker,
 )
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -50,7 +50,7 @@ class DeepExportMixin:
         stack = []
         cur: Mapping | Sequence = {}
 
-        for event in objwalk(obj, nodes_only=False):
+        for event in ObjectWalker.objwalk(obj, nodes_only=False):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 if isinstance(event, NewMappingEvent):
                     new = {}

@@ -23,7 +23,7 @@ from .config_ini_mixin import ConfigIniMixin
 from .string_converter_mixin import StringConverterMixin
 
 from .objwalk import (
-    objwalk,
+    ObjectWalker,
     NodeEvent,
     NewMappingEvent,
     NewSequenceEvent,
