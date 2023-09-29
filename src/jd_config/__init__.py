@@ -14,7 +14,8 @@ Please see the readme.md file for details. In summary:
 1. Yaml string values support extendable placeholders, like '..{<name>: <val>, ...}..'
 1. Import config file: '{import: <file>[, <replace>]}'
 1. Reference: '{ref: <path>[, <default>]}'
-1. A yaml value that is '???' is mandotory and must be provided via env overlay or CLI args.
+1. A yaml value that is '???' is mandotory and must be provided via env overlay
+   or CLI args.
 """
 
 from .config_ini_mixin import ConfigIniMixin
@@ -23,7 +24,6 @@ from .string_converter_mixin import StringConverterMixin
 
 from .objwalk import (
     objwalk,
-    deep_update,
     NodeEvent,
     NewMappingEvent,
     NewSequenceEvent,

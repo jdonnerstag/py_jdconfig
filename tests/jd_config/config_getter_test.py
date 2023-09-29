@@ -3,6 +3,7 @@
 
 # pylint: disable=C
 
+from copy import deepcopy
 import logging
 from typing import List, Mapping, Sequence
 from jd_config import ConfigGetter, ConfigException
@@ -15,30 +16,39 @@ logger = logging.getLogger(__name__)
 
 
 def test_normalize_path():
-    assert ConfigGetter.normalize_path("a", sep=".") == ["a"]
-    assert ConfigGetter.normalize_path(1, sep=".") == [1]
-    assert ConfigGetter.normalize_path(["a", 1], sep=".") == ["a", 1]
-    assert ConfigGetter.normalize_path("a.b.c", sep=".") == ["a", "b", "c"]
-    assert ConfigGetter.normalize_path("a[1].b", sep=".") == ["a", 1, "b"]
-    assert ConfigGetter.normalize_path("a.1.b", sep=".") == ["a", 1, "b"]
-    assert ConfigGetter.normalize_path("a/b/c", sep="/") == ["a", "b", "c"]
-    assert ConfigGetter.normalize_path("[a][b][c]", sep=".") == ["a", "b", "c"]
-    assert ConfigGetter.normalize_path(["a", "b", "c"], sep=".") == ["a", "b", "c"]
-    assert ConfigGetter.normalize_path(
-        (
-            "a",
-            "b",
-            "c",
-        ),
-        sep=".",
-    ) == ["a", "b", "c"]
-    assert ConfigGetter.normalize_path(
-        (
-            "a",
-            "b.c",
-        ),
-        sep=".",
-    ) == ["a", "b", "c"]
+    normalize = ConfigGetter.normalize_path
+
+    assert normalize("") == []
+    assert normalize("a", sep=".") == ["a"]
+    assert normalize(["a"], sep=".") == ["a"]
+    assert normalize(["a[1]"], sep=".") == ["a", 1]
+    assert normalize(["a[1][2]"], sep=".") == ["a", 1, 2]
+    assert normalize("a.b.c", sep=".") == ["a", "b", "c"]
+    assert normalize("a[1].b", sep=".") == ["a", 1, "b"]
+    assert normalize("a/b/c", sep="/") == ["a", "b", "c"]
+    assert normalize("a/b[1]/c", sep="/") == ["a", "b", 1, "c"]
+    assert normalize(["a", "b", "c"]) == ["a", "b", "c"]
+    assert normalize(("a", "b.c")) == ["a", "b", "c"]
+    assert normalize(("a", ("b", "c"))) == ["a", "b", "c"]
+    assert normalize(("a", ("b.c"))) == ["a", "b", "c"]
+    assert normalize("[1]") == [1]
+    assert normalize("222[1]") == ["222", 1]
+    assert normalize("a.*.c") == ["a", "__*__", "c"]
+    assert normalize("a.b[*].c") == ["a", "b", "__*__", "c"]
+    assert normalize("a..c") == ["a", "__..__", "c"]
+    assert normalize("a...c") == ["a", "__..__", "c"]
+    assert normalize("a.*.*.c") == ["a", "__*__", "__*__", "c"]
+    assert normalize("a.*..c") == ["a", "__..__", "c"]  # same as "a..c"
+    assert normalize("a..*.c") == ["a", "__..__", "c"]  # same as "a..c"
+    assert normalize("a[*]..c") == ["a", "__..__", "c"]  # same as "a..c"
+    assert normalize("..c") == ["__..__", "c"]
+    assert normalize("*.c") == ["__*__", "c"]
+
+    should_fail = ["a[1", "a[a]", "a]1]", "a[1[", "a[", "a]", "a[]", "a..", "a.*"]
+
+    for elem in should_fail:
+        with pytest.raises(ConfigException):
+            normalize(elem)
 
 
 DATA = dict(
@@ -53,71 +63,74 @@ DATA = dict(
 
 
 def test_walk():
-    _d, key = ConfigGetter.walk(DATA, "a")
+    data = deepcopy(DATA)
+    _d, key = ConfigGetter.walk(data, "a")
     assert isinstance(_d, dict)
     assert isinstance(key, str)
     assert key == "a"
     assert _d[key] == "aa"
 
-    _d, key = ConfigGetter.walk(DATA, "c.c1")
+    _d, key = ConfigGetter.walk(data, "c.c1")
     assert _d[key] == "c11"
 
-    _d, key = ConfigGetter.walk(DATA, "c.c2.c23")
+    _d, key = ConfigGetter.walk(data, "c.c2.c23")
     assert _d[key] == 23
 
-    _d, key = ConfigGetter.walk(DATA, "c.c3[1]")
+    _d, key = ConfigGetter.walk(data, "c.c3[1]")
     assert _d[key] == 22
 
-    _d, key = ConfigGetter.walk(DATA, "c.c3[4].c32")
+    _d, key = ConfigGetter.walk(data, "c.c3[4].c32")
     assert _d[key] == "c322"
 
 
 def test_get():
-    assert ConfigGetter.get(DATA, "a") == "aa"
-    assert ConfigGetter.get(DATA, "c.c1") == "c11"
-    assert ConfigGetter.get(DATA, "c.c2.c23") == 23
-    assert ConfigGetter.get(DATA, "c.c3[1]") == 22
-    assert ConfigGetter.get(DATA, "c.c3[4].c32") == "c322"
+    data = deepcopy(DATA)
+    assert ConfigGetter.get(data, "a") == "aa"
+    assert ConfigGetter.get(data, "c.c1") == "c11"
+    assert ConfigGetter.get(data, "c.c2.c23") == 23
+    assert ConfigGetter.get(data, "c.c3[1]") == 22
+    assert ConfigGetter.get(data, "c.c3[4].c32") == "c322"
 
-    assert ConfigGetter.get(DATA, "c.xxx", "abc") == "abc"
-    assert ConfigGetter.get(DATA, "c.c3[99].a", 123) == 123
+    assert ConfigGetter.get(data, "c.xxx", "abc") == "abc"
+    assert ConfigGetter.get(data, "c.c3[99].a", 123) == 123
 
     with pytest.raises(ConfigException):
-        ConfigGetter.get(DATA, "c.xxx")
+        ConfigGetter.get(data, "c.xxx")
 
 
 def test_set():
-    assert ConfigGetter.set(DATA, "add_x", "xx") is None
-    assert ConfigGetter.get(DATA, "add_x") == "xx"
-    assert ConfigGetter.set(DATA, "add_x", "yy") == "xx"
+    data = deepcopy(DATA)
+    assert ConfigGetter.set(data, "add_x", "xx") is None
+    assert ConfigGetter.get(data, "add_x") == "xx"
+    assert ConfigGetter.set(data, "add_x", "yy") == "xx"
 
-    assert ConfigGetter.set(DATA, "c.c3[0]", 100) == 11
-    assert ConfigGetter.get(DATA, "c.c3[0]") == 100
+    assert ConfigGetter.set(data, "c.c3[0]", 100) == 11
+    assert ConfigGetter.get(data, "c.c3[0]") == 100
 
-    assert ConfigGetter.set(DATA, "c.c3[4].a", 200) is None
-    assert ConfigGetter.get(DATA, "c.c3[4].a") == 200
+    assert ConfigGetter.set(data, "c.c3[4].a", 200) is None
+    assert ConfigGetter.get(data, "c.c3[4].a") == 200
 
     # Parts of the tree are missing
     with pytest.raises(ConfigException):
-        ConfigGetter.set(DATA, "z.a.b", 11)
+        ConfigGetter.set(data, "z.a.b", 11)
 
-    assert ConfigGetter.set(DATA, "z.a.b", 11, create_missing=True) is None
-    assert ConfigGetter.get(DATA, "z.a.b") == 11
+    assert ConfigGetter.set(data, "z.a.b", 11, create_missing=True) is None
+    assert ConfigGetter.get(data, "z.a.b") == 11
 
     # 'a' is not a mapping. Even with create_missing, it will not change the structure
     with pytest.raises(ConfigException):
-        ConfigGetter.set(DATA, "a.new", 11, create_missing=True)
+        ConfigGetter.set(data, "a.new", 11, create_missing=True)
 
     # Cannot create lists. It actually will wrongly create {x: a: {0: 22}}.
     # 'a' will not be a list.
     # TODO At least the given syntax 'a[0]' should give a hint that a list is expected?
     # Though maps are allowed to use this syntax as well.
-    ConfigGetter.set(DATA, "x.a[0]", 22, create_missing=True)
-    assert ConfigGetter.get(DATA, "x.a[0]") == 22
+    ConfigGetter.set(data, "x.a[0]", 22, create_missing=True)
+    assert ConfigGetter.get(data, "x.a[0]") == 22
 
     # This won't work: {x: a: {0: ..}}  0 is not subscriptable
     with pytest.raises(ConfigException):
-        ConfigGetter.set(DATA, "x.a[0].b", 22, create_missing=True)
+        ConfigGetter.set(data, "x.a[0].b", 22, create_missing=True)
 
     def missing_1(_data: Mapping | Sequence, key: str | int, _):
         if key == "a":
@@ -125,34 +138,56 @@ def test_set():
 
         return {}
 
-    assert ConfigGetter.set(DATA, "y.a[0]", 12, create_missing=missing_1) is None
-    assert ConfigGetter.get(DATA, "y.a[0]") == 12
+    assert ConfigGetter.set(data, "y.a[0]", 12, create_missing=missing_1) is None
+    assert ConfigGetter.get(data, "y.a[0]") == 12
 
     assert (
-        ConfigGetter.set(DATA, "w.a[0]", 13, create_missing={"a": [None] * 1}) is None
+        ConfigGetter.set(data, "w.a[0]", 13, create_missing={"a": [None] * 1}) is None
     )
-    assert ConfigGetter.get(DATA, "w.a[0]") == 13
+    assert ConfigGetter.get(data, "w.a[0]") == 13
 
     # My preference and most easiest way
-    assert ConfigGetter.set(DATA, "v.a[0].b", 14, create_missing={"a": [{}]}) is None
-    assert ConfigGetter.get(DATA, "v.a[0].b") == 14
+    assert ConfigGetter.set(data, "v.a[0].b", 14, create_missing={"a": [{}]}) is None
+    assert ConfigGetter.get(data, "v.a[0].b") == 14
 
 
 def test_delete():
-    assert ConfigGetter.delete(DATA, "a") == "aa"
-    assert ConfigGetter.delete(DATA, "does-not-exist", exception=False) is None
+    data = deepcopy(DATA)
+    assert ConfigGetter.delete(data, "a") == "aa"
+    assert ConfigGetter.delete(data, "does-not-exist", exception=False) is None
 
     with pytest.raises(ConfigException):
-        ConfigGetter.delete(DATA, "does-not-exist", exception=True)
+        ConfigGetter.delete(data, "does-not-exist", exception=True)
 
-    assert ConfigGetter.delete(DATA, "c.c3[4].c32") == "c322"
+    assert ConfigGetter.delete(data, "c.c3[4].c32") == "c322"
 
-    assert isinstance(ConfigGetter.delete(DATA, "c.c3[4]"), Mapping)
-    assert len(ConfigGetter.get(DATA, "c.c3")) == 4
+    assert isinstance(ConfigGetter.delete(data, "c.c3[4]"), Mapping)
+    assert len(ConfigGetter.get(data, "c.c3")) == 4
 
-    assert isinstance(ConfigGetter.delete(DATA, "c.c3"), List)
-    assert ConfigGetter.get(DATA, "c.c3", None) is None
+    assert isinstance(ConfigGetter.delete(data, "c.c3"), List)
+    assert ConfigGetter.get(data, "c.c3", None) is None
 
-    assert ConfigGetter.delete(DATA, "c")
-    assert ConfigGetter.get(DATA, "b") == "bb"
-    assert ConfigGetter.get(DATA, "c", None) is None
+    assert ConfigGetter.delete(data, "c")
+    assert ConfigGetter.get(data, "b") == "bb"
+    assert ConfigGetter.get(data, "c", None) is None
+
+def test_get_path():
+    data = deepcopy(DATA)
+    assert ConfigGetter.get_path(data, "c.c2.c25") == ("c", "c2", "c25")
+    assert ConfigGetter.get_path(data, "c..c25") == ("c", "c2", "c25")
+    assert ConfigGetter.get_path(data, "c..c2.c25") == ("c", "c2", "c25")
+    assert ConfigGetter.get_path(data, "c.*.c25") == ("c", "c2", "c25")
+    assert ConfigGetter.get_path(data, "*.*.c25") == ("c", "c2", "c25")
+    assert ConfigGetter.get_path(data, "..c25") == ("c", "c2", "c25")
+
+    assert ConfigGetter.get_path(data, "c.c3[0]") == ("c", "c3", 0)
+    assert ConfigGetter.get_path(data, "c.c3[4].c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter.get_path(data, "c.c3[*].c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter.get_path(data, "c.*.c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter.get_path(data, "c..c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter.get_path(data, "..c32") == ("c", "c3", 4, "c32")
+
+def test_find():
+    data = deepcopy(DATA)
+    assert ConfigGetter.get(data, "c..c25") == 23_000
+    assert ConfigGetter.get(data, "c.*.c32") == "c322"

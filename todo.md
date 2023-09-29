@@ -1,37 +1,5 @@
-
 # Todos / Requirements
 
-- adjust tests to meet new source structure (mixins)
-- I want to easily support multiple envs (e.g. dev, test, prod, ..)
-  - It should be possible to commit them all into github, without them interfering
-  - Many configs are the same across all envs, but infra is different. Make it easy
-    to indentify and manage all envs specific changes (no copy and modify)
-  - How to: the issue is with {import: ./db/{ref:db}-config.yaml}, where the path is dynamic. Imagine the env overlay want to change from oracle to postgres. So in your overlay you overwrite db: "oracle" to db: "postgres". How needs the load process to be.
-  Option 1a:
-    - load the base yaml file (without imports)
-    - load the env yaml file (with imports)
-    - resolve the {import:} path first against the env vars, and only then the base.
-      - CLI args almost overwrite any file. Meaning, if "db" provided via cli, we can ignore any env file and load directly.
-    - Execute the import
-    - merge the env vars
-  Option 1b:
-    - load the base yaml file (without imports)
-    - load and merge the env yaml file (with imports)
-    - Execute {import:} on merged var very normaly
-    - merge the env vars again, because the import-merge might have replaced some.
-      Note on merge: dict.update() will not work. Deep-update should only replace the leafes in the env file.
-  Option 2:
-    - load the base yaml file (with imports)
-      - and remember the node and import file name
-    - load the env yaml file (with imports)
-    - merge the env vars
-    - re-evaluate import path, with env overwrites, and possibly reload the file.
-    - if changed, the merge again the env vars
-  Option 3:
-    - extend config.ini to hold the "db" variable. Requires env specific config.ini support. Which is tricky, because config.ini defines the env name. It also diludes config.ini, which should be jdconfig configs only (not user configs).
-  - Changing "db" in your app, it will not reload the dynamic imports.
-    Which requires that we remember the import node, and the import placeholder details, incl the ref var. Would this also work when overloading with env? It would still first load the main imports, and then import the env one.
-  - Always allow to manually load and attach a config.
 - I like structured configs with dataclass and pydantic
 - support making a subtree read-only
 - We construct one config "dict", not multiple layers as we had earlier. But we need
@@ -44,29 +12,27 @@
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??
 - Allow the env overlays to be in a different directory. Does that make any sense?
-- Env placeholders can resolved early. We need a generic approach, that allows
+- Env placeholders can be resolved early. We need a generic approach, that allows
   the placeholder implementation to decide.
 - Recursion: identify when {ref:} goes in circles, referencing each other, and
   report an error.
 - Not 100% the effort with preprocessing creates enough value, vs. lazy (and repeated)
   evaluation of {..} constructs.
-- I don't think we need / should support {import: ..., replace=True}
 - we are using get(), but not yet obj[] and obj.x.y.n
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
-- Do we need items(), iter(), keys(), [key] for the config items?
-- Do we need ".." or "*" or "**" support, in a find() like function?
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
 - Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
 - When dumping config, allow to add file, line, col as comment for debugging.
 - For debugging, log placeholder replacements
 
 Done:
+
 - OmegaConf can use directories, e.g. to support mssql, postgres, oracle, or
   kafka and red panda, or AWS EKS, RH OpenShift, Tanzu. Several configs are the same,
   but each ones has specific configs as well.
 - I'm not 100% a fan of OmegaConf's "default", _self_, and "magical" sequences. I want
   something more obvious. Thus "import" statements
-- I prefer {ref:..} over yaml &id and *id.
+- I prefer {ref:..} over yaml &id and \*id.
 - I like {ref: xxx, <default>} to support default values
 - I like {env: xxx, <default>} to support default values
 - I like ??? for mandatory values.
@@ -88,15 +54,23 @@ Done:
 - to_yaml(); to_dict(<type> = dict); auto-resolve
 - separate resolve() function, which also works in containers. Not just a value.
 - {import:} should support in-place and "in parent/root". e.g.
-  - xyz: {import: xyz}   # load in xyz
-  - abc: {import: abc, True}  # load into abc parent == root.
+  - xyz: {import: xyz} # load in xyz
+  - abc: {import: abc, True} # load into abc parent == root.
 - yaml tags, e.g. !import, !env etc.. These tags are eagerly executed in yaml (add_constructor).
   With our syntax {xyz:..}, they become strings and we must analyze them ourselves.
 - I like OmegaConf {xyz:..} constructs. But I don't like {oc.env:...}
+- dynamic {import: ./db/{ref:db}-config.yaml} now working with env. Restriction: manually
+  changing "db" will not important the other file. Ofcourse you can always load and set()
+  the other file manually.
+- {import: ..., replace=True}: replace arg no longer supported
+- made get("path") mor strict, e.g. "a", "a[1]b", but not "a.1.b". List are always[].
+- Do we need items(), iter(), keys(), [key] for the config items? => No
+- added "..", ".*." and "[*]" support, e.g. get("c..c32")
 
 # Nice to know
 
 - Dynamically add a base class (or mixin)
+
   ```
     p.__class__ = type('GentlePerson',(Person,Gentleman),{})
     class Gentleman(object):

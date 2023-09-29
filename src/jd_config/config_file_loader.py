@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Mapping, Optional
 from .placeholders import ImportPlaceholder, Placeholder
 from .value_reader import CompoundValue
-from .objwalk import objwalk, deep_update
+from .objwalk import objwalk
 from .config_getter import ConfigGetter, ConfigException
 from .yaml_loader import MyYamlLoader
 
@@ -79,7 +79,7 @@ class ConfigFileLoader:
         data_1 = self.post_process_imports(data_1, data_2, config_dir)
 
         if data_2:
-            data_1 = deep_update(data_1, data_2)
+            data_1 = ConfigGetter.deep_update(data_1, data_2)
 
         return data_1
 

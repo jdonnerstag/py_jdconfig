@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from io import StringIO
 import os
 from pathlib import Path
-import re
 import logging
 from typing import Mapping
 import pytest

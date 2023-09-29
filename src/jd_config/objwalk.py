@@ -7,8 +7,7 @@ A generic function to walk any Mapping- and Sequence- like objects.
 
 from dataclasses import dataclass
 import logging
-from typing import Any, Mapping, Optional, Sequence, Set, Tuple, Iterator, Union
-from .config_getter import ConfigGetter
+from typing import Any, Mapping, Optional, Sequence, Set, Tuple, Iterator
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -104,23 +103,3 @@ def objwalk(
     else:
         yield NodeEvent(_path, obj)
 
-
-def deep_update(
-    obj: Mapping,
-    updates: Mapping | None,
-    create_missing: Union[callable, bool, dict] = True,
-) -> Mapping:
-    """Deep update the 'obj' with the leafs from 'updates
-
-    :param obj: The dict that will be updated
-    :param updates: The dict providing the values to update
-    :param create_missing: If true, create any missing level.
-    :return: the updated 'obj'
-    """
-    if not updates:
-        return obj
-
-    for event in objwalk(updates, nodes_only=True):
-        ConfigGetter.set(obj, event.path, event.value, create_missing=create_missing)
-
-    return obj
