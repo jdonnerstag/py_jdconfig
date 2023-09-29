@@ -5,20 +5,20 @@
 - We construct one config "dict", not multiple layers as we had earlier. But we need
   some debugging, tracing/logging. May be a list of add/change/deletes with filename
   and line number? Also when replacing syntax with real values. Why not replace the
-  values eagerly? Because if the referenced value changes, then its outdated.
+  values eagerly? => Because if the referenced value changes, then its outdated.
 - Maybe we should additional have std yaml '!include config.yaml'
 - Error handling must be much improved
 - I'm no longer 100% convinced that keeping filename, line, and col is adding lots of value
+  Can we make this flexible, such as that we have 2 implementations and both are working fine?
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??
 - Allow the env overlays to be in a different directory. Does that make any sense?
-- Env placeholders can be resolved early. We need a generic approach, that allows
+- Env placeholders could be resolved early. We need a generic approach, that allows
   the placeholder implementation to decide.
 - Recursion: identify when {ref:} goes in circles, referencing each other, and
   report an error.
 - Not 100% the effort with preprocessing creates enough value, vs. lazy (and repeated)
   evaluation of {..} constructs.
-- we are using get(), but not yet obj[] and obj.x.y.n
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
 - Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
@@ -65,7 +65,12 @@ Done:
 - {import: ..., replace=True}: replace arg no longer supported
 - made get("path") mor strict, e.g. "a", "a[1]b", but not "a.1.b". List are always[].
 - Do we need items(), iter(), keys(), [key] for the config items? => No
-- added "..", ".*." and "[*]" support, e.g. get("c..c32")
+- added `".."`, `".*.\"` and `"[*]"` support, e.g. get("c..c32").
+- we are using get(), but not yet obj[] and obj.x.y.n => Not adding enough value. get()
+  is more flexible, also supporting e.g. `"c..c32"` and `"c.*.c32"`
+- log warning for {import:} with absolute file path
+- Recursion: identify when {ref:} goes in circles, referencing each other, and
+  report an error.
 
 # Nice to know
 

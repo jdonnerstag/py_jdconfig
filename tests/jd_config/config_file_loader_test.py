@@ -81,7 +81,7 @@ def test_load_jdconfig_1():
     assert data["DB_NAME"].value == [EnvPlaceholder("DB_NAME", "my_default_db")]
 
 
-def test_load_jdconfig_2and_post_load(monkeypatch):
+def test_load_jdconfig_2_and_post_load(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
 

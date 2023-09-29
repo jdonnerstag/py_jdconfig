@@ -75,7 +75,6 @@ class ConfigGetter(StringConverterMixin):
 
         return (_data, last)
 
-
     @classmethod
     def get(
         cls, _data: Mapping, path: PathType, default: Any = DEFAULT, *, sep: str = "."
@@ -85,7 +84,7 @@ class ConfigGetter(StringConverterMixin):
         try:
             _data, key = cls.walk(_data, path, sep=sep)
             return _data[key]
-        except Exception:
+        except:  # pylint: disable=bare-except
             pass
 
         try:
@@ -100,14 +99,12 @@ class ConfigGetter(StringConverterMixin):
 
             raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
 
-
     @classmethod
     def _get_old(cls, _data: Mapping, key: str | int) -> Any:
         try:
             return _data[key]
         except KeyError:
             return None
-
 
     @classmethod
     def delete(
@@ -127,7 +124,6 @@ class ConfigGetter(StringConverterMixin):
                 raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
 
         return None
-
 
     @classmethod
     def set(
@@ -183,7 +179,6 @@ class ConfigGetter(StringConverterMixin):
         except Exception as exc:
             raise ConfigException(f"ConfigDict: Value not found: '{path}'") from exc
 
-
     @classmethod
     def deep_update(
         cls,
@@ -207,7 +202,6 @@ class ConfigGetter(StringConverterMixin):
             )
 
         return obj
-
 
     @classmethod
     def normalize_path(
@@ -243,10 +237,12 @@ class ConfigGetter(StringConverterMixin):
                     cls.normalize_path(sub, sep=sep, rtn=rtn)
                     continue
 
-                m = re.fullmatch(r"\s*([^\[\]]*)\s*((?:\[\s*(\d+|\*)\s*\]\s*)*)", elem)
-                if m:
-                    key = m.group(1)
-                    index = m.group(2)
+                match = re.fullmatch(
+                    r"\s*([^\[\]]*)\s*((?:\[\s*(\d+|\*)\s*\]\s*)*)", elem
+                )
+                if match:
+                    key = match.group(1)
+                    index = match.group(2)
 
                     if key == "*":
                         rtn.append(ANY_INDEX)
@@ -304,9 +300,12 @@ class ConfigGetter(StringConverterMixin):
 
         return cleaned
 
-
     @classmethod
     def get_path(cls, data: Mapping, path: PathType, *, sep: str = ".") -> list:
+        """Determine the config path for search patterns such as "c..c32",
+        "c.*.c32", "c.c3[*].c32"
+        """
+
         keys = cls.normalize_path(path, sep=sep)
         if not keys:
             return []
@@ -316,7 +315,6 @@ class ConfigGetter(StringConverterMixin):
                 return event.path
 
         raise ConfigException(f"Invalid config path: '{path}'")
-
 
     @classmethod
     def _match_path(cls, path_1: list, path_2: list) -> bool:

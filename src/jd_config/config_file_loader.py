@@ -120,13 +120,13 @@ class ConfigFileLoader:
 
         return data
 
-    def load_yaml_raw_with_fd(self, fd) -> Mapping:
+    def load_yaml_raw_with_fd(self, file_descriptor) -> Mapping:
         """Load a Yaml file with our Loader, but no post-processing
 
         :param fd: a file descriptor
         :return: A deep dict-like structure, representing the yaml content
         """
-        loader = MyYamlLoader(fd)
+        loader = MyYamlLoader(file_descriptor)
         return loader.get_single_data()
 
     def load_yaml_raw_with_filename(self, fname: Path) -> Mapping:
@@ -139,7 +139,7 @@ class ConfigFileLoader:
         # pyyaml will consider the BOM, if available,
         # and decode the bytes. utf-8 is default.
         logger.debug("Config: Load from file: '%s'", fname)
-        with open(fname, "rb") as fd:
+        with open(fname, "rb") as fd:  # pylint: disable=invalid-name
             return self.load_yaml_raw_with_fd(fd)
 
     def post_process(self, data: Mapping) -> Mapping:

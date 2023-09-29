@@ -293,3 +293,20 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert cfg.get("database.connection_string", None) is None
 
     assert cfg.get("debug.log_progress_after") == 20_000
+
+
+def test_detect_recursion():
+    cfg = MyMixinTestClass()
+
+    DATA = """
+        a: "{ref:b}"
+        b: "{ref:c}"
+        c: "{ref:a}"
+    """
+
+    file_like_io = StringIO(DATA)
+    data = cfg.load(file_like_io, None)
+    assert data
+
+    with pytest.raises(ConfigException):
+        cfg.get("a")

@@ -36,6 +36,8 @@ class ResolverMixin:
         value: Any,
         data_1: Optional[Mapping] = None,
         data_2: Optional[Mapping] = None,
+        *,
+        _memo: list|None = None
     ):
         """Lazily resolve Placeholders
 
@@ -45,19 +47,26 @@ class ResolverMixin:
         the pieces together for the actuall yaml value.
         """
 
+        if _memo is None:
+            _memo = []
+
         key = value
         if isinstance(value, Placeholder):
+            if value in _memo:
+                raise ConfigException(f"Recursion detected: {_memo}")
+
+            _memo.append(value)
             value = value.resolve(data_1, data_2)
 
         if isinstance(value, list):
-            value = [self.resolve(x, data_1, data_2) for x in value]
+            value = [self.resolve(x, data_1, data_2, _memo=_memo) for x in value]
             value = "".join(value)
             return value
 
         if value == "???":
-            raise ConfigException(f"Mandatory config value missing: '${key}'")
+            raise ConfigException(f"Mandatory config value missing: '{key}'")
 
         if isinstance(value, (str, int, float, bool)):
             return value
 
-        raise ConfigException(f"Unable to resolve: '${value}'")
+        raise ConfigException(f"Unable to resolve: '{value}'")

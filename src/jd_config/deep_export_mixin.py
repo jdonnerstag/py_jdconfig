@@ -6,7 +6,7 @@ Mixin to export deep config data
 """
 
 import logging
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Sequence
 
 import yaml
 
@@ -48,7 +48,8 @@ class DeepExportMixin:
             obj = self.get(root)
 
         stack = []
-        cur = {}
+        cur: Mapping | Sequence = {}
+
         for event in objwalk(obj, nodes_only=False):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 if isinstance(event, NewMappingEvent):
@@ -59,7 +60,7 @@ class DeepExportMixin:
                 if event.path:
                     if isinstance(cur, Mapping):
                         cur[event.path[-1]] = new
-                    else:
+                    elif isinstance(cur, Sequence):
                         cur.append(new)
                 cur = new
             elif isinstance(event, DropContainerEvent):
@@ -75,7 +76,7 @@ class DeepExportMixin:
 
                 if isinstance(cur, Mapping):
                     cur[event.path[-1]] = value
-                else:
+                elif isinstance(cur, Sequence):
                     cur.append(value)
 
         return cur
