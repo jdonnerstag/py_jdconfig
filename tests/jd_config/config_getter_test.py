@@ -35,7 +35,7 @@ def test_normalize_path():
     assert normalize("[1]") == [1]
     assert normalize("222[1]") == ["222", 1]
     assert normalize("a.*.c") == ["a", "*", "c"]
-    assert normalize("a.b[*].c") == ["a", "b", "*", "c"]
+    assert normalize("a.b[*].c") == ["a", "b", "%", "c"]
     assert normalize("a..c") == ["a", "", "c"]
     assert normalize("a...c") == ["a", "", "c"]
     assert normalize("a.*.*.c") == ["a", "*", "*", "c"]
@@ -50,6 +50,40 @@ def test_normalize_path():
     for elem in should_fail:
         with pytest.raises(ConfigException):
             normalize(elem)
+
+
+def test_path_to_str():
+    cg = ConfigGetter()
+
+    def to_str(x, sep="."):
+        p = cg.normalize_path(x, sep=sep)
+        return cg.normalized_path_to_str(p, sep=sep)
+
+    assert to_str("") == ""
+    assert to_str("a") == "a"
+    assert to_str(["a"]) == "a"
+    assert to_str(["a[1]"]) == "a[1]"
+    assert to_str(["a[1][2]"]) == "a[1][2]"
+    assert to_str("a.b.c") == "a.b.c"
+    assert to_str("a[1].b") == "a[1].b"
+    assert to_str("a/b/c", sep="/") == "a/b/c"
+    assert to_str("a/b[1]/c", sep="/") == "a/b[1]/c"
+    assert to_str(["a", "b", "c"]) == "a.b.c"
+    assert to_str(("a", "b.c")) == "a.b.c"
+    assert to_str(("a", ("b", "c"))) == "a.b.c"
+    assert to_str(("a", ("b.c"))) == "a.b.c"
+    assert to_str("[1]") == "[1]"
+    assert to_str("222[1]") == "222[1]"
+    assert to_str("a.*.c") == "a.*.c"
+    assert to_str("a.b[*].c") == "a.b[*].c"
+    assert to_str("a..c") == "a..c"
+    assert to_str("a...c") == "a..c"
+    assert to_str("a.*.*.c") == "a.*.*.c"
+    assert to_str("a.*..c") == "a..c"  # ".*.." == ".."
+    assert to_str("a..*.c") == "a..c"  # "..*." == ".."
+    assert to_str("a[*]..c") == "a..c"  # "[*].." == ".."
+    assert to_str("..c") == "..c"
+    assert to_str("*.c") == "*.c"
 
 
 DATA = dict(
@@ -130,6 +164,13 @@ def test_set():
     ConfigGetter().set(data, "a.new", 11, create_missing=True, replace_path=True)
     assert ConfigGetter().get(data, "a.new") == 11
 
+    # 'c.c3' is not a mapping. Even with create_missing, it will not change the structure
+    with pytest.raises(ConfigException):
+        ConfigGetter().set(data, "c.c3.a", 11, create_missing=True, replace_path=False)
+
+    ConfigGetter().set(data, "c.c3.a", 11, create_missing=True, replace_path=True)
+    assert ConfigGetter().get(data, "c.c3.a") == 11
+
     ConfigGetter().set(data, "x.a[0]", 22, create_missing=True)
     assert ConfigGetter().get(data, "x.a[0]") == 22
 
@@ -155,6 +196,12 @@ def test_set():
     assert ConfigGetter().set(data, "v.a[0].b", 14, create_missing={"a": [{}]}) is None
     assert ConfigGetter().get(data, "v.a[0].b") == 14
 
+    with pytest.raises(ConfigException):
+        ConfigGetter().set(data, "v.a[0].b", 99, replace_value=False)
+
+    assert ConfigGetter().set(data, "v.a[0].b", 99, replace_value=True) == 14
+    assert ConfigGetter().get(data, "v.a[0].b") == 99
+
 
 def test_delete():
     data = deepcopy(DATA)
@@ -179,19 +226,19 @@ def test_delete():
 
 def test_get_path():
     data = deepcopy(DATA)
-    assert ConfigGetter().get_path(data, "c.c2.c25") == ("c", "c2", "c25")
-    assert ConfigGetter().get_path(data, "c..c25") == ("c", "c2", "c25")
-    assert ConfigGetter().get_path(data, "c..c2.c25") == ("c", "c2", "c25")
-    assert ConfigGetter().get_path(data, "c.*.c25") == ("c", "c2", "c25")
-    assert ConfigGetter().get_path(data, "*.*.c25") == ("c", "c2", "c25")
-    assert ConfigGetter().get_path(data, "..c25") == ("c", "c2", "c25")
+    assert ConfigGetter()._get_path(data, "c.c2.c25") == ("c", "c2", "c25")
+    assert ConfigGetter()._get_path(data, "c..c25") == ("c", "c2", "c25")
+    assert ConfigGetter()._get_path(data, "c..c2.c25") == ("c", "c2", "c25")
+    assert ConfigGetter()._get_path(data, "c.*.c25") == ("c", "c2", "c25")
+    assert ConfigGetter()._get_path(data, "*.*.c25") == ("c", "c2", "c25")
+    assert ConfigGetter()._get_path(data, "..c25") == ("c", "c2", "c25")
 
-    assert ConfigGetter().get_path(data, "c.c3[0]") == ("c", "c3", 0)
-    assert ConfigGetter().get_path(data, "c.c3[4].c32") == ("c", "c3", 4, "c32")
-    assert ConfigGetter().get_path(data, "c.c3[*].c32") == ("c", "c3", 4, "c32")
-    assert ConfigGetter().get_path(data, "c.*.c32") == ("c", "c3", 4, "c32")
-    assert ConfigGetter().get_path(data, "c..c32") == ("c", "c3", 4, "c32")
-    assert ConfigGetter().get_path(data, "..c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter()._get_path(data, "c.c3[0]") == ("c", "c3", 0)
+    assert ConfigGetter()._get_path(data, "c.c3[4].c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter()._get_path(data, "c.c3[*].c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter()._get_path(data, "c.*.c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter()._get_path(data, "c..c32") == ("c", "c3", 4, "c32")
+    assert ConfigGetter()._get_path(data, "..c32") == ("c", "c3", 4, "c32")
 
 
 def test_find():
