@@ -38,19 +38,19 @@ def test_yaml_loader():
     loader = MyYamlSafeLoader(file_like_io)
     obj = loader.get_single_data()
 
-    assert isinstance(ConfigGetter.get(obj, "a"), YamlObj)
-    assert ConfigGetter.get(obj, "a").value == "aa"
-    assert ConfigGetter.get(obj, "a").file
-    assert ConfigGetter.get(obj, "a").line
-    assert ConfigGetter.get(obj, "a").column
+    assert isinstance(ConfigGetter().get(obj, "a"), YamlObj)
+    assert ConfigGetter().get(obj, "a").value == "aa"
+    assert ConfigGetter().get(obj, "a").file
+    assert ConfigGetter().get(obj, "a").line
+    assert ConfigGetter().get(obj, "a").column
 
-    assert ConfigGetter.get(obj, "c.c1").value == "c11"
-    assert ConfigGetter.get(obj, "c.c2.c23").value == 23
-    assert ConfigGetter.get(obj, "c.c3[1]").value == 22
-    assert ConfigGetter.get(obj, "c.c3[4].c32").value == "c322"
+    assert ConfigGetter().get(obj, "c.c1").value == "c11"
+    assert ConfigGetter().get(obj, "c.c2.c23").value == 23
+    assert ConfigGetter().get(obj, "c.c3[1]").value == 22
+    assert ConfigGetter().get(obj, "c.c3[4].c32").value == "c322"
 
     # Only leafs are YamlObj. Containers (Mapping, Sequence) are provided as is.
-    assert isinstance(ConfigGetter.get(obj, "c"), dict)
-    assert isinstance(ConfigGetter.get(obj, "c.c2"), dict)
-    assert isinstance(ConfigGetter.get(obj, "c.c3"), list)
-    assert isinstance(ConfigGetter.get(obj, "c.c3[4]"), dict)
+    assert isinstance(ConfigGetter().get(obj, "c"), dict)
+    assert isinstance(ConfigGetter().get(obj, "c.c2"), dict)
+    assert isinstance(ConfigGetter().get(obj, "c.c3"), list)
+    assert isinstance(ConfigGetter().get(obj, "c.c3[4]"), dict)

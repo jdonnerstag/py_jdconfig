@@ -81,7 +81,7 @@ class RefPlaceholder(Placeholder):
         # Search in the env file, if provided
         if data_2:  # env file (2)
             try:
-                obj = ConfigGetter.get(data_2, self.path, sep=",")
+                obj = ConfigGetter().get(data_2, self.path, sep=",")
                 return obj.value
             except:  # pylint: disable=bare-except  # noqa: E722
                 pass
@@ -89,14 +89,14 @@ class RefPlaceholder(Placeholder):
         # Search in the yaml file which contains the reference
         if self.file_root:  # local file (3)
             try:
-                obj = ConfigGetter.get(self.file_root, self.path, sep=",")
+                obj = ConfigGetter().get(self.file_root, self.path, sep=",")
                 return obj.value
             except:  # pylint: disable=bare-except  # noqa: E722
                 pass
 
         # Search starting from the root of all the config files.
         # Main file (4)
-        obj = ConfigGetter.get(data_1, self.path, sep=",", default=self.default_val)
+        obj = ConfigGetter().get(data_1, self.path, sep=",", default=self.default_val)
         return obj.value
 
 

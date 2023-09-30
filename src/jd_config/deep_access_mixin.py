@@ -35,7 +35,7 @@ class DeepAccessMixin:
         Mappings and Sequences are returned as is.
         """
 
-        obj = ConfigGetter.get(self.data, path, default=default, sep=sep)
+        obj = ConfigGetter().get(self.data, path, default=default, sep=sep)
         if not isinstance(obj, YamlObj):
             return obj
 
@@ -44,7 +44,7 @@ class DeepAccessMixin:
 
     def delete(self, path: PathType, *, sep: str = ".", exception: bool = True) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
-        return ConfigGetter.delete(self.data, path, sep=sep, exception=exception)
+        return ConfigGetter().delete(self.data, path, sep=sep, exception=exception)
 
     def set(
         self,
@@ -61,7 +61,7 @@ class DeepAccessMixin:
             and manually append the element.
         """
 
-        return ConfigGetter.set(
+        return ConfigGetter().set(
             self.data, path, value, create_missing=create_missing, sep=sep
         )
 
