@@ -17,10 +17,12 @@ from typing import (
     Type,
     Sequence,
     Union,
+    Optional,
 )
 
 from .string_converter_mixin import StringConverterMixin
-from .objwalk import ObjectWalker
+from .objwalk import ObjectWalker, NodeEvent, NewMappingEvent, NewSequenceEvent, DropContainerEvent, StopWalking
+
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -55,6 +57,15 @@ class ConfigGetter(StringConverterMixin):
     PAT_ANY_KEY = "*"
     PAT_ANY_IDX = "%"
     PAT_DEEP = ""
+
+    def __init__(self, *, delegator: Optional[callable] = None):
+        self.delegator = delegator
+
+    def _invoke_on_missing_handler(self, *args, **kvargs):
+        if self.delegator is not None:
+            return self.delegator.on_missing_handler(*args, **kvargs)
+
+        return self.on_missing_handler(*args, **kvargs)
 
     def _flatten_and_split_path(self, path: PathType, sep: str) -> Iterable[str | int]:
         """Flatten a list of list, and further split the str elements by a separator"""
@@ -204,6 +215,7 @@ class ConfigGetter(StringConverterMixin):
             return (data, path)
 
         if not create_missing and replace_path:
+            # TODO Required to support updates ???
             raise ConfigException(
                 "Invalid combination: not create_missing and replace_path"
             )
@@ -398,11 +410,10 @@ class ConfigGetter(StringConverterMixin):
         except Exception as exc:
             raise ConfigException(f"Config path not found: {path}") from exc
 
-    def _deep_update(
+    def deep_update(
         self,
         obj: Mapping,
-        updates: Mapping | None,
-        create_missing: Union[callable, bool, Mapping] = True,
+        updates: Mapping | None
     ) -> Mapping:
         """Deep update the 'obj' with only the leafs from 'updates'. Create
         missing paths.
@@ -416,9 +427,30 @@ class ConfigGetter(StringConverterMixin):
         if not updates:
             return obj
 
-        for event in ObjectWalker.objwalk(updates, nodes_only=True):
-            data, key = self._walk(obj, event.path, create_missing, replace_path=True)
-            data[key] = event.value
+        stack = [obj]
+        for event in ObjectWalker.objwalk(updates, nodes_only=False):
+            cur = stack[-1]
+            if isinstance(event, NewMappingEvent):
+                if event.path:
+                    key = event.path[-1]
+                    if (key not in cur) or not isinstance(cur[key], Mapping):
+                        cur[key] = event.value
+                        raise StopWalking()
+                    cur = cur[key]
+                    stack.append(cur)
+            elif isinstance(event, NewSequenceEvent):
+                # TODO List in list?
+                key = event.path[-1]
+                if (key not in cur) or not isinstance(cur[key], Sequence) or isinstance(cur[key], str):
+                    cur[key] = event.value
+                    raise StopWalking()
+                cur = cur[key]
+                stack.append(cur)
+            elif isinstance(event, NodeEvent):
+                key = event.path[-1]
+                cur[key] = event.value
+            elif isinstance(event, DropContainerEvent):
+                stack.pop()
 
         return obj
 

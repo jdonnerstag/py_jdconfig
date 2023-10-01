@@ -245,3 +245,58 @@ def test_find():
     data = deepcopy(DATA)
     assert ConfigGetter().get(data, "c..c25") == 23_000
     assert ConfigGetter().get(data, "c.*.c32") == "c322"
+
+
+def test_deep_update():
+    data_1 = deepcopy(DATA)  #
+    updates = {"a": "AA"}
+    assert ConfigGetter().deep_update(data_1, updates).get("a") == "AA"
+
+    # See DeepDict for a more elegant approach
+    updates = {"b": {"b1": "BB"}}
+    assert ConfigGetter().deep_update(data_1, updates)["b"]["b1"] == "BB"
+
+    updates = {"c": {"c2": {"c22": "C_222"}}}
+    assert ConfigGetter().deep_update(data_1, updates)["c"]["c2"]["c22"] == "C_222"
+
+    updates = {"z": "new"}
+    assert ConfigGetter().deep_update(data_1, updates)["z"] == "new"
+
+    # TODO We don't support delete. How to replace dicts and lists, vs. values only?
+    updates = {"b": {"b1": {"b2": "B222B"}}}
+    assert ConfigGetter().deep_update(data_1, updates)["b"]["b1"] == {"b2": "B222B"}
+
+    updates = {"b": {"b1": [1, 2, 3, 4]}}
+    assert ConfigGetter().deep_update(data_1, updates)["b"]["b1"] == [1, 2, 3, 4]
+
+    # Deliberately not supported
+    # updates = {"c": {"c3": [None, 220]}}
+    # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][1] == 220
+
+    # Deliberately not supported
+    # updates = {"c": {"c3": [None, None, None, None, {"c33": "C_333"}]}}
+    # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][4]["C33"] == "C_333"
+
+    # Deliberately not supported
+    # It is possible to use deep find pattern as well, which is quite nice
+    # updates = {"c.c3[*].c32": "C_321"}
+    # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][4]["C32"] == "C_321"
+
+    # Deliberately not supported
+    # updates = {"$delete$": ["c.c3[*].c32"]}
+    # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][4]["C32"] == "C_321"
+
+    # Deliberately not supported
+    # updates = {"$delete$": ["c.c3[2]"]}
+    # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][4]["C32"] == "C_321"
+
+    # Deliberately not supported
+    # updates = {"a": "$delete$"}
+    # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][4]["C32"] == "C_321"
+
+    """
+        c3=[None, 220, None, None, dict(c33="C_333")],
+    )
+    """
+
+# TODO we have not test (get, set, etc.) for lists in lists 

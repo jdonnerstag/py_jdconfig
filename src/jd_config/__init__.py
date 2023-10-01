@@ -29,6 +29,7 @@ from .objwalk import (
     NewSequenceEvent,
     DropContainerEvent,
     WalkerEvent,
+    StopWalking
 )
 
 from .extended_yaml_file_loader import (
@@ -40,6 +41,7 @@ from .extended_yaml_file_loader import (
 )
 
 from .config_getter import ConfigException, ConfigGetter
+from .deep_dict import DeepDict
 
 from .placeholders import (
     Placeholder,

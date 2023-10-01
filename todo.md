@@ -15,16 +15,15 @@
 - Allow the env overlays to be in a different directory. Does that make any sense?
 - Env placeholders could be resolved early. We need a generic approach, that allows
   the placeholder implementation to decide.
-- Recursion: identify when {ref:} goes in circles, referencing each other, and
-  report an error.
-- Not 100% the effort with preprocessing creates enough value, vs. lazy (and repeated)
+- Not 100% sure the effort with preprocessing creates enough value, vs. lazy (and repeated)
   evaluation of {..} constructs.
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
 - Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
 - When dumping config, allow to add file, line, col as comment for debugging.
 - For debugging, log placeholder replacements
-- We need a more efficient walk implementation. One that supports `a.b[2]` but also `c..c2[*]``
+- We need a more *efficient* walk implementation. One that supports `a.b[2]` but also `c..c2[*]`
+- CONFIG_INI_FILE env to find config.ini file
 
 Done:
 
@@ -72,6 +71,15 @@ Done:
 - log warning for {import:} with absolute file path
 - Recursion: identify when {ref:} goes in circles, referencing each other, and
   report an error.
+- env file updates do not support deletes, or add elems to lists. We had this for some
+  time, but it proofed dangerous in production. Same for search patterns. Maybe nice
+  for developers, we qa/prod envs, it caused suptle issues, not obvious/easy to detect
+  by operations. Even with config.dump() cli features, which ops may not be aware of.
+  It may work with devops teams, where dev and ops are working in one team, but
+  unfortunately that is rarely the case. And the "workarounds" make it very obvious:
+  copy the file, append the env name, and simply change them. If we don't support
+  deletes, how to replace dicts and lists, vs. values only? (see test cases)
+
 
 # Nice to know
 

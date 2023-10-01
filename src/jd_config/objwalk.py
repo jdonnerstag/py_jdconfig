@@ -34,6 +34,7 @@ class NewMappingEvent:
     """Entering a new mapping"""
 
     path: Tuple[str | int, ...]
+    value: Mapping
 
     @classmethod
     def new(cls):
@@ -46,6 +47,7 @@ class NewSequenceEvent:
     """Entering a new Sequence"""
 
     path: [str | int, ...]
+    value: Sequence
 
     @classmethod
     def new(cls):
@@ -56,6 +58,8 @@ class NewSequenceEvent:
 @dataclass
 class DropContainerEvent:
     """Step out of Mapping or Sequence"""
+
+    value: Mapping | Sequence
 
 
 WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
@@ -102,25 +106,25 @@ class ObjectWalker:
         if id(obj) not in _memo:
             _memo.add(id(obj))
             if not nodes_only:
-                yield NewMappingEvent(path_)
+                yield NewMappingEvent(path_, obj)
             for key, value in obj.items():
                 for child in cls.objwalk(
                     value, _path=path_ + (key,), _memo=_memo, nodes_only=nodes_only
                 ):
                     yield child
             if not nodes_only:
-                yield DropContainerEvent()
+                yield DropContainerEvent(obj)
 
     @classmethod
     def _on_sequence(cls, obj, path_, _memo, nodes_only) -> Iterator[WalkerEvent]:
         if id(obj) not in _memo:
             _memo.add(id(obj))
             if not nodes_only:
-                yield NewSequenceEvent(path_)
+                yield NewSequenceEvent(path_, obj)
             for index, value in enumerate(obj):
                 for child in cls.objwalk(
                     value, _path=path_ + (index,), _memo=_memo, nodes_only=nodes_only
                 ):
                     yield child
             if not nodes_only:
-                yield DropContainerEvent()
+                yield DropContainerEvent(obj)
