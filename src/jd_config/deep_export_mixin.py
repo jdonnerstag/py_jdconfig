@@ -47,8 +47,8 @@ class DeepExportMixin:
         if root:
             obj = self.get(root)
 
-        stack = [obj]
         cur: Mapping | Sequence = {}
+        stack = [cur]
 
         for event in ObjectWalker.objwalk(obj, nodes_only=False):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):

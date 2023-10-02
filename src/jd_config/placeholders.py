@@ -97,7 +97,10 @@ class RefPlaceholder(Placeholder):
         # Search starting from the root of all the config files.
         # Main file (4)
         obj = ConfigGetter().get(data_1, self.path, sep=",", default=self.default_val)
-        return obj.value
+        if hasattr(obj, "value"):
+            return obj.value
+
+        return obj
 
 
 @dataclass

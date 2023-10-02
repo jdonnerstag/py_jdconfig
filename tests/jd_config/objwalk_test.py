@@ -21,7 +21,6 @@ DATA = dict(
     ),
 )
 
-
 def test_objwalk():
     data = list(x.path for x in ObjectWalker.objwalk(DATA, nodes_only=True))
     assert len(data) == 14
@@ -43,3 +42,5 @@ def test_objwalk():
     data.remove(("c", "c3", 4, "c32"))
 
     assert len(data) == 0
+
+# TODO Add test with "skip"

@@ -6,7 +6,7 @@
 import os
 import re
 import logging
-from jd_config import DeepExportMixin, ResolverMixin, DeepAccessMixin
+from jd_config import DeepExportMixin, ResolverMixin, DeepAccessMixin, RefPlaceholder, YamlObj
 
 logger = logging.getLogger(__name__)
 
@@ -35,23 +35,26 @@ def test_to_dict_to_yaml():
         "b": {
             "b1": {
                 "c1": "1cc",
-                "c2": "2cc",
+                "c2": YamlObj(0, 0, None, [RefPlaceholder("a")]),
             },
             "b2": 22,
         },
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
     }
 
-    data = cfg.to_dict(resolve=True)
+    data = cfg.to_dict(resolve=False)
     assert data["a"] == "aa"
     assert data["b"]["b1"]["c1"] == "1cc"
-    assert data["b"]["b1"]["c2"] == "2cc"
+    assert data["b"]["b1"]["c2"].value == [RefPlaceholder("a")]
     assert data["b"]["b2"] == 22
     assert data["c"][0] == "x"
     assert data["c"][1] == "y"
     assert data["c"][2]["z1"] == "zz"
     assert data["c"][2]["z2"] == "2zz"
 
+    data = cfg.to_dict(resolve=True)
+    assert data["b"]["b1"]["c2"] == "aa"
+
     data = cfg.to_yaml("b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
-    assert data == "c1: 1cc\nc2: 2cc\n"
+    assert data == "c1: 1cc\nc2: aa\n"
