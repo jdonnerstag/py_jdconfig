@@ -29,7 +29,6 @@ from .objwalk import (
     NewSequenceEvent,
     DropContainerEvent,
     WalkerEvent,
-    StopWalking
 )
 
 from .extended_yaml_file_loader import (

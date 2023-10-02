@@ -47,7 +47,7 @@ class DeepExportMixin:
         if root:
             obj = self.get(root)
 
-        stack = []
+        stack = [obj]
         cur: Mapping | Sequence = {}
 
         for event in ObjectWalker.objwalk(obj, nodes_only=False):

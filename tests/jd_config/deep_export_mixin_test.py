@@ -42,7 +42,7 @@ def test_to_dict_to_yaml():
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
     }
 
-    data = cfg.to_dict()
+    data = cfg.to_dict(resolve=True)
     assert data["a"] == "aa"
     assert data["b"]["b1"]["c1"] == "1cc"
     assert data["b"]["b1"]["c2"] == "2cc"

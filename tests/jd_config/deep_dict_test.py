@@ -128,19 +128,14 @@ def test_delete():
 
 
 def test_deep_update():
-    data_1 = deepcopy(DATA)#
-    assert data_1.deep_update({"a":"AA"}).get("a") == "AA"
-    assert data_1.deep_update({"b":{"b1": "BB"}}).get("b.b1") == "BB"
-    assert data_1.deep_update({"b":{"b1": "BB"}}).get("b.b1") == "BB"
+    data = DeepDict(deepcopy(DATA))
+    assert data.deep_update({"a":"AA"}).get("a") == "AA"
+    assert data.deep_update({"b":{"b1": "BB"}}).get("b.b1") == "BB"
+    assert data.deep_update({"b":{"b1": "BB"}}).get("b.b1") == "BB"
+    assert data.deep_update({"c": {"c2": {"c22": "C_222"}}}).get("c.c2.c22") == "C_222"
+    assert data.deep_update({"z": "new"})["z"] == "new"
+    assert data.deep_update({"b": {"b1": {"b2": "B222B"}}}).get("b.b1") == {"b2": "B222B"}
+    assert data.deep_update({"b": {"b1": [1, 2, 3, 4]}}).get("b.b1") == [1, 2, 3, 4]
 
-    """
-    data_2 = dict(
-        a="AA",
-        b=dict(b1 = "BB"),
-        c=dict(
-            c2=dict(c22="C_222"),
-            c3=[None, 220, None, None, dict(c33="C_333")],
-        ),
-        z="neu"
-    )
-    """
+    # The only search pattern supported
+    assert data.deep_update({"c": {"c3[*]": {"c32": "C_333"}}}).get("c..c32") == "C_333"

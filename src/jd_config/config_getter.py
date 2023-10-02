@@ -21,7 +21,14 @@ from typing import (
 )
 
 from .string_converter_mixin import StringConverterMixin
-from .objwalk import ObjectWalker, NodeEvent, NewMappingEvent, NewSequenceEvent, DropContainerEvent, StopWalking
+from .objwalk import (
+    ObjectWalker,
+    NodeEvent,
+    NewMappingEvent,
+    NewSequenceEvent,
+    DropContainerEvent,
+    NonStrSequence,
+)
 
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -410,11 +417,7 @@ class ConfigGetter(StringConverterMixin):
         except Exception as exc:
             raise ConfigException(f"Config path not found: {path}") from exc
 
-    def deep_update(
-        self,
-        obj: Mapping,
-        updates: Mapping | None
-    ) -> Mapping:
+    def deep_update(self, obj: Mapping, updates: Mapping | None) -> Mapping:
         """Deep update the 'obj' with only the leafs from 'updates'. Create
         missing paths.
 
@@ -428,24 +431,62 @@ class ConfigGetter(StringConverterMixin):
             return obj
 
         stack = [obj]
-        for event in ObjectWalker.objwalk(updates, nodes_only=False):
+        any_elem = False
+        gen = ObjectWalker.objwalk(updates, nodes_only=False)
+        for event in gen:
             cur = stack[-1]
+
+            key = None
+            if event.path:
+                key = event.path[-1]
+                if key.endswith("[*]") and not isinstance(event, NewMappingEvent):
+                    raise ConfigException(
+                        f"'xyz[*]' syntax requires a value of type mapping: '{event.path}'"
+                    )
+
+            if any_elem:
+                if not isinstance(cur, NonStrSequence):
+                    raise ConfigException(
+                        f"'xyz[*]' syntax is only allowed with lists: '{event.path}'"
+                    )
+
+                for elem in cur:
+                    if isinstance(elem, Mapping) and key in elem:
+                        stack.pop()
+                        stack.append(elem)
+                        cur = elem
+                        break
+                else:
+                    raise ConfigException(f"Element does not exist: '{event.path}'")
+
+                any_elem = False
+
             if isinstance(event, NewMappingEvent):
                 if event.path:
-                    key = event.path[-1]
-                    if (key not in cur) or not isinstance(cur[key], Mapping):
+                    if key.endswith("[*]"):
+                        key = key[:-3]
+                        any_elem = True
+                        if not isinstance(cur, Mapping) or (key not in cur):
+                            raise ConfigException(
+                                "Config element does not exist: '{path}'"
+                            )
+                    elif (key not in cur) or not isinstance(cur[key], Mapping):
                         cur[key] = event.value
-                        raise StopWalking()
-                    cur = cur[key]
-                    stack.append(cur)
+                        if not any_elem:
+                            gen.send(True)
+
+                    stack.append(cur[key])
             elif isinstance(event, NewSequenceEvent):
                 # TODO List in list?
                 key = event.path[-1]
-                if (key not in cur) or not isinstance(cur[key], Sequence) or isinstance(cur[key], str):
+                if (
+                    (key not in cur)
+                    or not isinstance(cur[key], Sequence)
+                    or isinstance(cur[key], str)
+                ):
                     cur[key] = event.value
-                    raise StopWalking()
-                cur = cur[key]
-                stack.append(cur)
+                    gen.send(True)
+                stack.append(cur[key])
             elif isinstance(event, NodeEvent):
                 key = event.path[-1]
                 cur[key] = event.value

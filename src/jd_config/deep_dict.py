@@ -6,21 +6,23 @@
 
 import logging
 from typing import Any, Mapping, Sequence, Union
+from collections import UserDict
 from .config_getter import ConfigGetter, PathType, DEFAULT
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepDict(dict):
+class DeepDict(UserDict):
     """Dict-like get, set, delete and find operations on deep
     Mapping- and Sequence-like structures.
     """
 
     def __init__(self, obj: Mapping) -> None:
-        self.obj = obj
+        super().__init__(obj)
         self.getter = ConfigGetter(delegator=self)
 
+    # pylint: disable=arguments-renamed
     def get(self, path: PathType, default: Any = DEFAULT, *, sep: str = ".") -> Any:
         """Similar to dict.get(), but with deep path support.
 
@@ -34,7 +36,7 @@ class DeepDict(dict):
         :return: The config value
         """
 
-        rtn = self.getter.get(self.obj, path, default=default, sep=sep)
+        rtn = self.getter.get(self.data, path, default=default, sep=sep)
         if isinstance(rtn, Mapping):
             return DeepDict(rtn)
 
@@ -49,7 +51,7 @@ class DeepDict(dict):
     ) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
 
-        return self.getter.delete(self.obj, path, sep=sep, exception=exception)
+        return self.getter.delete(self.data, path, sep=sep, exception=exception)
 
     def on_missing_handler(
         self,
@@ -90,7 +92,7 @@ class DeepDict(dict):
         """
 
         return self.getter.set(
-            self.obj,
+            self.data,
             path,
             value,
             create_missing=create_missing,
@@ -101,8 +103,7 @@ class DeepDict(dict):
 
     def deep_update(
         self,
-        updates: Mapping | None,
-        create_missing: Union[callable, bool, Mapping] = True,
+        updates: Mapping | None
     ) -> Mapping:
         """Deep update the 'obj' with only the leafs from 'updates'. Create
         missing paths.
@@ -113,7 +114,11 @@ class DeepDict(dict):
         :return: the updated 'obj'
         """
 
-        return self.getter.deep_update(self.obj, updates, create_missing=create_missing)
+        rtn = self.getter.deep_update(self.data, updates)
+        if isinstance(rtn, Mapping):
+            return DeepDict(rtn)
+
+        return rtn
 
     def __getitem__(self, key: Any) -> Any:
         return self.get(key)

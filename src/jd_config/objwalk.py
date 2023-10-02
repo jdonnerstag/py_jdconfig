@@ -5,9 +5,10 @@
 A generic function to walk any Mapping- and Sequence- like objects.
 """
 
+from abc import ABC
 from dataclasses import dataclass
 import logging
-from typing import Any, Mapping, Optional, Sequence, Set, Tuple, Iterator
+from typing import Any, Mapping, Sequence, Tuple, Iterator
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -59,10 +60,23 @@ class NewSequenceEvent:
 class DropContainerEvent:
     """Step out of Mapping or Sequence"""
 
+    path: [str | int, ...]
     value: Mapping | Sequence
 
 
 WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
+
+
+class NonStrSequence(ABC):
+    """Avoid having to do `isinstance(x, Sequence) and not isinstance(x, str)` all the time"""
+
+    @classmethod
+    def __subclasshook__(cls, C: type):
+        # not possible to do with AnyStr
+        if C is str:
+            return NotImplemented
+
+        return issubclass(C, Sequence)
 
 
 class ObjectWalker:
@@ -70,12 +84,7 @@ class ObjectWalker:
 
     @classmethod
     def objwalk(
-        cls,
-        obj: Any,
-        *,
-        _path: Tuple[str | int, ...] = (),
-        _memo: Optional[Set] = None,
-        nodes_only: bool = False
+        cls, obj: Mapping | NonStrSequence, *, nodes_only: bool = False
     ) -> Iterator[WalkerEvent]:
         """A generic function to walk any Mapping- and Sequence- like objects.
 
@@ -85,46 +94,52 @@ class ObjectWalker:
         'objwalk' walks the structure depth first. Only leaf-nodes are yielded.
 
         :param obj: The root container to start walking.
-        :param _path: internal use only.
-        :param _memo: internal use only.
         :return: 'objwalk' is a generator function, yielding the elements path and obj.
         """
 
-        # Detect recursion
-        if _memo is None:
-            _memo = set()
+        iter_stack = []
+        iter_obj = []
+        path_ = ()  # Empty tuple
 
         if isinstance(obj, Mapping):
-            yield from cls._on_mapping(obj, _path, _memo, nodes_only)
-        elif isinstance(obj, (Sequence, Set)) and not isinstance(obj, str):
-            yield from cls._on_sequence(obj, _path, _memo, nodes_only)
+            iter_obj.append(obj)
+            iter_stack.append(iter(obj.items()))
+        elif isinstance(obj, NonStrSequence):
+            iter_obj.append(obj)
+            iter_stack.append(iter(enumerate(obj)))
         else:
-            yield NodeEvent(_path, obj)
+            yield NodeEvent(path_, obj)
 
-    @classmethod
-    def _on_mapping(cls, obj, path_, _memo, nodes_only) -> Iterator[WalkerEvent]:
-        if id(obj) not in _memo:
-            _memo.add(id(obj))
-            if not nodes_only:
-                yield NewMappingEvent(path_, obj)
-            for key, value in obj.items():
-                for child in cls.objwalk(
-                    value, _path=path_ + (key,), _memo=_memo, nodes_only=nodes_only
-                ):
-                    yield child
-            if not nodes_only:
-                yield DropContainerEvent(obj)
+        while iter_stack:
+            cur = iter_stack[-1]
+            try:
+                skip = False
+                key, value = next(cur)
 
-    @classmethod
-    def _on_sequence(cls, obj, path_, _memo, nodes_only) -> Iterator[WalkerEvent]:
-        if id(obj) not in _memo:
-            _memo.add(id(obj))
-            if not nodes_only:
-                yield NewSequenceEvent(path_, obj)
-            for index, value in enumerate(obj):
-                for child in cls.objwalk(
-                    value, _path=path_ + (index,), _memo=_memo, nodes_only=nodes_only
-                ):
-                    yield child
-            if not nodes_only:
-                yield DropContainerEvent(obj)
+                if isinstance(value, Mapping):
+                    path_ = path_ + (key,)
+                    if not nodes_only:
+                        skip = yield NewMappingEvent(path_, value)
+                    iter_obj.append(value)
+                    iter_stack.append(iter(value.items()))
+                elif isinstance(value, NonStrSequence):
+                    path_ = path_ + (key,)
+                    if not nodes_only:
+                        skip = yield NewSequenceEvent(path_, value)
+                    iter_obj.append(value)
+                    iter_stack.append(iter(enumerate(value)))
+                else:
+                    skip = yield NodeEvent(path_ + (key,), value)
+
+                if skip:
+                    iter_obj.pop()
+                    iter_stack.pop()
+                    path_ = path_[:-1]
+
+            except StopIteration:
+                value = iter_obj.pop()
+                iter_stack.pop()
+                path_ = path_[:-1]
+
+                if not nodes_only:
+                    yield DropContainerEvent(path_, value)
