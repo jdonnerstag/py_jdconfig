@@ -65,7 +65,8 @@ class ConfigGetter(StringConverterMixin):
     PAT_ANY_IDX = "%"
     PAT_DEEP = ""
 
-    def __init__(self, *, delegator: Optional[callable] = None):
+    def __init__(self, *, delegator: Optional[object] = None):
+        # TODO May be better just pass on_missing_handler
         self.delegator = delegator
 
     def _invoke_on_missing_handler(self, *args, **kvargs):
@@ -74,6 +75,7 @@ class ConfigGetter(StringConverterMixin):
 
         return self.on_missing_handler(*args, **kvargs)
 
+    # TODO Move all the "normalize" path related functions into a separate class/mixin
     def _flatten_and_split_path(self, path: PathType, sep: str) -> Iterable[str | int]:
         """Flatten a list of list, and further split the str elements by a separator"""
 
@@ -122,8 +124,13 @@ class ConfigGetter(StringConverterMixin):
             return (data, path)
 
         last = path[-1]
-        for elem in path[:-1]:
-            data = data[elem]
+        for i, elem in enumerate(path[:-1]):
+            try:
+                data = data[elem]
+            except KeyError:
+                new_data = self._invoke_on_missing_handler(data, elem, path[0:i], False)
+                data[elem] = new_data
+                data = new_data
 
         return (data, last)
 
@@ -229,14 +236,21 @@ class ConfigGetter(StringConverterMixin):
 
         try:
             if not create_missing and not replace_path:
-                data, key = self._walk_path(data, path)
+                new_data, key = self._walk_path(data, path)
             elif create_missing and not replace_path:
-                data, key = self._walk_create_missing(data, path, create_missing)
+                new_data, key = self._walk_create_missing(data, path, create_missing)
             elif create_missing and replace_path:
-                data, key = self._walk_replace_path(data, path, create_missing)
+                new_data, key = self._walk_replace_path(data, path, create_missing)
 
-            if isinstance(data, (Mapping, Sequence)):
-                return (data, key)
+            if isinstance(new_data, (Mapping, NonStrSequence)):
+                return (new_data, key)
+
+            if len(path) >= 2:
+                new_data = self._invoke_on_missing_handler(data, path[-2], path[0:-2], False)
+
+                if isinstance(data, (Mapping, NonStrSequence)):
+                    return (data, key)
+
         except Exception as exc:
             raise ConfigException(f"Failed to find or create path: '{path}'") from exc
 
@@ -353,6 +367,9 @@ class ConfigGetter(StringConverterMixin):
         """A handler that will be invoked if a path element is missing and
         'create_missing has valid configuration.
         """
+
+        if create_missing is False:
+            raise ConfigException(f"Missing element: '{path}'")
 
         if isinstance(key, int):
             if isinstance(data, Sequence):

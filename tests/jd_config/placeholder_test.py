@@ -12,7 +12,7 @@ import re
 from typing import Mapping
 
 import pytest
-from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder, YamlObj
+from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder
 from jd_config import ResolverMixin, DeepAccessMixin, ConfigFileLoader
 from jd_config import ConfigException, Placeholder, NodeEvent
 
@@ -57,52 +57,27 @@ def test_post_load_and_resolve():
     # We want the resolver to first try against the the yaml file which contains the {ref:..},
     # and only if not found, try from the very root.
 
-    placeholder_db_a = RefPlaceholder("db-a")
-    placeholder_a = RefPlaceholder("a")
-
     # Simulate a db yaml file
     cfg_db = {
-        "db-a": YamlObj(0, 0, None, "db-a1"),
-        "db-b": YamlObj(0, 0, None, [placeholder_db_a]),
-        "db-c": YamlObj(0, 0, None, [placeholder_a]),
+        "db-a": "db-a1",
+        "db-b": "{ref:db-a}",
+        "db-c": "{ref:a}",
     }
 
     # Simulate the main yaml file, which has imported the db yaml file.
     # Both files contain a "db-a" key.
     cfg = {
-        "a": YamlObj(0, 0, None, 11),
+        "a": 11,
         "db": cfg_db,
-        "db-a": YamlObj(0, 0, None, "from root"),
+        "db-a": "from root",
     }
-
-    # First placeholder.post_load() was not invoked, so that RefPlaceholder does
-    # not know about the root obj of the db yaml file.
-    assert placeholder_db_a.file_root is None
-    assert placeholder_db_a.resolve(cfg) == "from root"  # From the main yaml file
-
-    # Invoke post_load() as JDConfig.load() will do, and register the db yaml
-    # file obj with the placeholder. This way, placeholder.resolve() can leverage
-    # it to resolve in 2 steps: step 1: db yaml file; step 2: main yaml file.
-    placeholder_db_a.post_load(cfg_db)
-    assert placeholder_db_a.file_root is not None
-    assert placeholder_db_a.resolve(cfg) == "db-a1"
-
-    # This placeholder will fail resolving in the db yaml file, but succeed in
-    # the main yaml file.
-    placeholder_a.post_load(cfg_db)
-    assert placeholder_a.file_root is not None
-    assert placeholder_a.resolve(cfg) == 11
 
     # Simulate an env yaml file
     env_cfg = {
-        "a": YamlObj(0, 0, None, 11),
+        "a": 11,
         "db": cfg_db,
-        "db-a": YamlObj(0, 0, None, "env file"),
+        "db-a": "env file",
     }
-
-    placeholder_db_a.post_load(cfg_db)
-    assert placeholder_db_a.file_root is not None
-    assert placeholder_db_a.resolve(cfg, env_cfg) == "env file"
 
 
 class MyMixinTestClass(ResolverMixin, DeepAccessMixin):
@@ -263,10 +238,10 @@ def test_walk():
 
     data = list(cfg.walk(resolve=False))
     assert len(data) == 4
-    data.remove(NodeEvent(("a",), YamlObj(2, 12, Path("<file>"), "aa")))
-    data.remove(NodeEvent(("b", "b1", "c1"), YamlObj(5, 21, Path("<file>"), "1cc")))
-    data.remove(NodeEvent(("b", "b1", "c2"), YamlObj(6, 21, Path("<file>"), "2cc")))
-    data.remove(NodeEvent(("b", "b2"), YamlObj(7, 17, Path("<file>"), 22)))
+    data.remove(NodeEvent(("a",), "aa"))
+    data.remove(NodeEvent(("b", "b1", "c1"), "1cc"))
+    data.remove(NodeEvent(("b", "b1", "c2"), "2cc"))
+    data.remove(NodeEvent(("b", "b2"), 22))
 
 
 def test_load_jdconfig_2_with_env(monkeypatch):

@@ -31,14 +31,6 @@ from .objwalk import (
     WalkerEvent,
 )
 
-from .extended_yaml_file_loader import (
-    YamlObj,
-    YamlContainer,
-    YamlMapping,
-    YamlSequence,
-    MyYamlSafeLoader,
-)
-
 from .config_getter import ConfigException, ConfigGetter
 from .deep_dict import DeepDict
 

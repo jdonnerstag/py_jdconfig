@@ -19,14 +19,20 @@ class DeepDict(ResolverMixin, Mapping):
     """
 
     def __init__(self, obj: Mapping) -> None:
-
         ResolverMixin.__init__(self)
 
         self.obj = obj
         self.getter = ConfigGetter(delegator=self)
 
     # pylint: disable=arguments-renamed
-    def get(self, path: PathType, default: Any = DEFAULT, *, resolve:bool=True, sep: str = ".") -> Any:
+    def get(
+        self,
+        path: PathType,
+        default: Any = DEFAULT,
+        *,
+        resolve: bool = True,
+        sep: str = ".",
+    ) -> Any:
         """Similar to dict.get(), but with deep path support.
 
         Example paths: "a.b.c", "a[1].b", ("a[1]", "b", "c"),
@@ -107,10 +113,7 @@ class DeepDict(ResolverMixin, Mapping):
             sep=sep,
         )
 
-    def deep_update(
-        self,
-        updates: Mapping | None
-    ) -> Mapping:
+    def deep_update(self, updates: Mapping | None) -> Mapping:
         """Deep update the 'obj' with only the leafs from 'updates'. Create
         missing paths.
 

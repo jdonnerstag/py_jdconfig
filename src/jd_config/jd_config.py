@@ -8,7 +8,7 @@ Main config package to load and access config values.
 from io import StringIO
 import logging
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Sequence, Union
 from .config_ini_mixin import ConfigIniMixin
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader
@@ -61,17 +61,7 @@ class JDConfig(ConfigIniMixin, ResolverMixin, DeepAccessMixin, DeepExportMixin):
         # is comparatively large with a number of functions. Functions
         # which I consider private, but python has not means to mark them
         # private. This is a more explicit approach.
-        self.config_file_loader = ConfigFileLoader(dependencies=self)
-
-    @property
-    def files_loaded(self) -> list[str]:
-        """The list of config files loaded, in the sequence they were loader"""
-        return self.config_file_loader.files_loaded
-
-    @property
-    def file_recursions(self) -> list[str]:
-        """Used to detect recursions while importing other config files"""
-        return self.config_file_loader.file_recursions
+        self.config_file_loader = ConfigFileLoader()
 
     def load(
         self,
@@ -107,3 +97,23 @@ class JDConfig(ConfigIniMixin, ResolverMixin, DeepAccessMixin, DeepExportMixin):
         # Make the yaml config data accessible via JDConfig
         self.data = self.config_file_loader.load(fname, config_dir, env)
         return self.data
+
+    def on_missing_handler(
+        self,
+        data: Mapping | Sequence,
+        key: str | int,
+        path: tuple,
+        create_missing: Union[callable, bool, Mapping],
+    ) -> Mapping | Sequence:
+        """A handler that will be invoked if a path element is missing and
+        'create_missing has valid configuration.
+        """
+
+        if key in data:
+            value = data[key]
+            if isinstance(value, str) and value.find("{") != -1:
+                value = self.resolve(value, self.data)
+                return value
+
+        # From DeepAccessMixin. Not easy to know ?!? Need something simple / more obvious
+        return self._cfg_getter.on_missing_handler(data, key, path, create_missing)

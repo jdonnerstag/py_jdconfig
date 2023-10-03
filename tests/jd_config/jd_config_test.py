@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 import logging
 import pytest
-from jd_config import JDConfig, Placeholder, ConfigException, YamlObj, NodeEvent
+from jd_config import JDConfig, Placeholder, ConfigException, NodeEvent
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,6 @@ def data_dir(*args) -> Path:
 def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
-    # Use the config.ini configs to load the config files
     cfg = JDConfig(ini_file=None)
     cfg.config_dir = data_dir("configs-1")
     cfg.config_file = "config.yaml"
@@ -33,9 +32,6 @@ def test_load_jdconfig_1():
 
     data = cfg.load()
     assert data
-    assert len(cfg.files_loaded) == 1
-    assert cfg.files_loaded[0].parts[-2:] == ("configs-1", "config.yaml")
-    assert len(cfg.file_recursions) == 0
 
     # Provide the config file name. Note, that it'll not change or set the
     # config_dir. Any config files imported, are imported relativ to the
@@ -85,15 +81,11 @@ def test_load_jdconfig_2(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
 
-    # Apply config_dir to set working directory for relativ yaml imports
     cfg = JDConfig(ini_file=None)
     cfg.env = None  # Make sure, we are not even trying to load an env file
     config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml", config_dir)
     assert data
-    assert len(cfg.files_loaded) == 4
-    assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
-    assert len(cfg.file_recursions) == 0
 
     monkeypatch.setenv("DB_USER", "dbuser")
     monkeypatch.setenv("DB_PASS", "dbpass")
@@ -174,10 +166,10 @@ def test_walk():
 
     data = list(cfg.walk(resolve=False))
     assert len(data) == 4
-    data.remove(NodeEvent(("a",), YamlObj(2, 12, Path("<file>"), "aa")))
-    data.remove(NodeEvent(("b", "b1", "c1"), YamlObj(5, 21, Path("<file>"), "1cc")))
-    data.remove(NodeEvent(("b", "b1", "c2"), YamlObj(6, 21, Path("<file>"), "2cc")))
-    data.remove(NodeEvent(("b", "b2"), YamlObj(7, 17, Path("<file>"), 22)))
+    data.remove(NodeEvent(("a",), "aa"))
+    data.remove(NodeEvent(("b", "b1", "c1"), "1cc"))
+    data.remove(NodeEvent(("b", "b1", "c2"), "2cc"))
+    data.remove(NodeEvent(("b", "b2"), 22))
 
 
 def test_load_jdconfig_2_with_env(monkeypatch):

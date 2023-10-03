@@ -64,8 +64,6 @@ class DeepExportMixin:
             elif isinstance(event, NodeEvent):
                 value = event.value
                 if resolve:
-                    if hasattr(value, "value"):
-                        value = value.value
                     value = self.resolve(value, self.data)
 
                 self._add_to_dict_or_list(cur, event.path[-1], value)

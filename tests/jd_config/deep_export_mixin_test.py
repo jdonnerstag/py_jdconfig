@@ -6,7 +6,7 @@
 import os
 import re
 import logging
-from jd_config import DeepExportMixin, ResolverMixin, DeepAccessMixin, RefPlaceholder, YamlObj
+from jd_config import DeepExportMixin, ResolverMixin, DeepAccessMixin, RefPlaceholder
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +30,12 @@ class MyMixinTestClass(DeepExportMixin, ResolverMixin, DeepAccessMixin):
 def test_to_dict_to_yaml():
     cfg = MyMixinTestClass()
 
-    # TODO make it able to lazy resolve, so that "c2": "{ref:a}" can be used as well
-    # The test should go into config_getter?
     cfg.data = {
         "a": "aa",
         "b": {
             "b1": {
                 "c1": "1cc",
-                "c2": YamlObj(0, 0, None, [RefPlaceholder("a")]),
+                "c2": "{ref:a}",
             },
             "b2": 22,
         },
@@ -47,7 +45,7 @@ def test_to_dict_to_yaml():
     data = cfg.to_dict(resolve=False)
     assert data["a"] == "aa"
     assert data["b"]["b1"]["c1"] == "1cc"
-    assert data["b"]["b1"]["c2"].value == [RefPlaceholder("a")]
+    assert data["b"]["b1"]["c2"] == "{ref:a}"
     assert data["b"]["b2"] == 22
     assert data["c"][0] == "x"
     assert data["c"][1] == "y"
@@ -56,6 +54,10 @@ def test_to_dict_to_yaml():
 
     data = cfg.to_dict(resolve=True)
     assert data["b"]["b1"]["c2"] == "aa"
+
+    data = cfg.to_dict("b.b1")
+    assert data["c1"] == "1cc"
+    assert data["c2"] == "aa"
 
     data = cfg.to_yaml("b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
