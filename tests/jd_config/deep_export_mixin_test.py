@@ -60,3 +60,23 @@ def test_to_dict_to_yaml():
     data = cfg.to_yaml("b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
     assert data == "c1: 1cc\nc2: aa\n"
+
+def test_lazy_resolve():
+    cfg = MyMixinTestClass()
+    cfg.data = {
+        "a": "aa",
+        "b": {
+            "b1": {
+                "c1": "1cc",
+                "c2": "{ref:a}",
+            },
+            "b2": 22,
+        },
+        "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
+    }
+
+    data = cfg.to_dict(resolve=False)
+    assert data["b"]["b1"]["c2"] == "{ref:a}"
+
+    data = cfg.to_dict(resolve=True)
+    assert data["b"]["b1"]["c2"] == "aa"

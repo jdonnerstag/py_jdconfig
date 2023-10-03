@@ -67,6 +67,10 @@ class ResolverMixin:
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{key}'")
 
+        if isinstance(value, str) and value.find("{") != -1:
+            value = list(self.value_reader.parse(value))
+            value = self.resolve(value, data_1, data_2)
+
         if isinstance(value, (str, int, float, bool)):
             return value
 
