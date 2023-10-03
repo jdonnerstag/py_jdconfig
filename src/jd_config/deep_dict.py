@@ -5,25 +5,28 @@
 """
 
 import logging
-from typing import Any, Mapping, Sequence, Union
-from collections import UserDict
+from typing import Any, Iterator, Mapping, Sequence, Union
 from .config_getter import ConfigGetter, PathType, DEFAULT
+from .resolver_mixin import ResolverMixin
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepDict(UserDict):
+class DeepDict(ResolverMixin, Mapping):
     """Dict-like get, set, delete and find operations on deep
     Mapping- and Sequence-like structures.
     """
 
     def __init__(self, obj: Mapping) -> None:
-        super().__init__(obj)
+
+        ResolverMixin.__init__(self)
+
+        self.obj = obj
         self.getter = ConfigGetter(delegator=self)
 
     # pylint: disable=arguments-renamed
-    def get(self, path: PathType, default: Any = DEFAULT, *, sep: str = ".") -> Any:
+    def get(self, path: PathType, default: Any = DEFAULT, *, resolve:bool=True, sep: str = ".") -> Any:
         """Similar to dict.get(), but with deep path support.
 
         Example paths: "a.b.c", "a[1].b", ("a[1]", "b", "c"),
@@ -36,9 +39,12 @@ class DeepDict(UserDict):
         :return: The config value
         """
 
-        rtn = self.getter.get(self.data, path, default=default, sep=sep)
+        rtn = self.getter.get(self.obj, path, default=default, sep=sep)
         if isinstance(rtn, Mapping):
             return DeepDict(rtn)
+
+        if resolve and isinstance(rtn, str) and rtn.find("{") != -1:
+            rtn = self.resolve(rtn, self.obj)
 
         return rtn
 
@@ -51,7 +57,7 @@ class DeepDict(UserDict):
     ) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
 
-        return self.getter.delete(self.data, path, sep=sep, exception=exception)
+        return self.getter.delete(self.obj, path, sep=sep, exception=exception)
 
     def on_missing_handler(
         self,
@@ -92,7 +98,7 @@ class DeepDict(UserDict):
         """
 
         return self.getter.set(
-            self.data,
+            self.obj,
             path,
             value,
             create_missing=create_missing,
@@ -114,11 +120,23 @@ class DeepDict(UserDict):
         :return: the updated 'obj'
         """
 
-        rtn = self.getter.deep_update(self.data, updates)
+        rtn = self.getter.deep_update(self.obj, updates)
         if isinstance(rtn, Mapping):
             return DeepDict(rtn)
 
         return rtn
 
     def __getitem__(self, key: Any) -> Any:
-        return self.get(key)
+        return self.get(key, resolve=False)
+
+    def __setitem__(self, key: Any, item: Any) -> None:
+        if hasattr(self, "getter"):
+            self.set(key, item)
+        else:
+            self.obj[key] = item
+
+    def __len__(self) -> int:
+        return self.obj.__len__()
+
+    def __iter__(self) -> Iterator:
+        return self.obj.__iter__()

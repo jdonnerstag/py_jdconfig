@@ -7,7 +7,7 @@
 from copy import deepcopy
 import logging
 from typing import List, Mapping, Sequence
-from jd_config import ConfigGetter, ConfigException, DeepDict
+from jd_config import ConfigException, DeepDict
 import pytest
 
 logger = logging.getLogger(__name__)
@@ -136,3 +136,10 @@ def test_deep_update():
     assert data.deep_update({"z": "new"})["z"] == "new"
     assert data.deep_update({"b": {"b1": {"b2": "B222B"}}}).get("b.b1") == {"b2": "B222B"}
     assert data.deep_update({"b": {"b1": [1, 2, 3, 4]}}).get("b.b1") == [1, 2, 3, 4]
+
+
+def test_lazy_resolve():
+    data = DeepDict(deepcopy(DATA))
+    data["c"]["c2"]["c22"] = "{ref:a}"
+    assert data["c"]["c2"]["c22"] == "{ref:a}"
+    assert data.get("c.c2.c22") == "aa"
