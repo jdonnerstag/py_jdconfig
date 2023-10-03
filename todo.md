@@ -1,7 +1,6 @@
 # Todos / Requirements
 
 - I like structured configs with dataclass and pydantic
-- support making a subtree read-only
 - We construct one config "dict", not multiple layers as we had earlier. But we need
   some debugging, tracing/logging. May be a list of add/change/deletes with filename
   and line number? Also when replacing syntax with real values. Why not replace the
@@ -79,6 +78,7 @@ Done:
   unfortunately that is rarely the case. And the "workarounds" make it very obvious:
   copy the file, append the env name, and simply change them. If we don't support
   deletes, how to replace dicts and lists, vs. values only? (see test cases)
+- support making a subtree read-only => Not sure why. What is the usecase?
 
 
 # Nice to know

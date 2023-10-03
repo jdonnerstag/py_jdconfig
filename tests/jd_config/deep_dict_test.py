@@ -143,3 +143,6 @@ def test_lazy_resolve():
     data["c"]["c2"]["c22"] = "{ref:a}"
     assert data["c"]["c2"]["c22"] == "{ref:a}"
     assert data.get("c.c2.c22") == "aa"
+
+    data["a"] = "{ref:b}"
+    assert data.get("c.c2.c22") == "bb"
