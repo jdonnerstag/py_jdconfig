@@ -20,6 +20,7 @@ class NodeEvent:
 
     path: Tuple[str | int, ...]
     value: Any
+    skip: bool = False
 
     def is_sequence_node(self) -> bool:
         """True, if node belongs to a Sequence"""
@@ -36,6 +37,7 @@ class NewMappingEvent:
 
     path: Tuple[str | int, ...]
     value: Mapping
+    skip: bool = False
 
     @classmethod
     def new(cls):
@@ -49,6 +51,7 @@ class NewSequenceEvent:
 
     path: [str | int, ...]
     value: Sequence
+    skip: bool = False
 
     @classmethod
     def new(cls):
@@ -62,6 +65,7 @@ class DropContainerEvent:
 
     path: [str | int, ...]
     value: Mapping | Sequence
+    skip: bool = False
 
 
 WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
@@ -97,6 +101,9 @@ class ObjectWalker:
         :return: 'objwalk' is a generator function, yielding the elements path and obj.
         """
 
+        if not obj:
+            return
+
         iter_stack = []
         iter_obj = []
         path_ = ()  # Empty tuple
@@ -113,33 +120,34 @@ class ObjectWalker:
         while iter_stack:
             cur = iter_stack[-1]
             try:
-                skip = False
                 key, value = next(cur)
 
+                event = None
                 if isinstance(value, Mapping):
                     path_ = path_ + (key,)
                     if not nodes_only:
-                        skip = yield NewMappingEvent(path_, value)
+                        event = NewMappingEvent(path_, value)
+                        yield event
                     iter_obj.append(value)
                     iter_stack.append(iter(value.items()))
                 elif isinstance(value, NonStrSequence):
                     path_ = path_ + (key,)
                     if not nodes_only:
-                        skip = yield NewSequenceEvent(path_, value)
+                        event = NewSequenceEvent(path_, value)
+                        yield event
                     iter_obj.append(value)
                     iter_stack.append(iter(enumerate(value)))
                 else:
-                    skip = yield NodeEvent(path_ + (key,), value)
+                    event = NodeEvent(path_ + (key,), value)
+                    yield event
 
-                if skip:
-                    iter_obj.pop()
-                    iter_stack.pop()
-                    path_ = path_[:-1]
+                if event and event.skip:
+                    raise StopIteration
 
             except StopIteration:
                 value = iter_obj.pop()
+                if not nodes_only and iter_obj:
+                    yield DropContainerEvent(path_, value)
+
                 iter_stack.pop()
                 path_ = path_[:-1]
-
-                if not nodes_only:
-                    yield DropContainerEvent(path_, value)

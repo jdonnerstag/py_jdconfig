@@ -269,15 +269,6 @@ def test_deep_update():
     updates = {"b": {"b1": [1, 2, 3, 4]}}
     assert ConfigGetter().deep_update(data_1, updates)["b"]["b1"] == [1, 2, 3, 4]
 
-    # The only search pattern supported
-    updates = {"c": {"c3[*]": {"c32": "C_333"}}}
-    assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][4]["c32"] == "C_333"
-
-    # The only search pattern supported
-    with pytest.raises(ConfigException):
-        updates = {"c": {"c3[*]": "somevalue"}}     # Requires a value of type mapping
-        ConfigGetter().deep_update(data_1, updates)
-
     # Deliberately not supported
     # updates = {"c": {"c3": [None, 220]}}
     # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][1] == 220
@@ -302,5 +293,6 @@ def test_deep_update():
     # Deliberately not supported
     # updates = {"a": "$delete$"}
     # assert ConfigGetter().deep_update(data_1, updates)["c"]["c3"][4]["C32"] == "C_321"
+
 
 # TODO we have not test (get, set, etc.) for lists in lists

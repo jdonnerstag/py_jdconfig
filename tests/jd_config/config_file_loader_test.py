@@ -33,6 +33,7 @@ class MyMixinTestClass(ResolverMixin):
         # private. This is a more explicit approach.
         self.config_file_loader = ConfigFileLoader(dependencies=self)
 
+    # TODO This is repetitive => create a little mixin
     def load(
         self, fname: Path | StringIO, config_dir: Path | None, env: str | None = None
     ) -> Mapping:

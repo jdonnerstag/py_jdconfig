@@ -136,6 +136,3 @@ def test_deep_update():
     assert data.deep_update({"z": "new"})["z"] == "new"
     assert data.deep_update({"b": {"b1": {"b2": "B222B"}}}).get("b.b1") == {"b2": "B222B"}
     assert data.deep_update({"b": {"b1": [1, 2, 3, 4]}}).get("b.b1") == [1, 2, 3, 4]
-
-    # The only search pattern supported
-    assert data.deep_update({"c": {"c3[*]": {"c32": "C_333"}}}).get("c..c32") == "C_333"

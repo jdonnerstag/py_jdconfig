@@ -473,7 +473,7 @@ class ConfigGetter(StringConverterMixin):
                     elif (key not in cur) or not isinstance(cur[key], Mapping):
                         cur[key] = event.value
                         if not any_elem:
-                            gen.send(True)
+                            event.skip = True
 
                     stack.append(cur[key])
             elif isinstance(event, NewSequenceEvent):
@@ -485,7 +485,7 @@ class ConfigGetter(StringConverterMixin):
                     or isinstance(cur[key], str)
                 ):
                     cur[key] = event.value
-                    gen.send(True)
+                    event.skip = True
                 stack.append(cur[key])
             elif isinstance(event, NodeEvent):
                 key = event.path[-1]

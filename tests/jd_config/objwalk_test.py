@@ -3,8 +3,9 @@
 
 # pylint: disable=C
 
+from copy import deepcopy
 import logging
-from jd_config import ObjectWalker
+from jd_config import ObjectWalker, DropContainerEvent
 
 logger = logging.getLogger(__name__)
 
@@ -43,4 +44,48 @@ def test_objwalk():
 
     assert len(data) == 0
 
-# TODO Add test with "skip"
+
+def test_skip():
+    data = deepcopy(DATA)
+
+    def func_inner(path, data=data):
+        for event in ObjectWalker.objwalk(data, nodes_only=False):
+            if not path or event.path == path:
+                event.skip = True
+            if not isinstance(event, DropContainerEvent):
+                yield event.path
+
+    def func(path, data=data):
+        return list(func_inner(path, data))
+
+    rtn = func((), data={})
+    assert len(rtn) == 0
+
+    rtn = func(())
+    assert len(rtn) == 1
+    assert rtn == [("a",)]
+
+    rtn = func(("a",))
+    assert len(rtn) == 1
+    assert rtn == [("a",)]
+
+    rtn = func(("b",))
+    assert len(rtn) == 2
+    assert rtn == [("a",), ("b",)]
+
+    rtn = func(("c",))
+    assert len(rtn) == 3
+    assert rtn == [("a",), ("b",), ("c",)]
+
+    rtn = func(("c","c1",))
+    assert len(rtn) == 4
+    assert rtn == [("a",), ("b",), ("c",), ("c", "c1")]
+
+    rtn = func(("c","c3",))
+    assert len(rtn) == 12
+
+    rtn = func(("c","c3", 2))
+    assert len(rtn) == 15
+
+    rtn = func(("c","c3", 4, "c32"))
+    assert len(rtn) == 18

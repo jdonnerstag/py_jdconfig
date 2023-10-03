@@ -30,6 +30,8 @@ class MyMixinTestClass(DeepExportMixin, ResolverMixin, DeepAccessMixin):
 def test_to_dict_to_yaml():
     cfg = MyMixinTestClass()
 
+    # TODO make it able to lazy resolve, so that "c2": "{ref:a}" can be used as well
+    # The test should go into config_getter?
     cfg.data = {
         "a": "aa",
         "b": {
