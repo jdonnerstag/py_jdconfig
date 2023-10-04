@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import logging
 
 import pytest
-from jd_config import ValueType, ValueReader
+from jd_config import ValueType, ValueReader, ConfigException
 from jd_config import Placeholder, RefPlaceholder, ImportPlaceholder, EnvPlaceholder
 
 logger = logging.getLogger(__name__)
@@ -43,43 +43,58 @@ def test_ValueType():
 
 
 def test_ValueReader():
-    value = list(ValueReader().parse("", sep=","))
+    value_reader = ValueReader()
+    def parse(x):
+        return list(value_reader.parse(x))
+
+    value = parse("")
     assert len(value) == 0
 
-    value = list(ValueReader().parse("test", sep=","))
+    value = parse("test")
     assert len(value) == 1
     assert value[0] == "test"
 
-    value = list(ValueReader().parse("123", sep=","))
+    value = parse("123")
     assert len(value) == 1
     assert value[0] == 123
 
-    value = list(ValueReader().parse(" aaa, bbb,ccc ,   123, ddd ", sep=","))
+    value = parse(" aaa, bbb,ccc ,   123, ddd ")
     assert value == ["aaa", "bbb", "ccc", 123, "ddd"]
 
-    value = list(ValueReader().parse("{ref: test}", sep=","))
+    value = parse("{ref: test}")
     assert value == [RefPlaceholder("test")]
 
-    value = list(ValueReader().parse("{ref: test}-{ref: db}", sep=","))
+    value = parse("{ref: test,}")
+    assert value == [RefPlaceholder("test")]
+
+    value = parse("{ref: test}-{ref: db}")
     assert value == [RefPlaceholder("test"), "-", RefPlaceholder("db")]
 
     # Nested placeholders
-    value = list(
-        ValueReader().parse("{ref: test}-{ref: db, {ref: db_default, mysql}}", sep=",")
-    )
+    value = parse("{ref: test}-{ref: db, {ref: db_default, mysql}}")
     assert value == [
         RefPlaceholder("test"),
         "-",
-        RefPlaceholder("db", RefPlaceholder("db_default", "mysql")),
+        RefPlaceholder("db", "{ref: db_default, mysql}"),
     ]
 
-    value = list(ValueReader().parse("{import: ./db/{ref: db}-config.yaml}", sep=","))
-    assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"])]
+    value = parse("{import: ./db/{ref: db}-config.yaml}")
+    assert value == [ImportPlaceholder("./db/{ref: db}-config.yaml")]
 
     # Value with quotes
-    value = list(ValueReader().parse('{import: "./db/{ref:db}-config.yaml"}', sep=","))
-    assert value == [ImportPlaceholder(["./db/", RefPlaceholder("db"), "-config.yaml"])]
+    value = parse('{import: "./db/{ref:db}-config.yaml"}')
+    assert value == [ImportPlaceholder("./db/{ref:db}-config.yaml")]
 
+    should_fail = ["{ref:db", "{db}", "{:db}", "{xxx: db}", "{ref:,db}"]
+    for fail in should_fail:
+        with pytest.raises(ConfigException):
+            parse(fail)
+
+    value = list(value_reader.parse(" aaa, bbb,ccc ,   123, ddd ", sep=";"))
+    assert value == ["aaa, bbb,ccc ,   123, ddd"]   # Only leading and trailing whitespaces are stripped
+
+    value = list(value_reader.parse(" aaa; bbb;ccc ;   123; ddd ", sep=";"))
+    assert value == ["aaa", "bbb", "ccc", 123, "ddd"]
 
 @dataclass
 class MyBespokePlaceholder(Placeholder):

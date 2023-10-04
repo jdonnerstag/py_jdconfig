@@ -95,8 +95,10 @@ class JDConfig(ConfigIniMixin, ResolverMixin, DeepAccessMixin, DeepExportMixin):
         env = env or self.env
 
         # Make the yaml config data accessible via JDConfig
-        self.data = self.config_file_loader.load(fname, config_dir, env)
-        return self.data
+        data = self.config_file_loader.load(fname, config_dir, env)
+        if self.data is None:
+            self.data = data
+        return data
 
     def on_missing_handler(
         self,

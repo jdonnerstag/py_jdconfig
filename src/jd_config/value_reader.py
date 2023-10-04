@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-"""Manage everything related to placeholders, such as
+"""Manage parsing yaml values with placeholders, such as
 ```
   db_user: '{env: DB_USER, ???}'
   db_engine: '{ref: db.engine, innodb}'
@@ -30,10 +30,6 @@ logger = logging.getLogger(__parent__name__)
 ValueType = Union[int, float, bool, str, Placeholder]
 
 
-class ValueReaderException(ConfigException):
-    """Denote an Exception that occured while parsing a yaml value (with placeholder)"""
-
-
 class ValueReader(StringConverterMixin):
     """Maintain a registry of supported placeholders and parse a yaml value
     into its constituent parts
@@ -50,7 +46,6 @@ class ValueReader(StringConverterMixin):
                 "timestamp": TimestampPlaceholder,
             }
 
-
     def parse(self, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
         """Parse a yaml value and yield the various parts.
 
@@ -59,63 +54,53 @@ class ValueReader(StringConverterMixin):
         :return: Generator yielding individual parts of the yaml string value
         """
 
-        _iter = self.tokenize(strval, sep)
-        try:
-            while text := next(_iter, None):
-                if text == sep:
-                    pass
-                elif text == "{":
-                    placeholder = self.parse_placeholder(_iter, sep)
-                    yield placeholder
-                elif isinstance(text, str) and text.find("{") != -1:
-                    values = list(self.parse(text))
-                    value = list(self.convert(x) for x in values)
-                    yield value
-                else:
-                    value = self.convert(text)
-                    yield value
+        for text in self.tokenize(strval, sep):
+            if text == sep:
+                pass
+            elif len(text) > 0 and text[0] in ["'", '"']:
+                yield value
+            elif text.startswith("{"):
+                placeholder = self.parse_placeholder(text, sep)
+                yield placeholder
+            else:
+                value = self.convert(text)
+                yield value
 
-        except StopIteration as exc:
-            raise ValueReaderException(
-                f"Failed to parse yaml value with placeholder: '${strval}'"
-            ) from exc
-
-
-    def parse_placeholder(self, _iter: Iterator, sep: str) -> Placeholder:
+    def parse_placeholder(self, strval: str, sep: str) -> Placeholder:
         """Parse {<name>: <arg-1>, ...} into registered Placeholder objects"""
 
-        name = next(_iter)
+        strval = strval[1:-1]
+        i = strval.find(":")
+        if i == -1:
+            raise ConfigException(f"Expected to find placeholder name separated by colon: '{strval}'")
+
+        name = strval[:i].strip()
+        if not name:
+            raise ConfigException(f"Missing placeholder name in '{strval}'")
+
+        if name not in self.registry:
+            raise ConfigException(f"Unknown placeholder name: '{name}' in '{strval}'")
+
         args = []
-        compound = []
+        same = False
+        for text in self.tokenize(strval[i+1:], sep):
+            if not args and text == sep:
+                raise ConfigException(f"Unexpected ',' in f'{strval}'")
 
-        colon = next(_iter)
-        assert colon == ":"
+            if text == sep:
+                same = False
+                continue
 
-        while text := next(_iter, None):
-            if text in [sep, "}"]:
-                if len(compound) == 1:
-                    args.append(compound[0])
-                elif len(compound) > 1:
-                    args.append(list(compound))
-                compound.clear()
+            if len(text) > 1 and text[0] in ["'", '"']:
+                text = text[1:-1]
 
-            if text == "{":
-                placeholder = self.parse_placeholder(_iter, sep)
-                compound.append(placeholder)
-            elif text == "}":
-                placeholder = self.registry[name](*args)
-                return placeholder
-            elif text != sep:
-                if isinstance(text, str) and text.find("{") != -1:
-                    value = list(self.parse(text))
-                    value = [self.convert(x) for x in value]
-                else:
-                    value = self.convert(text)
+            if not same:
+                args.append(text)
+                same = True
+            else:
+                args[-1] += text
 
-                compound.append(value)
-
-        raise ConfigException(f"Unexpected end: '{text}'")
-
+        return self.registry[name](*args)
 
     @classmethod
     def tokenize(cls, strval: str, sep: str = ",") -> Iterator[str]:
@@ -131,47 +116,81 @@ class ValueReader(StringConverterMixin):
         while i < len(strval):
             ch = strval[i]  # pylint: disable=invalid-name
             if ch == "\\":
-                i += 1
-            elif ch in ['"', "'"]:
-                i = cls.find_closing_quote(strval, i)
-                value = strval[start + 2 : i]
-                yield value
-                start = i + 1
-            elif ch in [sep, "{", "}", ":"]:
+                i += 2
+            elif ch in [sep, "'", '"', "{"]:
                 value = strval[start:i].strip()
+                start = i
                 if value:
                     yield value
 
-                start = i + 1
+            if ch in ['"', "'"]:
+                i = cls.find_quote_end(strval, i)
+                value = strval[start:i].strip()
+                start = i
+                yield value
+            elif ch == "{":
+                i = cls.find_bracket_end(strval, i)
+                value = strval[start:i].strip()
+                start = i
+                yield value
+            elif ch == sep:
+                i += 1
+                start = i
                 yield ch
+            else:
+                i += 1
 
-            i += 1
-
-        value = strval[start:].strip()
-        if value:
-            yield value
-
+        if start < len(strval):
+            value = strval[start:].strip()
+            if value:
+                yield value
 
     @classmethod
-    def find_closing_quote(cls, strval: str, start: int) -> int:
-        """Given a start position, determine the end of a quote.
-
-        The first character determine the quote, e.g. "'", '"'
+    def find_quote_end(cls, strval: str, start: int) -> int:
+        """Given a start position, determine the end of a quote or placeholder
 
         :param strval: Input yaml string value
+        :param end_ch: the end of the section
         :param start: position where the quote starts
         :return: position where the quote ends
         """
 
-        quote_char = strval[start]
+        end_ch = strval[start]
         i = start + 1
         while i < len(strval):
             char = strval[i]
             if char == "\\":
                 i += 1
-            elif char == quote_char:
-                return i
+            elif char == end_ch:
+                return i + 1
 
             i += 1
 
-        return i - 1
+        raise ConfigException(f"Missing section close: '{strval}'")
+
+    @classmethod
+    def find_bracket_end(cls, strval: str, start: int) -> int:
+        """Given a start position, determine the end of a quote or placeholder
+
+        :param strval: Input yaml string value
+        :param end_ch: the end of the section
+        :param start: position where the quote starts
+        :return: position where the quote ends
+        """
+
+        count = 1
+        i = start + 1
+        while i < len(strval):
+            char = strval[i]
+            if char == "\\":
+                i += 1
+            elif char == "{":
+                count += 1
+            elif char == "}":
+                count -= 1
+                if count == 0:
+                    return i + 1
+
+            i += 1
+
+        raise ConfigException(f"Missing section close: '{strval}'")

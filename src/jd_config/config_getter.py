@@ -248,8 +248,8 @@ class ConfigGetter(StringConverterMixin):
             if len(path) >= 2:
                 new_data = self._invoke_on_missing_handler(data, path[-2], path[0:-2], False)
 
-                if isinstance(data, (Mapping, NonStrSequence)):
-                    return (data, key)
+                if isinstance(new_data, (Mapping, NonStrSequence)):
+                    return (new_data, key)
 
         except Exception as exc:
             raise ConfigException(f"Failed to find or create path: '{path}'") from exc

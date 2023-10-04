@@ -36,7 +36,7 @@ class Placeholder(ABC):
         """
 
     @abstractmethod
-    def resolve(self, data_1: Mapping, data_2: Optional[Mapping] = None):
+    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
         """Resolve the placeholder"""
 
 
@@ -52,8 +52,10 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, *_):
-        pass  # Nothing to do
+    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
+        file = cfg.resolve(self.file, data_1, data_2)
+        rtn = cfg.load(file)
+        return rtn
 
 
 @dataclass
@@ -70,7 +72,7 @@ class RefPlaceholder(Placeholder):
     def post_load(self, _data: Mapping) -> None:
         self.file_root = _data
 
-    def resolve(self, data_1: Mapping, data_2: Optional[Mapping] = None):
+    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
         # Search order:
         #  1. CLI -> that is pretty clear  (where are the CLI data?)
         #  2. The env file
@@ -86,6 +88,7 @@ class RefPlaceholder(Placeholder):
             except:  # pylint: disable=bare-except  # noqa: E722
                 pass
 
+        # TODO Maybe we should introduce another placeholder for clarity: {global:} ??
         # Search in the yaml file which contains the reference
         if self.file_root:  # local file (3)
             try:

@@ -38,7 +38,7 @@ class ResolverMixin:
         data_2: Optional[Mapping] = None,
         *,
         _memo: list | None = None,
-    ):
+    ) -> Any:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -57,7 +57,7 @@ class ResolverMixin:
                 raise ConfigException(f"Recursion detected: {_memo}")
 
             _memo.append(value)
-            value = value.resolve(data_1, data_2)
+            value = value.resolve(self, data_1, data_2)
 
         if isinstance(value, list):
             value = [self.resolve(x, data_1, data_2, _memo=_memo) for x in value]
@@ -66,12 +66,11 @@ class ResolverMixin:
 
         if isinstance(value, str) and value.find("{") != -1:
             value = list(self.value_reader.parse(value))
+            if len(value) == 1:
+                value = value[0]
             value = self.resolve(value, data_1, data_2)
 
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{key}'")
 
-        if isinstance(value, (str, int, float, bool)):
-            return value
-
-        raise ConfigException(f"Unable to resolve: '{value}'")
+        return value
