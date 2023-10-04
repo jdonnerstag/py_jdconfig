@@ -4,17 +4,12 @@
 # pylint: disable=C
 
 from dataclasses import dataclass
-from io import StringIO
 import logging
-import os
-from pathlib import Path
-import re
-from typing import Mapping
 
 import pytest
 from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder
-from jd_config import ResolverMixin, DeepAccessMixin, ConfigFileLoader
-from jd_config import ConfigException, Placeholder, NodeEvent
+from jd_config import ResolverMixin, GlobalRefPlaceholder
+from jd_config import ConfigException, Placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +36,17 @@ def test_RefPlaceholder():
         RefPlaceholder(path="")
 
 
-def test_EnvPlaceholder():
+def test_GlobalRefPlaceholder():
+    obj = GlobalRefPlaceholder(path="db")
+    assert obj.path == "db"
+    assert obj.default_val is None
+
+    # Filename is missing
+    with pytest.raises(Exception):
+        RefPlaceholder(path="")
+
+
+def test_EnvPlaceholder(monkeypatch):
     obj = EnvPlaceholder(env_var="ENV")
     assert obj.env_var == "ENV"
     assert obj.default_val is None
@@ -49,6 +54,12 @@ def test_EnvPlaceholder():
     # Filename is missing
     with pytest.raises(Exception):
         EnvPlaceholder(env_var="")
+
+    monkeypatch.setenv("ENV", "this is a test")
+
+    resolver = ResolverMixin()
+    env = EnvPlaceholder("ENV")
+    assert env.resolve(resolver) == "this is a test"
 
 
 def test_resolve():
@@ -75,6 +86,33 @@ def test_resolve():
 
     with pytest.raises(ConfigException):
         ref = RefPlaceholder("xxx")
+        ref.resolve(resolver, cfg)
+
+
+def test_global_ref():
+    cfg = {
+        "a": "aa",
+        "b": "{global:a}",
+        "c": "{global:b}",
+        "d": "{global:xxx}",
+    }
+
+    resolver = ResolverMixin()
+    ref = GlobalRefPlaceholder("a")
+    assert ref.resolve(resolver, cfg) == "aa"
+
+    ref = GlobalRefPlaceholder("b")
+    assert ref.resolve(resolver, cfg) == "aa"
+
+    ref = GlobalRefPlaceholder("c")
+    assert ref.resolve(resolver, cfg) == "aa"
+
+    with pytest.raises(ConfigException):
+        ref = GlobalRefPlaceholder("d")
+        ref.resolve(resolver, cfg)
+
+    with pytest.raises(ConfigException):
+        ref = GlobalRefPlaceholder("xxx")
         ref.resolve(resolver, cfg)
 
 

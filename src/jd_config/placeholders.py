@@ -28,7 +28,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None, *, _memo: list | None = None):
+    def resolve(self, cfg, data: Mapping, *, _memo: list | None = None):
         """Resolve the placeholder"""
 
 
@@ -44,8 +44,8 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None, *, _memo: list | None = None):
-        file = cfg.resolve(self.file, data_1, data_2, _memo=_memo)
+    def resolve(self, cfg, data: Mapping, *, _memo: list | None = None):
+        file = cfg.resolve(self.file, data, _memo=_memo)
         rtn = cfg.load(file)
         return rtn
 
@@ -61,7 +61,7 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None, *, _memo: list | None = None):
+    def resolve(self, cfg, data: Mapping, *, _memo: list | None = None):
         # Search order:
         #  1. CLI -> that is pretty clear  (where are the CLI data?)
         #  2. The env file
@@ -69,38 +69,27 @@ class RefPlaceholder(Placeholder):
         #  4. The main file
         # Maybe resolve should receive a list of Mappings?
 
-        obj = self._resolve_inner(cfg, data_1, data_2)
-        obj = cfg.resolve(obj, data_1, data_2, _memo=_memo)
+        obj = self._resolve_inner(cfg, data)
+        obj = cfg.resolve(obj, data, _memo=_memo)
         return obj
 
-    def _resolve_inner(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
-        # Search in the env file, if provided
-        if data_2:  # env file (2)
-            try:
-                obj = ConfigGetter().get(data_2, self.path, sep=",")
-                return obj
-            except:  # pylint: disable=bare-except  # noqa: E722
-                pass
-
-        # TODO Maybe we should introduce another placeholder for clarity: {global:} ??
-        # Search in the yaml file which contains the reference
-        if self.file_root:  # local file (3)
-            try:
-                obj = ConfigGetter().get(self.file_root, self.path, sep=",")
-                return obj
-            except:  # pylint: disable=bare-except  # noqa: E722
-                pass
-
-        # Search starting from the root of all the config files.
-        # Main file (4)
+    def _resolve_inner(self, cfg, data: Mapping):
         try:
-            obj = ConfigGetter().get(data_1, self.path, sep=",")
+            obj = ConfigGetter().get(data, self.path)
             return obj
         except:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:
                 return obj
 
             raise
+
+
+@dataclass
+class GlobalRefPlaceholder(RefPlaceholder):
+    """Reference Placeholder: '{global: <path>[, <default>]}'"""
+    # TODO Not yet implemented. ref and global are identical, except
+    # that the map they resolve against is different.
+
 
 @dataclass
 class EnvPlaceholder(Placeholder):

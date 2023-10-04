@@ -77,6 +77,31 @@ def test_jdconfig_1_placeholders(monkeypatch):
     assert cfg.get("schematas.e2e") == "xxx"
 
 
+def test_load_jdconfig_4():
+    # config-4 is is about simple {import:}, {ref:} and {global:}
+
+    cfg = JDConfig(ini_file=None)
+    cfg.env = None  # Make sure, we are not even trying to load an env file
+    cfg.config_dir = data_dir("configs-4")  # configure the directory for imports
+    data = cfg.load("config.yaml")
+    assert data
+
+    assert cfg.get("a") == "aa"
+    assert cfg.get("b") == "aa"
+    assert cfg.get("c")
+
+    assert cfg.get("c.a") == "2aa"
+    assert cfg.get("c.b") == "2aa"
+    assert cfg.get("c.c") == "aa"
+    assert cfg.get("c.d") == "2aa"
+    assert cfg.get("c.e") == "aa"
+    assert cfg.get("c.f") == "aa"
+
+    assert cfg.get("d") == "2aa"
+    assert cfg.get("e") == "2aa"
+    assert cfg.get("f") == "aa"
+
+
 def test_load_jdconfig_2(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
@@ -93,6 +118,8 @@ def test_load_jdconfig_2(monkeypatch):
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
     assert cfg.get("db") == "oracle"
+    # TODO we should cache the imported files
+    # TODO need to resolve DB_USER against the file it is in.
     assert cfg.get("database.DB_USER") == "dbuser"
     assert cfg.get("database.DB_PASS") == "dbpass"
     assert cfg.get("database.DB_NAME") == "dbname"
@@ -105,7 +132,7 @@ def test_load_jdconfig_2(monkeypatch):
 class MyBespokePlaceholder(Placeholder):
     """This is also a test for a placeholder that does not take any parameters"""
 
-    def resolve(self, *_) -> str:
+    def resolve(self, *_, **__) -> str:
         return "value"
 
 

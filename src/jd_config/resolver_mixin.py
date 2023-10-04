@@ -9,7 +9,7 @@ import logging
 from typing import Any, Mapping, Optional
 from .placeholders import Placeholder
 from .value_reader import ValueReader
-from .config_getter import ConfigException
+from .objwalk import ConfigException
 
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -34,8 +34,7 @@ class ResolverMixin:
     def resolve(
         self,
         value: Any,
-        data_1: Optional[Mapping] = None,
-        data_2: Optional[Mapping] = None,
+        data: Optional[Mapping] = None,
         *,
         _memo: list | None = None,
     ) -> Any:
@@ -51,6 +50,7 @@ class ResolverMixin:
         if _memo is None:
             _memo = []
 
+        logger.debug("resolve(%s)", value)
         key = value
         if isinstance(value, Placeholder):
             if value in _memo:
@@ -58,10 +58,10 @@ class ResolverMixin:
                 raise ConfigException(f"Recursion detected: {_memo}")
 
             _memo.append(value)
-            value = value.resolve(self, data_1, data_2, _memo=_memo)
+            value = value.resolve(self, data, _memo=_memo)
 
         if isinstance(value, list):
-            value = [self.resolve(x, data_1, data_2, _memo=_memo) for x in value]
+            value = [self.resolve(x, data, _memo=_memo) for x in value]
             value = "".join(value)
             return value
 
@@ -69,7 +69,7 @@ class ResolverMixin:
             value = list(self.value_reader.parse(value))
             if len(value) == 1:
                 value = value[0]
-            value = self.resolve(value, data_1, data_2, _memo=_memo)
+            value = self.resolve(value, data, _memo=_memo)
 
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{key}'")

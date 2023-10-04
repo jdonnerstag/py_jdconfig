@@ -6,12 +6,9 @@ Assuming a deep Mapping- and Sequence-like structure, walk along
 a path and support dict-like get(), set() and delete() operations.
 """
 
-import re
 import logging
 from typing import (
     Any,
-    Iterable,
-    Iterator,
     Mapping,
     Tuple,
     Type,
@@ -20,6 +17,7 @@ from typing import (
     Optional,
 )
 
+from .config_path import ConfigPath, PathType
 from .string_converter_mixin import StringConverterMixin
 from .objwalk import (
     ObjectWalker,
@@ -30,40 +28,19 @@ from .objwalk import (
     NonStrSequence,
 )
 
-
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 DEFAULT = object()
 
-PathType: Type = str | int | Iterable[str | int]
-
 WalkResultType: Type = Union[Tuple[Mapping, str], Tuple[Sequence, int]]
-
-
-def flatten(path: PathType) -> Iterator[str | int]:
-    """Flatten a list of list"""
-
-    if isinstance(path, (list, tuple, range)):
-        for elem in path:
-            yield from flatten(elem)
-    else:
-        yield path
-
-
-class ConfigException(Exception):
-    """Base class for Config Exceptions"""
 
 
 class ConfigGetter(StringConverterMixin):
     """Dict-like get, set, delete and find operations on deep
     Mapping- and Sequence-like structures.
     """
-
-    PAT_ANY_KEY = "*"
-    PAT_ANY_IDX = "%"
-    PAT_DEEP = ""
 
     def __init__(self, *, delegator: Optional[object] = None):
         # TODO May be better just pass on_missing_handler
@@ -75,40 +52,9 @@ class ConfigGetter(StringConverterMixin):
 
         return self.on_missing_handler(*args, **kvargs)
 
-    # TODO Move all the "normalize" path related functions into a separate class/mixin
-    def _flatten_and_split_path(self, path: PathType, sep: str) -> Iterable[str | int]:
-        """Flatten a list of list, and further split the str elements by a separator"""
-
-        for elem in flatten(path):
-            if isinstance(elem, str):
-                for elem_2 in elem.split(sep):
-                    yield elem_2
-            else:
-                yield elem
-
-    def _append_to_path_str(self, path: str, elem: str | int, sep: str = ".") -> str:
-        """Convert a element of a normalized path into a string"""
-
-        if isinstance(elem, int):
-            path += f"[{str(elem)}]"
-        elif elem == self.PAT_ANY_IDX:
-            path += "[*]"
-        else:
-            if path or elem == "":
-                path += sep
-
-            path += elem
-
-        return path
-
-    def normalized_path_to_str(self, path: list[str | int], sep: str = ".") -> str:
-        """Convert a normalized path into a string"""
-
-        rtn = ""
-        for elem in path:
-            rtn = self._append_to_path_str(rtn, elem, sep)
-
-        return rtn
+    def get_next(self, data: Mapping | Sequence, key: str | int) -> Any:
+        """Apply the key to access the elem in data"""
+        return data[key]
 
     def _walk_path(
         self, data: Mapping | Sequence, path: list[str | int]
@@ -126,7 +72,7 @@ class ConfigGetter(StringConverterMixin):
         last = path[-1]
         for i, elem in enumerate(path[:-1]):
             try:
-                data = data[elem]
+                data = self.get_next(data, elem)
             except KeyError:
                 new_data = self._invoke_on_missing_handler(data, elem, path[0:i], False)
                 data[elem] = new_data
@@ -168,7 +114,7 @@ class ConfigGetter(StringConverterMixin):
                 )
                 data = new_data
             else:
-                data = data[key]
+                data = self.get_next(data, key)
 
         return (data, last)
 
@@ -193,10 +139,10 @@ class ConfigGetter(StringConverterMixin):
         str_path = ""
         last = path[-1]
         for i, key in enumerate(path[0:-1]):
-            str_path = self._append_to_path_str(str_path, key)
+            str_path = ConfigPath.append_to_path_str(str_path, key)
             new_data = self.on_missing_handler(data, key, path[0:i], create_missing)
             if isinstance(data[key], type(new_data)):
-                data = data[key]
+                data = self.get_next(data, key)
             else:
                 data[key] = new_data
                 data = new_data
@@ -246,7 +192,9 @@ class ConfigGetter(StringConverterMixin):
                 return (new_data, key)
 
             if len(path) >= 2:
-                new_data = self._invoke_on_missing_handler(data, path[-2], path[0:-2], False)
+                new_data = self._invoke_on_missing_handler(
+                    data, path[-2], path[0:-2], False
+                )
 
                 if isinstance(new_data, (Mapping, NonStrSequence)):
                     return (new_data, key)
@@ -275,11 +223,7 @@ class ConfigGetter(StringConverterMixin):
         """
 
         # Maybe path has pattern like "c..c32", "c.c2[*].c32", "c.*.c32"
-        if any(
-            x in [self.PAT_DEEP, self.PAT_ANY_KEY, self.PAT_ANY_KEY]
-            for x in path
-            if isinstance(x, str)
-        ):
+        if ConfigPath.has_search_pattern(path):
             deep_path = self._get_path(data, path)
             if deep_path:
                 last = deep_path[-1]
@@ -312,7 +256,8 @@ class ConfigGetter(StringConverterMixin):
         :return: The config value
         """
 
-        path = self.normalize_path(path, sep=sep)
+        path = ConfigPath.normalize_path(path, sep=sep)
+        logger.debug("get(%s)", path)
 
         try:
             data, key = self._walk_and_find(data, path)
@@ -342,7 +287,7 @@ class ConfigGetter(StringConverterMixin):
     ) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
 
-        path = self.normalize_path(path, sep=sep)
+        path = ConfigPath.normalize_path(path, sep=sep)
 
         try:
             data, key = self._walk_and_find(data, path)
@@ -421,7 +366,7 @@ class ConfigGetter(StringConverterMixin):
         :param sep: 'path' separator. Default: '.'
         """
 
-        path = self.normalize_path(path, sep=sep)
+        path = ConfigPath.normalize_path(path, sep=sep)
         data, key = self._walk(data, path, create_missing, replace_path)
         old_value = self._get_old(data, key)
 
@@ -512,136 +457,17 @@ class ConfigGetter(StringConverterMixin):
 
         return obj
 
-    def normalize_path(
-        self, path: PathType, *, sep: str = ".", rtn: list = None
-    ) -> list:
-        """Convert flexible path into normalized Tuple
-
-        'path' is simple: e.g. "a.b.c", "a[1].b", ("a[1]", "b", "c"),
-        ["a", "b.c"], ["a.b.c"], ["a", ["b", ["c"]]]
-
-        But also:
-        - "a.*.c": match any key
-        - "a[*].b": match any index
-        - "a..c": recursively match everything
-
-        :param path: the path to identify the element
-        :param sep: 'path' separator. Default: '.'
-        :return: normalized path
-        """
-        if rtn is None:
-            rtn = []
-
-        if not path:
-            return rtn
-
-        pat = re.compile(r"\s*([^\[\]]*)\s*((?:\[\s*(\d+|\*)\s*\]\s*)*)")
-        for elem in self._flatten_and_split_path(path, sep):
-            if isinstance(elem, int):
-                rtn.append(elem)
-                continue
-            if isinstance(elem, str):
-                match = pat.fullmatch(elem)
-                if match:
-                    self._normalize_path_elem(match.group(1), match.group(2), rtn)
-                    continue
-
-            raise ConfigException(
-                f"Invalid config path: Unknown type: '{elem}' in '{path}'"
-            )
-
-        cleaned = self._cleanup_path(rtn)
-        if cleaned and cleaned[-1] in [self.PAT_DEEP, self.PAT_ANY_KEY]:
-            raise ConfigException(
-                f"Config path must not end with with a selector: '{path}'"
-            )
-
-        return cleaned
-
-    def _normalize_path_elem(self, key, index, rtn: list):
-        if key == self.PAT_ANY_KEY:
-            rtn.append(self.PAT_ANY_KEY)
-        elif not key:
-            if not index:
-                rtn.append(self.PAT_DEEP)
-        elif key:
-            rtn.append(key)
-
-        if index:
-            index = index[1:-1]
-            index = re.split(r"\s*\]\s*\[\s*", index)
-            for cleaned in index:
-                if cleaned == "*":
-                    rtn.append(self.PAT_ANY_IDX)
-                elif cleaned is not None:
-                    rtn.append(int(cleaned))
-
-        return rtn
-
-    def _cleanup_path(self, rtn: list):
-        cleaned = []
-        last = None
-        for elem in rtn:
-            if last is None:
-                last = elem
-                cleaned.append(elem)
-            elif elem not in [self.PAT_DEEP, self.PAT_ANY_KEY, self.PAT_ANY_IDX]:
-                last = elem
-                cleaned.append(elem)
-            elif last not in [self.PAT_DEEP, self.PAT_ANY_KEY, self.PAT_ANY_IDX]:
-                last = elem
-                cleaned.append(elem)
-            elif last == self.PAT_DEEP:
-                pass
-            elif elem in [self.PAT_ANY_KEY, self.PAT_ANY_IDX]:
-                last = elem
-                cleaned.append(elem)
-            else:  # last == ANY_INDEX and elem in [RECURSIVE_KEY, ANY_INDEX]
-                last = elem
-                cleaned.pop()
-                cleaned.append(elem)
-
-        return cleaned
-
     def _get_path(self, data: Mapping, path: PathType, *, sep: str = ".") -> list:
         """Determine the config path for search patterns such as "c..c32",
         "c.*.c32", "c.c3[*].c32"
         """
 
-        keys = self.normalize_path(path, sep=sep)
+        keys = ConfigPath.normalize_path(path, sep=sep)
         if not keys:
             return []
 
         for event in ObjectWalker.objwalk(data, nodes_only=True):
-            if self._match_path(event.path, keys):
+            if ConfigPath.match_path(event.path, keys):
                 return event.path
 
         raise ConfigException(f"Invalid config path: '{path}'")
-
-    def _match_path(self, path_1: list, path_2: list) -> bool:
-        i_1 = 0
-        i_2 = 0
-        while i_1 < len(path_1):
-            elem_1 = path_1[i_1]
-            elem_2 = path_2[i_2]
-            i_1 += 1
-
-            if elem_2 in [self.PAT_ANY_KEY, self.PAT_ANY_IDX]:
-                i_2 += 1
-                if i_1 < len(path_1) and isinstance(path_1[i_1], int):
-                    i_1 += 1
-            elif elem_2 == self.PAT_DEEP:
-                if elem_1 != path_2[i_2 + 1]:
-                    continue
-
-                i_2 += 2
-            else:
-                if elem_1 != elem_2:
-                    return False
-
-                i_2 += 1
-
-            if i_2 >= len(path_2):
-                return True
-
-        return False

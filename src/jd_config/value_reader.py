@@ -13,10 +13,11 @@ And it must be a yaml *string* value, surrounded by quotes.
 
 import logging
 from typing import Iterator, Optional, Union
-from .config_getter import ConfigException
+from .objwalk import ConfigException
 from .string_converter_mixin import StringConverterMixin
 from .placeholders import (
     Placeholder,
+    GlobalRefPlaceholder,
     ImportPlaceholder,
     RefPlaceholder,
     EnvPlaceholder,
@@ -41,6 +42,7 @@ class ValueReader(StringConverterMixin):
         if not registry:
             self.registry = {
                 "ref": RefPlaceholder,
+                "global": GlobalRefPlaceholder,
                 "import": ImportPlaceholder,
                 "env": EnvPlaceholder,
                 "timestamp": TimestampPlaceholder,

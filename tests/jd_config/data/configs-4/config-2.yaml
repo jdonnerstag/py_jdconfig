@@ -1,0 +1,6 @@
+a: 2aa # "2aa"
+b: "{ref:a}" # "2aa"
+c: "{global:a}" # "aa"
+d: "{ref:b}" # "2aa"
+e: "{global:b}" # "aa"
+f: "{ref:c}" # "aa"

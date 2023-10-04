@@ -2,7 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 """
-A generic function to walk any Mapping- and Sequence- like objects.
+Walk a tree-like structure of Mapping- and Sequence-like object, and yield
+events when stepping into or out of a container, and for every leaf-node.
 """
 
 from abc import ABC
@@ -12,6 +13,10 @@ from typing import Any, Mapping, Sequence, Tuple, Iterator
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+class ConfigException(Exception):
+    """Base class for Config Exceptions"""
 
 
 @dataclass
@@ -49,7 +54,7 @@ class NewMappingEvent:
 class NewSequenceEvent:
     """Entering a new Sequence"""
 
-    path: [str | int, ...]
+    path: Tuple[str | int, ...]
     value: Sequence
     skip: bool = False
 
@@ -63,7 +68,7 @@ class NewSequenceEvent:
 class DropContainerEvent:
     """Step out of Mapping or Sequence"""
 
-    path: [str | int, ...]
+    path: Tuple[str | int, ...]
     value: Mapping | Sequence
     skip: bool = False
 
@@ -84,7 +89,9 @@ class NonStrSequence(ABC):
 
 
 class ObjectWalker:
-    """A generic function to walk any Mapping- and Sequence- like objects."""
+    """Walk a tree-like structure of Mapping- and Sequence-like object, and yield
+    events when stepping into or out of a container, and for every leaf-node.
+    """
 
     @classmethod
     def objwalk(

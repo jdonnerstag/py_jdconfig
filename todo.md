@@ -1,5 +1,6 @@
 # Todos / Requirements
 
+- right now we are re-importing config file all the time => cache
 - I like structured configs with dataclass and pydantic
 - support making a subtree read-only
 - We construct one config "dict", not multiple layers as we had earlier. But we need
