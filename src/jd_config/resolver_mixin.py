@@ -54,10 +54,11 @@ class ResolverMixin:
         key = value
         if isinstance(value, Placeholder):
             if value in _memo:
+                _memo.append(value)
                 raise ConfigException(f"Recursion detected: {_memo}")
 
             _memo.append(value)
-            value = value.resolve(self, data_1, data_2)
+            value = value.resolve(self, data_1, data_2, _memo=_memo)
 
         if isinstance(value, list):
             value = [self.resolve(x, data_1, data_2, _memo=_memo) for x in value]
@@ -68,7 +69,7 @@ class ResolverMixin:
             value = list(self.value_reader.parse(value))
             if len(value) == 1:
                 value = value[0]
-            value = self.resolve(value, data_1, data_2)
+            value = self.resolve(value, data_1, data_2, _memo=_memo)
 
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{key}'")

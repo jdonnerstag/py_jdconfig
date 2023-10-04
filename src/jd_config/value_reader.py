@@ -49,6 +49,13 @@ class ValueReader(StringConverterMixin):
     def parse(self, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
         """Parse a yaml value and yield the various parts.
 
+        Notes:
+        - It does not parse deep, e.g. {ref: db, {env:DB}} will create
+          a reference for "db", but '{env:DB}' will not.
+        - Trailing separators are ok: {ref: db,}
+        - Placeholder arguments are not required to be in quotes, e.g.
+          '{ref: "./db/{ref:db}"}' == '{ref: ./db/{ref:db}}'
+
         :param strval: Input yaml string value
         :param sep: argument separator. Default: ','
         :return: Generator yielding individual parts of the yaml string value
@@ -72,7 +79,9 @@ class ValueReader(StringConverterMixin):
         strval = strval[1:-1]
         i = strval.find(":")
         if i == -1:
-            raise ConfigException(f"Expected to find placeholder name separated by colon: '{strval}'")
+            raise ConfigException(
+                f"Expected to find placeholder name separated by colon: '{strval}'"
+            )
 
         name = strval[:i].strip()
         if not name:
@@ -83,7 +92,7 @@ class ValueReader(StringConverterMixin):
 
         args = []
         same = False
-        for text in self.tokenize(strval[i+1:], sep):
+        for text in self.tokenize(strval[i + 1 :], sep):
             if not args and text == sep:
                 raise ConfigException(f"Unexpected ',' in f'{strval}'")
 

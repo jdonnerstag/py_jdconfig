@@ -113,7 +113,7 @@ class JDConfig(ConfigIniMixin, ResolverMixin, DeepAccessMixin, DeepExportMixin):
 
         if key in data:
             value = data[key]
-            if isinstance(value, str) and value.find("{") != -1:
+            if isinstance(value, str):
                 value = self.resolve(value, self.data)
                 return value
 

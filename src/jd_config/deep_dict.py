@@ -49,9 +49,7 @@ class DeepDict(ResolverMixin, Mapping):
         if isinstance(rtn, Mapping):
             return DeepDict(rtn)
 
-        if resolve and isinstance(rtn, str) and rtn.find("{") != -1:
-            rtn = self.resolve(rtn, self.obj)
-
+        rtn = self.resolve(rtn, self.obj)
         return rtn
 
     def delete(

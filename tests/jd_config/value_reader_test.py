@@ -85,6 +85,9 @@ def test_ValueReader():
     value = parse('{import: "./db/{ref:db}-config.yaml"}')
     assert value == [ImportPlaceholder("./db/{ref:db}-config.yaml")]
 
+    value = parse("{ref: ./db/{ref: db, {ref: mydef}}-config.yaml, default}")
+    assert value == [RefPlaceholder("./db/{ref: db, {ref: mydef}}-config.yaml", "default")]
+
     should_fail = ["{ref:db", "{db}", "{:db}", "{xxx: db}", "{ref:,db}"]
     for fail in should_fail:
         with pytest.raises(ConfigException):

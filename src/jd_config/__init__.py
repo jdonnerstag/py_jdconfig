@@ -42,7 +42,7 @@ from .placeholders import (
     TimestampPlaceholder,
 )
 
-from .value_reader import ValueType, ValueReaderException, ValueReader
+from .value_reader import ValueType, ValueReader
 
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader

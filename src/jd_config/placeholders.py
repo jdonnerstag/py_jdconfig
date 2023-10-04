@@ -27,16 +27,8 @@ logger = logging.getLogger(__parent__name__)
 class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
-    def post_load(self, _data: Mapping) -> None:
-        """A hook that gets invoked after the yaml file has been loaded.
-
-        E.g. to attach the file root dict with a Placeholder.
-
-        :param _data: The dict associated with the file
-        """
-
     @abstractmethod
-    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
+    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None, *, _memo: list | None = None):
         """Resolve the placeholder"""
 
 
@@ -52,8 +44,8 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
-        file = cfg.resolve(self.file, data_1, data_2)
+    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None, *, _memo: list | None = None):
+        file = cfg.resolve(self.file, data_1, data_2, _memo=_memo)
         rtn = cfg.load(file)
         return rtn
 
@@ -69,10 +61,7 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def post_load(self, _data: Mapping) -> None:
-        self.file_root = _data
-
-    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
+    def resolve(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None, *, _memo: list | None = None):
         # Search order:
         #  1. CLI -> that is pretty clear  (where are the CLI data?)
         #  2. The env file
@@ -80,6 +69,11 @@ class RefPlaceholder(Placeholder):
         #  4. The main file
         # Maybe resolve should receive a list of Mappings?
 
+        obj = self._resolve_inner(cfg, data_1, data_2)
+        obj = cfg.resolve(obj, data_1, data_2, _memo=_memo)
+        return obj
+
+    def _resolve_inner(self, cfg, data_1: Mapping, data_2: Optional[Mapping] = None):
         # Search in the env file, if provided
         if data_2:  # env file (2)
             try:
@@ -99,9 +93,14 @@ class RefPlaceholder(Placeholder):
 
         # Search starting from the root of all the config files.
         # Main file (4)
-        obj = ConfigGetter().get(data_1, self.path, sep=",", default=self.default_val)
-        return obj
+        try:
+            obj = ConfigGetter().get(data_1, self.path, sep=",")
+            return obj
+        except:  # pylint: disable=bare-except  # noqa: E722
+            if self.default_val is not None:
+                return obj
 
+            raise
 
 @dataclass
 class EnvPlaceholder(Placeholder):
@@ -113,7 +112,7 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, *_) -> str:
+    def resolve(self, *_, **__) -> str:
         value = os.environ.get(self.env_var, self.default_val)
         return value
 
@@ -127,7 +126,7 @@ class TimestampPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.format
 
-    def resolve(self, *_) -> str:
+    def resolve(self, *_, **__) -> str:
         now = datetime.now()
         value = now.strftime(self.format)
         return value
