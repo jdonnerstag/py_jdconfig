@@ -62,15 +62,8 @@ class RefPlaceholder(Placeholder):
         assert self.path
 
     def resolve(self, cfg, data: Mapping, *, _memo: list | None = None):
-        # Search order:
-        #  1. CLI -> that is pretty clear  (where are the CLI data?)
-        #  2. The env file
-        #  3. The local file
-        #  4. The main file
-        # Maybe resolve should receive a list of Mappings?
 
         obj = self._resolve_inner(cfg, data)
-        obj = cfg.resolve(obj, data, _memo=_memo)
         return obj
 
     def _resolve_inner(self, cfg, data: Mapping):

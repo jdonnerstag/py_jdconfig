@@ -18,8 +18,8 @@ Please see the readme.md file for details. In summary:
    or CLI args.
 """
 
+from .dict_list import DictList
 from .config_ini_mixin import ConfigIniMixin
-
 from .string_converter_mixin import StringConverterMixin
 
 from .objwalk import (
@@ -46,6 +46,7 @@ from .placeholders import (
 )
 
 from .value_reader import ValueType, ValueReader
+from .resolver_dict import ResolverDictList
 from .deep_getter_with_search import DeepGetterWithSearch
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader
