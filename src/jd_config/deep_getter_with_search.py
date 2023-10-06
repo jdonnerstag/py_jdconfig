@@ -51,6 +51,14 @@ class DeepGetterWithSearch:
         Subclasses may auto-create elements if needed.
         By default, the exception is re-raised.
         """
+        return self.on_missing_default(data, key, exc)
+
+    def on_missing_default(self, data, key, exc) -> Any:
+        """A callback invoked, if a path can not be found.
+
+        Subclasses may auto-create elements if needed.
+        By default, the exception is re-raised.
+        """
         raise ConfigException(f"Config not found: '{key}'") from exc
 
     def get(self, path: PathType, default: Any = DEFAULT) -> Any:
@@ -110,7 +118,7 @@ class DeepGetterWithSearch:
         """Callback if 'a.*.c' was found"""
 
         if not isinstance(data, Mapping):
-            raise KeyError(f"Expected a Mapping: '{path}'")
+            raise ConfigException(f"Expected a Mapping: '{path}'")
 
         for key in data.keys():
             # Allow to resolve placeholder if necessary
@@ -126,7 +134,7 @@ class DeepGetterWithSearch:
                     return value[elem], path
 
         path = path + ("*", elem)
-        raise KeyError(f"Key not found: '{path}'")
+        raise ConfigException(f"Key not found: '{path}'")
 
     def on_any_idx(
         self, data: NonStrSequence, elem: int, path: tuple[str | int]
@@ -134,7 +142,7 @@ class DeepGetterWithSearch:
         """Callback if 'a[*].b' was found"""
 
         if not isinstance(data, NonStrSequence):
-            raise KeyError(f"Expected a Sequence, but not a string: '{path}'")
+            raise ConfigException(f"Expected a Sequence, but not a string: '{path}'")
 
         for key, value in enumerate(data):
             # Allow to resolve placeholder if necessary
@@ -150,7 +158,7 @@ class DeepGetterWithSearch:
                     return value[elem], path
 
         path = path + ("[*]", elem)
-        raise KeyError(f"Key not found: '{path}'")
+        raise ConfigException(f"Key not found: '{path}'")
 
     def on_any_deep(
         self, data: Mapping | NonStrSequence, elem: str | int, path: list[str | int]
@@ -168,4 +176,4 @@ class DeepGetterWithSearch:
                 return data, path
 
         path = path + ("", elem)
-        raise KeyError(f"Key not found: '{path}'")
+        raise ConfigException(f"Key not found: '{path}'")

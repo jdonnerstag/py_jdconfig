@@ -9,7 +9,7 @@ events when stepping into or out of a container, and for every leaf-node.
 from dataclasses import dataclass
 import logging
 from typing import Any, Mapping, Optional, Sequence, Tuple, Iterator
-from .utils import NonStrSequence
+from .utils import NonStrSequence, ConfigException
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -103,9 +103,9 @@ class ObjectWalker:
             yield NodeEvent((), obj)
             return
 
-        iter_obj = [obj]
-        iter_stack = [iter(obj.keys())]
         path_ = ()  # Empty tuple
+        iter_obj = [obj]
+        iter_stack = [cls._container_iter(obj)]
 
         while iter_stack:
             cur = iter_stack[-1]
@@ -123,14 +123,14 @@ class ObjectWalker:
                         event = NewMappingEvent(path_, value)
                         yield event
                     iter_obj.append(value)
-                    iter_stack.append(iter(value.keys()))
+                    iter_stack.append(cls._container_iter(value))
                 elif isinstance(value, NonStrSequence):
                     path_ = path_ + (key,)
                     if not nodes_only:
                         event = NewSequenceEvent(path_, value)
                         yield event
                     iter_obj.append(value)
-                    iter_stack.append(iter(value.keys()))
+                    iter_stack.append(cls._container_iter(value))
                 else:
                     event = NodeEvent(path_ + (key,), value)
                     yield event
@@ -145,3 +145,13 @@ class ObjectWalker:
 
                 iter_stack.pop()
                 path_ = path_[:-1]
+
+    @classmethod
+    def _container_iter(cls, obj: Mapping | NonStrSequence) -> Iterator:
+        if isinstance(obj, Mapping):
+            return iter(obj.keys())
+
+        if isinstance(obj, NonStrSequence):
+            return iter(range(len(obj)))
+
+        raise ConfigException(f"Bug? Expected either Mapping or NonStrSequence: {obj}")

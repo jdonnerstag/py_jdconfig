@@ -6,34 +6,26 @@
 
 import logging
 from typing import Any, Iterator, Mapping, Sequence, Union
-from .utils import PathType, DEFAULT
-from .config_getter import ConfigGetter
-from .resolver_mixin import ResolverMixin
+from .utils import ConfigException, PathType, DEFAULT
+from .deep_getter_with_search_and_resolver import DeepGetterWithResolve
+from .deep_update import DeepUpdateMixin
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepDict(ResolverMixin, Mapping):
+class DeepDict(Mapping, DeepUpdateMixin):
     """Dict-like get, set, delete and find operations on deep
     Mapping- and Sequence-like structures.
     """
 
-    def __init__(self, obj: Mapping) -> None:
-        ResolverMixin.__init__(self)
-
+    def __init__(self, obj: Mapping, path: PathType = ()) -> None:
         self.obj = obj
-        self.getter = ConfigGetter(delegator=self)
+        self.getter = DeepGetterWithResolve(data=obj, path=path)
+        self.getter.on_missing = self.on_missing_handler  # TODO don't like this
 
     # pylint: disable=arguments-renamed
-    def get(
-        self,
-        path: PathType,
-        default: Any = DEFAULT,
-        *,
-        resolve: bool = True,
-        sep: str = ".",
-    ) -> Any:
+    def get(self, path: PathType, default: Any = DEFAULT) -> Any:
         """Similar to dict.get(), but with deep path support.
 
         Example paths: "a.b.c", "a[1].b", ("a[1]", "b", "c"),
@@ -46,36 +38,33 @@ class DeepDict(ResolverMixin, Mapping):
         :return: The config value
         """
 
-        rtn = self.getter.get(self.obj, path, default=default, sep=sep)
-        if isinstance(rtn, Mapping):
-            return DeepDict(rtn)
-
-        rtn = self.resolve(rtn, self.obj)
+        rtn = self.getter.get(path, default=default)
         return rtn
 
     def delete(
         self,
         path: PathType,
         *,
-        sep: str = ".",
         exception: bool = True,
     ) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
 
-        return self.getter.delete(self.obj, path, sep=sep, exception=exception)
+        try:
+            data, path = self.getter.find(path)
+            key = path[-1]
+            del data[key]
+        except (KeyError, IndexError, ConfigException):
+            if exception:
+                raise
 
     def on_missing_handler(
-        self,
-        data: Mapping | Sequence,
-        key: str | int,
-        path: tuple,
-        create_missing: Union[callable, bool, Mapping],
+        self, data: Mapping | Sequence, key: str | int, path: tuple
     ) -> Mapping | Sequence:
         """A handler that will be invoked if a path element is missing and
         'create_missing has valid configuration.
         """
 
-        return self.getter.on_missing_handler(data, key, path, create_missing)
+        return self.getter.on_missing_default(data, key, path)
 
     def set(
         self,
@@ -102,40 +91,23 @@ class DeepDict(ResolverMixin, Mapping):
         :param sep: 'path' separator. Default: '.'
         """
 
-        return self.getter.set(
-            self.obj,
-            path,
-            value,
-            create_missing=create_missing,
-            replace_value=replace_value,
-            replace_path=replace_path,
-            sep=sep,
-        )
+        data, path = self.getter.find(path)
+        key = path[-1]
+        old_value = None
+        try:
+            old_value = data[key]
+        except:  # pylint: disable=bare-except
+            pass
 
-    def deep_update(self, updates: Mapping | None) -> Mapping:
-        """Deep update the 'obj' with only the leafs from 'updates'. Create
-        missing paths.
+        data[key] = value
 
-        :param obj: The dict that will be updated
-        :param updates: The dict providing the values to update
-        :param create_missing: If true, create any missing level.
-        :return: the updated 'obj'
-        """
-
-        rtn = self.getter.deep_update(self.obj, updates)
-        if isinstance(rtn, Mapping):
-            return DeepDict(rtn)
-
-        return rtn
+        return old_value
 
     def __getitem__(self, key: Any) -> Any:
-        return self.get(key, resolve=False)
+        return self.get(key)
 
     def __setitem__(self, key: Any, item: Any) -> None:
-        if hasattr(self, "getter"):
-            self.set(key, item)
-        else:
-            self.obj[key] = item
+        self.set(key, item)
 
     def __len__(self) -> int:
         return self.obj.__len__()

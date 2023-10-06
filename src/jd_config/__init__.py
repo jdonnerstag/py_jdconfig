@@ -33,8 +33,6 @@ from .objwalk import (
 
 from .config_path import ConfigPath
 from .config_getter import ConfigGetter
-from .deep_dict import DeepDict
-
 from .placeholders import (
     PlaceholderException,
     Placeholder,
@@ -49,7 +47,9 @@ from .value_reader import ValueType, ValueReader
 from .deep_getter_with_search import DeepGetterWithSearch
 from .deep_getter_with_search_and_resolver import DeepGetterWithResolve
 from .deep_access_mixin import DeepAccessMixin
+from .deep_dict import DeepDict
 from .config_file_loader import ConfigFileLoader
 from .deep_export_mixin import DeepExportMixin
 from .resolver_mixin import ResolverMixin
+from .deep_update import DeepUpdateMixin
 from .jd_config import JDConfig

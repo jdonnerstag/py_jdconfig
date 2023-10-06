@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Any, Mapping, Optional
 
 from .utils import ConfigException
-from .deep_getter_with_search import DeepGetterWithSearch
 
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -34,7 +33,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, cfg, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
         """Resolve the placeholder"""
 
 
@@ -50,9 +49,9 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, cfg, data: Mapping, *, _memo: list | None = None):
-        file = cfg.resolve(self.file, data, _memo=_memo)
-        rtn = cfg.load(file)
+    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+        file = getter.resolve(self.file, data, _memo=_memo)
+        rtn = getter.load(file)
         return rtn
 
 
@@ -67,9 +66,8 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, _cfg, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
         try:
-            getter = DeepGetterWithSearch(data=data, path=(), _memo=_memo)
             obj = getter.get(self.path)
             return obj
         except Exception as exc:  # pylint: disable=bare-except  # noqa: E722

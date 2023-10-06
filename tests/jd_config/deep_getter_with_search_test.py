@@ -5,7 +5,7 @@
 
 import pytest
 import logging
-from jd_config import DeepGetterWithSearch
+from jd_config import DeepGetterWithSearch, ConfigException
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def test_simple():
     assert getter.get_path("b.ba") == ("b", "ba")
     assert getter.get_path("c[3].c4b") == ("c", 3, "c4b")
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ConfigException):
         getter.get_path("xxx")
 
     assert getter.get("a") == "aa"
@@ -34,7 +34,7 @@ def test_simple():
     assert getter.get("b.ba") == 11
     assert getter.get("c[3].c4b") == 55
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ConfigException):
         getter.get("xxx")
 
     assert getter.get("xxx", 99) == 99
@@ -54,7 +54,7 @@ def test_deep():
     assert getter.get_path("b..bb..bbb") == ("b", "bb", "bbb")
     assert getter.get_path("c..c4b") == ("c", 3, "c4b")
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ConfigException):
         getter.get_path("b..xxx")
 
     assert getter.get("..a") == "aa"
@@ -63,7 +63,7 @@ def test_deep():
     assert getter.get("b..bb..bbb") == 33
     assert getter.get("c..c4b") == 55
 
-    with pytest.raises(KeyError):
+    with pytest.raises(ConfigException):
         getter.get("b..xxx")
 
     assert getter.get("b..xxx", 99) == 99

@@ -9,6 +9,7 @@ import pytest
 from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder
 from jd_config import ResolverMixin, GlobalRefPlaceholder
 from jd_config import ConfigException, Placeholder, PlaceholderException
+from jd_config import DeepGetterWithResolve
 
 logger = logging.getLogger(__name__)
 
@@ -62,18 +63,14 @@ def test_EnvPlaceholder(monkeypatch):
 
 
 def test_resolve():
-    cfg = ResolverDictList(
-        obj={
-            "a": "aa",
-            "b": "{ref:a}",
-            "c": "{ref:b}",
-            "d": "{ref:xxx}",
-        },
-        path=[],
-        root=None,
-    )
+    cfg = {
+        "a": "aa",
+        "b": "{ref:a}",
+        "c": "{ref:b}",
+        "d": "{ref:xxx}",
+    }
 
-    resolver = ResolverMixin()
+    resolver = DeepGetterWithResolve(data=cfg, path=())
     ref = RefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -93,18 +90,14 @@ def test_resolve():
 
 
 def test_global_ref():
-    cfg = ResolverDictList(
-        obj={
-            "a": "aa",
-            "b": "{global:a}",
-            "c": "{global:b}",
-            "d": "{global:xxx}",
-        },
-        path=[],
-        root=None,
-    )
+    cfg = {
+        "a": "aa",
+        "b": "{global:a}",
+        "c": "{global:b}",
+        "d": "{global:xxx}",
+    }
 
-    resolver = ResolverMixin()
+    resolver = DeepGetterWithResolve(data=cfg, path=())
     ref = GlobalRefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -132,31 +125,24 @@ class MyBespokePlaceholder(Placeholder):
 
 
 def test_bespoke_placeholder():
-    cfg = ResolverDictList(
-        obj={
-            "a": "{ref:b}",
-            "b": "{bespoke:}",
-        },
-        path=[],
-        root=None,
-    )
+    cfg = {
+        "a": "{ref:b}",
+        "b": "{bespoke:}",
+    }
 
-    cfg.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    resolver = DeepGetterWithResolve(data=cfg, path=())
+    resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     ref = RefPlaceholder("a")
-    assert ref.resolve(None, cfg) == "it's me"
+    assert ref.resolve(resolver, cfg) == "it's me"
 
 
 def test_mandatory_value():
-    cfg = ResolverDictList(
-        obj={
-            "a": "???",
-            "b": "{ref:a}",
-        },
-        path=[],
-        root=None,
-    )
+    cfg = {
+        "a": "???",
+        "b": "{ref:a}",
+    }
 
-    resolver = ResolverMixin()
+    resolver = DeepGetterWithResolve(data=cfg, path=())
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
         assert ref.resolve(resolver, cfg)
@@ -167,17 +153,13 @@ def test_mandatory_value():
 
 
 def test_detect_recursion():
-    cfg = ResolverDictList(
-        obj={
-            "a": "{ref:b}",
-            "b": "{ref:c}",
-            "c": "{ref:a}",
-        },
-        path=[],
-        root=None,
-    )
+    cfg = {
+        "a": "{ref:b}",
+        "b": "{ref:c}",
+        "c": "{ref:a}",
+    }
 
-    resolver = ResolverMixin()
+    resolver = DeepGetterWithResolve(data=cfg, path=())
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
         assert ref.resolve(resolver, cfg)
