@@ -1,3 +1,6 @@
+
+detecting recursion requires to add some _memo object almost everwhere. Not very nice.
+
 # Todos / Requirements
 
 - right now we are re-importing config file all the time => cache
