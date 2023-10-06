@@ -8,7 +8,7 @@ events when stepping into or out of a container, and for every leaf-node.
 
 from dataclasses import dataclass
 import logging
-from typing import Any, Mapping, Sequence, Tuple, Iterator
+from typing import Any, Mapping, Optional, Sequence, Tuple, Iterator
 from .dict_list import DictList, NonStrSequence, ConfigContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -83,7 +83,11 @@ class ObjectWalker:
 
     @classmethod
     def objwalk(
-        cls, obj: ConfigContainerType, *, nodes_only: bool = False
+        cls,
+        obj: ConfigContainerType,
+        *,
+        nodes_only: bool = False,
+        cb_get: Optional[callable] = None
     ) -> Iterator[WalkerEvent]:
         """A generic function to walk any Mapping- and Sequence- like objects.
 
@@ -118,7 +122,7 @@ class ObjectWalker:
 
                 # get and resolve placeholders if needed.
                 value = iter_obj[-1]
-                value = value[key]
+                value = cb_get(value, key) if callable(cb_get) else value[key]
 
                 event = None
                 if isinstance(value, Mapping):

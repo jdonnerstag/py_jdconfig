@@ -25,6 +25,8 @@
 - For debugging, log placeholder replacements
 - We need a more *efficient* walk implementation. One that supports `a.b[2]` but also `c..c2[*]`
 - CONFIG_INI_FILE env to find config.ini file
+- Make sure that {env:} results are not resolved any further. Else risky configs might be
+  injected.
 
 Done:
 

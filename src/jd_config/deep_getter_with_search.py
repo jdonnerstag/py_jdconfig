@@ -7,10 +7,10 @@ search patterns, such as 'a..c', 'a.*.c'
 """
 
 import logging
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from .config_path import ConfigPath, PathType
-from .dict_list import DictList, NonStrSequence
+from .dict_list import NonStrSequence, ConfigContainerType
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -25,20 +25,39 @@ class DeepGetterWithSearch:
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def get(
-        self,
-        data: Mapping | NonStrSequence,
-        path: PathType,
-        default: Any = DEFAULT,
-        *,
-        _memo: list | None = None
-    ) -> Any:
+    def __init__(self, data: ConfigContainerType, path: PathType, *, _memo=()) -> None:
+        self._data = data
+        self._path = path
+        self._memo = _memo
+
+    def cb_get(self, data, key) -> Any:
+        """Retrieve the element. Subclasses may expand it, e.g. to resolve
+        placeholders
+        """
+        return data[key]
+
+    def _cb_get_internal(self, data, key) -> Any:
+        """Internal:"""
+        try:
+            return self.cb_get(data, key)
+        except (KeyError, IndexError) as exc:
+            return self.on_missing(data, key, exc)
+
+    def on_missing(self, data, key, exc) -> Any:
+        """A callback invoked, if a path can not be found.
+
+        Subclasses may auto-create elements if needed.
+        By default, the exception is re-raised.
+        """
+        raise exc
+
+    def get(self, path: PathType, default: Any = DEFAULT) -> Any:
         """Extended standard dict like getter to also support deep paths, and also
         search patterns, such as 'a..c', 'a.*.c'
         """
 
         try:
-            data, _ = self.find(data, path, _memo=_memo)
+            data, _ = self.find(path)
             return data
         except (KeyError, IndexError):
             if default == DEFAULT:
@@ -46,102 +65,102 @@ class DeepGetterWithSearch:
 
             return default
 
-    def get_path(
-        self, data: Mapping | NonStrSequence, path: PathType
-    ) -> list[str | int]:
+    def get_path(self, path: PathType) -> list[str | int]:
         """Determine the real path by replacing the search patterns"""
 
-        _, path = self.find(data, path)
+        _, path = self.find(path)
         return path
 
-    def find(
-        self, data: Mapping | NonStrSequence, path: PathType, *, _memo: list | None = None
-    ) -> (Any, list[str | int]):
+    def find(self, path: PathType) -> (Any, list[str | int]):
         """Determine the value and the real path by replacing the search patterns"""
 
-        path = ConfigPath.normalize_path(path)
+        target = ConfigPath.normalize_path(path)
 
-        if not isinstance(data, DictList):
-            data = DictList(data)
-
-        current_path = []
+        path: tuple[str | int] = ()
+        data = self._data
 
         i = 0
-        while i < len(path):
-            elem = path[i]
+        while i < len(target):
+            elem = target[i]
             if elem == ConfigPath.PAT_ANY_KEY:
                 i += 1
-                data = self.on_any_key(data, path[i], current_path)
+                data, path = self.on_any_key(data, target[i], path)
             elif elem == ConfigPath.PAT_ANY_IDX:
                 i += 1
-                data = self.on_any_idx(data, path[i], current_path)
+                data, path = self.on_any_idx(data, target[i], path)
             elif elem == ConfigPath.PAT_DEEP:
                 i += 1
-                data = self.on_any_deep(data, path[i], current_path)
+                data, path = self.on_any_deep(data, target[i], path)
             else:
-                data = data[elem]
+                data = self._cb_get_internal(data, elem)
 
-            current_path.append(path[i])
+            path = path + (target[i],)
             i += 1
 
-        return data, current_path
+        return data, path
 
     def on_any_key(
-        self, data: DictList, elem: str | int, current_path: list[str | int]
-    ) -> DictList:
+        self, data: Mapping, elem: str, path: tuple[str | int]
+    ) -> (Any, Any):
         """Callback if 'a.*.c' was found"""
 
-        if not isinstance(data.obj, Mapping):
-            raise KeyError(f"Expected a Mapping: '{current_path}'")
+        if not isinstance(data, Mapping):
+            raise KeyError(f"Expected a Mapping: '{path}'")
 
-        for key, value in data.items():
+        for key in data.keys():
+            # Allow to resolve placeholder if necessary
+            value = self._cb_get_internal(data, key)
+
             if isinstance(value, Mapping) and isinstance(elem, str):
                 if elem in value:
-                    current_path.append(key)
-                    return value[elem]
+                    path = path + (key,)
+                    return value[elem], path
             elif isinstance(value, NonStrSequence) and isinstance(elem, int):
                 if 0 <= elem < len(value):
-                    current_path.append(key)
-                    return value[elem]
+                    path = path + (key,)
+                    return value[elem], path
 
-        path = current_path + ["*", elem]
+        path = path + ("*", elem)
         raise KeyError(f"Key not found: '{path}'")
 
     def on_any_idx(
-        self, data: DictList, elem: str | int, current_path: list[str | int]
-    ) -> DictList:
+        self, data: NonStrSequence, elem: int, path: tuple[str | int]
+    ) -> (Any, Any):
         """Callback if 'a[*].b' was found"""
 
-        if not isinstance(data.obj, NonStrSequence):
-            raise KeyError(f"Expected a Sequence, but not a string: '{current_path}'")
+        if not isinstance(data, NonStrSequence):
+            raise KeyError(f"Expected a Sequence, but not a string: '{path}'")
 
-        for i, value in data.items():
+        for key, value in enumerate(data):
+            # Allow to resolve placeholder if necessary
+            value = self._cb_get_internal(data, key)
+
             if isinstance(value, Mapping) and isinstance(elem, str):
                 if elem in value:
-                    current_path.append(i)
-                    return value[elem]
+                    path = path + (key,)
+                    return value[elem], path
             elif isinstance(value, NonStrSequence) and isinstance(elem, int):
                 if 0 <= elem < len(value):
-                    current_path.append(i)
-                    return value[elem]
+                    path = path + (key,)
+                    return value[elem], path
 
-        current_path[-1] += f"[*]"
-        path = current_path + [elem]
+        path = path + ("[*]", elem)
         raise KeyError(f"Key not found: '{path}'")
 
     def on_any_deep(
-        self, data: Mapping | Sequence, elem: str | int, current_path: list[str | int]
-    ) -> Mapping | Sequence:
+        self, data: Mapping | NonStrSequence, elem: str | int, path: list[str | int]
+    ) -> (Any, Any):
         """Callback if 'a..b' was found"""
 
-        for event in ObjectWalker.objwalk(data, nodes_only=False):
+        for event in ObjectWalker.objwalk(data, nodes_only=False, cb_get=self.cb_get):
             if event.path and event.path[-1] == elem:
                 for node in event.path:
-                    data = data[node]
-                    current_path.append(node)
+                    # Allow to resolve placeholder if necessary
+                    data = self._cb_get_internal(data, node)
+                    path = path + (node,)
 
-                current_path.pop()
-                return data
+                path = path[:-1]
+                return data, path
 
-        path = current_path + ["", elem]
+        path = path + ("", elem)
         raise KeyError(f"Key not found: '{path}'")
