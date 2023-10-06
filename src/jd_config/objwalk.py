@@ -6,10 +6,10 @@ Walk a tree-like structure of Mapping- and Sequence-like object, and yield
 events when stepping into or out of a container, and for every leaf-node.
 """
 
-from abc import ABC
 from dataclasses import dataclass
 import logging
 from typing import Any, Mapping, Sequence, Tuple, Iterator
+from .dict_list import DictList, NonStrSequence, ConfigContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -69,23 +69,11 @@ class DropContainerEvent:
     """Step out of Mapping or Sequence"""
 
     path: Tuple[str | int, ...]
-    value: Mapping | Sequence
+    value: ConfigContainerType
     skip: bool = False
 
 
 WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
-
-
-class NonStrSequence(ABC):
-    """Avoid having to do `isinstance(x, Sequence) and not isinstance(x, str)` all the time"""
-
-    @classmethod
-    def __subclasshook__(cls, C: type):
-        # not possible to do with AnyStr
-        if C is str:
-            return NotImplemented
-
-        return issubclass(C, Sequence)
 
 
 class ObjectWalker:
@@ -95,7 +83,7 @@ class ObjectWalker:
 
     @classmethod
     def objwalk(
-        cls, obj: Mapping | NonStrSequence, *, nodes_only: bool = False
+        cls, obj: ConfigContainerType, *, nodes_only: bool = False
     ) -> Iterator[WalkerEvent]:
         """A generic function to walk any Mapping- and Sequence- like objects.
 
@@ -111,23 +99,26 @@ class ObjectWalker:
         if not obj:
             return
 
-        iter_stack = []
-        iter_obj = []
-        path_ = ()  # Empty tuple
+        if not isinstance(obj, DictList):
+            if isinstance(obj, ConfigContainerType):
+                obj = DictList(obj)
 
-        if isinstance(obj, Mapping):
-            iter_obj.append(obj)
-            iter_stack.append(iter(obj.items()))
-        elif isinstance(obj, NonStrSequence):
-            iter_obj.append(obj)
-            iter_stack.append(iter(enumerate(obj)))
-        else:
-            yield NodeEvent(path_, obj)
+        if not isinstance(obj, DictList):
+            yield NodeEvent((), obj)
+            return
+
+        iter_obj = [obj]
+        iter_stack = [iter(obj.keys())]
+        path_ = ()  # Empty tuple
 
         while iter_stack:
             cur = iter_stack[-1]
             try:
-                key, value = next(cur)
+                key = next(cur)
+
+                # get and resolve placeholders if needed.
+                value = iter_obj[-1]
+                value = value[key]
 
                 event = None
                 if isinstance(value, Mapping):
@@ -136,14 +127,14 @@ class ObjectWalker:
                         event = NewMappingEvent(path_, value)
                         yield event
                     iter_obj.append(value)
-                    iter_stack.append(iter(value.items()))
+                    iter_stack.append(iter(value.keys()))
                 elif isinstance(value, NonStrSequence):
                     path_ = path_ + (key,)
                     if not nodes_only:
                         event = NewSequenceEvent(path_, value)
                         yield event
                     iter_obj.append(value)
-                    iter_stack.append(iter(enumerate(value)))
+                    iter_stack.append(iter(value.keys()))
                 else:
                     event = NodeEvent(path_ + (key,), value)
                     yield event

@@ -10,7 +10,7 @@ from typing import Any, Mapping, Optional
 from .placeholders import Placeholder
 from .value_reader import ValueReader
 from .objwalk import ConfigException, NonStrSequence
-from .dict_list import DictList
+from .dict_list import DictList, ConfigContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -30,13 +30,20 @@ class ResolverDictList(DictList):
 
     def __init__(
         self,
-        obj: Mapping | NonStrSequence,
+        obj: ConfigContainerType,
         path: list[str | int],
+        root: Optional[Mapping],
         value_reader: ValueReader = ValueReader(),
     ) -> None:
         super().__init__(obj)
 
+        # The path to access the container relativ to whereever it started.
+        # In contrast, `root` might the main or the root of an imported file.
+        # Hence, the path is not automatically relativ to root.
         self.path = path
+
+        # The object to resolve any references {ref:..} against.
+        self.root = obj if root is None else root
 
         # Read string into Placeholders ...
         self.value_reader = value_reader
@@ -46,23 +53,21 @@ class ResolverDictList(DictList):
 
         self.value_reader.registry[name] = type_
 
+    def _new_item(self, key, obj):
+        return ResolverDictList(obj, self.path + [key], self.root, self.value_reader)
+
     def __getitem__(self, key: str | int) -> Any:
-        rtn = self.obj[key]
+        rtn = self.resolve(key, self.root)
 
         if isinstance(rtn, DictList):
             rtn = rtn.obj
 
-        if isinstance(rtn, (Mapping, NonStrSequence)):
-            rtn = ResolverDictList(rtn, self.path + [key], self.value_reader)
+        if isinstance(rtn, ConfigContainerType):
+            rtn = self._new_item(key, rtn)
 
         return rtn
 
-    def resolve(
-        self,
-        key: Any,
-        data: Mapping,
-        default: Any = DEFAULT,
-    ) -> Any:
+    def resolve(self, key: Any, data: Mapping) -> Any:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -71,7 +76,8 @@ class ResolverDictList(DictList):
         the pieces together for the actuall yaml value.
         """
 
-        value = self.get(key, default)
+        value = self.obj[key]
+
         while isinstance(value, str) and value.find("{") != -1:
             value = list(self.value_reader.parse(value))
             value = self._resolve_inner(value, data)

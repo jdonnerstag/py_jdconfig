@@ -17,11 +17,17 @@ from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Optional
-from .config_getter import ConfigGetter
+
+from .objwalk import ConfigException
+from .deep_getter_with_search import DeepGetterWithSearch
 
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+class PlaceholderException(ConfigException):
+    pass
 
 
 class Placeholder(ABC):
@@ -61,25 +67,24 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, cfg, data: Mapping, *, _memo: list | None = None):
-
-        obj = self._resolve_inner(cfg, data)
-        return obj
-
-    def _resolve_inner(self, cfg, data: Mapping):
+    def resolve(self, _cfg, data: Mapping, *, _memo: list | None = None):
         try:
-            obj = ConfigGetter().get(data, self.path)
+            getter = DeepGetterWithSearch()
+            obj = getter.get(data, self.path, _memo=_memo)
             return obj
-        except:  # pylint: disable=bare-except  # noqa: E722
+        except Exception as exc:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:
                 return obj
 
-            raise
+            raise PlaceholderException(
+                f"Failed to resolve RefPlaceholder: '{self.path}'"
+            ) from exc
 
 
 @dataclass
 class GlobalRefPlaceholder(RefPlaceholder):
     """Reference Placeholder: '{global: <path>[, <default>]}'"""
+
     # TODO Not yet implemented. ref and global are identical, except
     # that the map they resolve against is different.
 

@@ -18,7 +18,7 @@ Please see the readme.md file for details. In summary:
    or CLI args.
 """
 
-from .dict_list import DictList
+from .dict_list import DictList, NonStrSequence, ConfigContainerType
 from .config_ini_mixin import ConfigIniMixin
 from .string_converter_mixin import StringConverterMixin
 
@@ -37,6 +37,7 @@ from .config_getter import ConfigGetter
 from .deep_dict import DeepDict
 
 from .placeholders import (
+    PlaceholderException,
     Placeholder,
     ImportPlaceholder,
     RefPlaceholder,

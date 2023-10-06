@@ -10,7 +10,8 @@ import logging
 from typing import Any, Mapping, Sequence
 
 from .config_path import ConfigPath, PathType
-from .objwalk import ObjectWalker, NonStrSequence
+from .dict_list import DictList, NonStrSequence
+from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -25,13 +26,19 @@ class DeepGetterWithSearch:
     """
 
     def get(
-        self, data: Mapping | Sequence, path: PathType, default: Any = DEFAULT
+        self,
+        data: Mapping | NonStrSequence,
+        path: PathType,
+        default: Any = DEFAULT,
+        *,
+        _memo: list | None = None
     ) -> Any:
         """Extended standard dict like getter to also support deep paths, and also
         search patterns, such as 'a..c', 'a.*.c'
         """
+
         try:
-            data, _ = self.find(data, path)
+            data, _ = self.find(data, path, _memo=_memo)
             return data
         except (KeyError, IndexError):
             if default == DEFAULT:
@@ -39,18 +46,23 @@ class DeepGetterWithSearch:
 
             return default
 
-    def get_path(self, data: Mapping | Sequence, path: PathType) -> list[str | int]:
+    def get_path(
+        self, data: Mapping | NonStrSequence, path: PathType
+    ) -> list[str | int]:
         """Determine the real path by replacing the search patterns"""
 
         _, path = self.find(data, path)
         return path
 
     def find(
-        self, data: Mapping | Sequence, path: PathType
+        self, data: Mapping | NonStrSequence, path: PathType, *, _memo: list | None = None
     ) -> (Any, list[str | int]):
         """Determine the value and the real path by replacing the search patterns"""
 
         path = ConfigPath.normalize_path(path)
+
+        if not isinstance(data, DictList):
+            data = DictList(data)
 
         current_path = []
 
@@ -75,11 +87,11 @@ class DeepGetterWithSearch:
         return data, current_path
 
     def on_any_key(
-        self, data: Mapping | Sequence, elem: str | int, current_path: list[str | int]
-    ) -> Mapping | Sequence:
+        self, data: DictList, elem: str | int, current_path: list[str | int]
+    ) -> DictList:
         """Callback if 'a.*.c' was found"""
 
-        if not isinstance(data, Mapping):
+        if not isinstance(data.obj, Mapping):
             raise KeyError(f"Expected a Mapping: '{current_path}'")
 
         for key, value in data.items():
@@ -96,14 +108,14 @@ class DeepGetterWithSearch:
         raise KeyError(f"Key not found: '{path}'")
 
     def on_any_idx(
-        self, data: Mapping | Sequence, elem: str | int, current_path: list[str | int]
-    ) -> Mapping | Sequence:
+        self, data: DictList, elem: str | int, current_path: list[str | int]
+    ) -> DictList:
         """Callback if 'a[*].b' was found"""
 
-        if not isinstance(data, NonStrSequence):
-            raise KeyError(f"Expected a Sequence: '{current_path}'")
+        if not isinstance(data.obj, NonStrSequence):
+            raise KeyError(f"Expected a Sequence, but not a string: '{current_path}'")
 
-        for i, value in enumerate(data):
+        for i, value in data.items():
             if isinstance(value, Mapping) and isinstance(elem, str):
                 if elem in value:
                     current_path.append(i)

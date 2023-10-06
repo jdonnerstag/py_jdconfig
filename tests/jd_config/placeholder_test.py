@@ -8,8 +8,8 @@ import logging
 
 import pytest
 from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder
-from jd_config import ResolverMixin, GlobalRefPlaceholder
-from jd_config import ConfigException, Placeholder
+from jd_config import ResolverMixin, GlobalRefPlaceholder, ResolverDictList
+from jd_config import ConfigException, Placeholder, PlaceholderException
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +63,16 @@ def test_EnvPlaceholder(monkeypatch):
 
 
 def test_resolve():
-    cfg = {
-        "a": "aa",
-        "b": "{ref:a}",
-        "c": "{ref:b}",
-        "d": "{ref:xxx}",
-    }
+    cfg = ResolverDictList(
+        obj={
+            "a": "aa",
+            "b": "{ref:a}",
+            "c": "{ref:b}",
+            "d": "{ref:xxx}",
+        },
+        path=[],
+        root=None,
+    )
 
     resolver = ResolverMixin()
     ref = RefPlaceholder("a")
@@ -80,22 +84,26 @@ def test_resolve():
     ref = RefPlaceholder("c")
     assert ref.resolve(resolver, cfg) == "aa"
 
-    with pytest.raises(ConfigException):
+    with pytest.raises(PlaceholderException):
         ref = RefPlaceholder("d")
         ref.resolve(resolver, cfg)
 
-    with pytest.raises(ConfigException):
+    with pytest.raises(PlaceholderException):
         ref = RefPlaceholder("xxx")
         ref.resolve(resolver, cfg)
 
 
 def test_global_ref():
-    cfg = {
-        "a": "aa",
-        "b": "{global:a}",
-        "c": "{global:b}",
-        "d": "{global:xxx}",
-    }
+    cfg = ResolverDictList(
+        obj={
+            "a": "aa",
+            "b": "{global:a}",
+            "c": "{global:b}",
+            "d": "{global:xxx}",
+        },
+        path=[],
+        root=None,
+    )
 
     resolver = ResolverMixin()
     ref = GlobalRefPlaceholder("a")
@@ -125,22 +133,29 @@ class MyBespokePlaceholder(Placeholder):
 
 
 def test_bespoke_placeholder():
-    cfg = {
-        "a": "{ref:b}",
-        "b": "{bespoke:}",
-    }
+    cfg = ResolverDictList(
+        obj={
+            "a": "{ref:b}",
+            "b": "{bespoke:}",
+        },
+        path=[],
+        root=None,
+    )
 
-    resolver = ResolverMixin()
-    resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    cfg.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     ref = RefPlaceholder("a")
-    assert ref.resolve(resolver, cfg) == "it's me"
+    assert ref.resolve(None, cfg) == "it's me"
 
 
 def test_mandatory_value():
-    cfg = {
-        "a": "???",
-        "b": "{ref:a}",
-    }
+    cfg = ResolverDictList(
+        obj={
+            "a": "???",
+            "b": "{ref:a}",
+        },
+        path=[],
+        root=None,
+    )
 
     resolver = ResolverMixin()
     ref = RefPlaceholder("a")
@@ -153,11 +168,15 @@ def test_mandatory_value():
 
 
 def test_detect_recursion():
-    cfg = {
-        "a": "{ref:b}",
-        "b": "{ref:c}",
-        "c": "{ref:a}",
-    }
+    cfg = ResolverDictList(
+        obj={
+            "a": "{ref:b}",
+            "b": "{ref:c}",
+            "c": "{ref:a}",
+        },
+        path=[],
+        root=None,
+    )
 
     resolver = ResolverMixin()
     ref = RefPlaceholder("a")

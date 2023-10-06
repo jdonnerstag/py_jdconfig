@@ -7,9 +7,9 @@ play an important role. DictList harmonizes access to these dicts and lists,
 and thus simplies the code accessing configs.
 """
 
+from abc import ABC
 import logging
-from typing import Any, Mapping, Sequence, Iterator, Tuple
-from .objwalk import NonStrSequence
+from typing import Any, Mapping, Sequence, Iterator
 
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -18,21 +18,36 @@ logger = logging.getLogger(__parent__name__)
 
 DEFAULT = object()
 
+class NonStrSequence(ABC):
+    """Avoid having to do `isinstance(x, Sequence) and not isinstance(x, str)` all the time"""
 
-class DictList(Mapping, Sequence):
+    @classmethod
+    def __subclasshook__(cls, C: type):
+        # not possible to do with AnyStr
+        if C is str:
+            return NotImplemented
+
+        return issubclass(C, Sequence)
+
+ConfigContainerType: type = Mapping | NonStrSequence
+
+class DictList(Mapping, NonStrSequence):
     """Harmonize access to configs managed in dict- and/or list-like
     containers.
     """
 
-    def __init__(self, obj: Mapping | NonStrSequence) -> None:
+    def __init__(self, obj: ConfigContainerType) -> None:
         assert isinstance(obj, (Mapping, NonStrSequence))
         self.obj = obj
+
+    def _new_item(self, _key, obj):
+        return DictList(obj)
 
     def __getitem__(self, key: str | int) -> Any:
         try:
             rtn = self.obj[key]
             if isinstance(rtn, (Mapping, NonStrSequence)):
-                return DictList(rtn)
+                return self._new_item(key, rtn)
 
             return rtn
         except (KeyError, IndexError):
@@ -50,11 +65,26 @@ class DictList(Mapping, Sequence):
     def __len__(self) -> int:
         return len(self.obj)
 
-    def __iter__(self) -> Iterator[Tuple[str | int, Any]]:
-        if isinstance(self.obj, Mapping):
-            return iter(self.obj.items())
+    def __iter__(self) -> Iterator:
+        raise NotImplementedError("Please use .items(), .keys() or .values() instead")
 
-        return iter(enumerate(self.obj))
+    def items(self) -> Iterator:
+        if isinstance(self.obj, Mapping):
+            return self.obj.items()
+
+        return enumerate(self.obj)
+
+    def keys(self) -> Iterator:
+        if isinstance(self.obj, Mapping):
+            return self.obj.keys()
+
+        return range(len(self.obj))
+
+    def values(self) -> Iterator:
+        if isinstance(self.obj, Mapping):
+            return self.obj.values()
+
+        return self.obj
 
     def __contains__(self, key: str | int) -> bool:
         if isinstance(self.obj, Mapping):
