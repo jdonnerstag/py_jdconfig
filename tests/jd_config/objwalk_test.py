@@ -3,8 +3,8 @@
 
 # pylint: disable=C
 
-from copy import deepcopy
 import logging
+from copy import deepcopy
 from jd_config import ObjectWalker, DropContainerEvent
 
 logger = logging.getLogger(__name__)

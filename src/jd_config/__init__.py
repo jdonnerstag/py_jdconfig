@@ -18,7 +18,7 @@ Please see the readme.md file for details. In summary:
    or CLI args.
 """
 
-from .dict_list import DictList, NonStrSequence, ConfigContainerType
+from .utils import NonStrSequence, ConfigException, PathType
 from .config_ini_mixin import ConfigIniMixin
 from .string_converter_mixin import StringConverterMixin
 
@@ -29,7 +29,6 @@ from .objwalk import (
     NewSequenceEvent,
     DropContainerEvent,
     WalkerEvent,
-    ConfigException,
 )
 
 from .config_path import ConfigPath
@@ -47,8 +46,8 @@ from .placeholders import (
 )
 
 from .value_reader import ValueType, ValueReader
-from .resolver_dict import ResolverDictList
 from .deep_getter_with_search import DeepGetterWithSearch
+from .deep_getter_with_search_and_resolver import DeepGetterWithResolve
 from .deep_access_mixin import DeepAccessMixin
 from .config_file_loader import ConfigFileLoader
 from .deep_export_mixin import DeepExportMixin

@@ -27,6 +27,7 @@
 - CONFIG_INI_FILE env to find config.ini file
 - Make sure that {env:} results are not resolved any further. Else risky configs might be
   injected.
+- {global:} is only a stub so far, but not yet implemented
 
 Done:
 

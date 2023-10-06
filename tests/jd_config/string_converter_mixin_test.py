@@ -4,8 +4,8 @@
 # pylint: disable=C
 
 import logging
-from jd_config import StringConverterMixin
 import pytest
+from jd_config import StringConverterMixin
 
 logger = logging.getLogger(__name__)
 

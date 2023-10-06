@@ -7,11 +7,8 @@ Mixin to export deep config data
 
 import logging
 from typing import Any, Mapping, Optional, Sequence
-
 import yaml
-
-from .config_getter import PathType
-
+from .utils import PathType
 from .objwalk import (
     DropContainerEvent,
     NewMappingEvent,

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from .objwalk import ConfigException
+from .utils import ConfigException
 from .deep_getter_with_search import DeepGetterWithSearch
 
 
@@ -69,8 +69,8 @@ class RefPlaceholder(Placeholder):
 
     def resolve(self, _cfg, data: Mapping, *, _memo: list | None = None):
         try:
-            getter = DeepGetterWithSearch()
-            obj = getter.get(data, self.path, _memo=_memo)
+            getter = DeepGetterWithSearch(data=data, path=(), _memo=_memo)
+            obj = getter.get(self.path)
             return obj
         except Exception as exc:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:

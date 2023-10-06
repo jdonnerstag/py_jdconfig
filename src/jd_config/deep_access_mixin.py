@@ -7,8 +7,9 @@ Provide getter and setter to access deep config structures.
 
 import logging
 from typing import Any, Iterator, Optional
+from .utils import PathType, DEFAULT
 from .objwalk import ObjectWalker, NodeEvent
-from .config_getter import ConfigGetter, PathType, DEFAULT
+from .config_getter import ConfigGetter
 
 
 __parent__name__ = __name__.rpartition(".")[0]

@@ -3,12 +3,12 @@
 
 # pylint: disable=C
 
-from dataclasses import dataclass
 import logging
-
+from dataclasses import dataclass
 import pytest
 from jd_config import ValueType, ValueReader, ConfigException
-from jd_config import Placeholder, RefPlaceholder, ImportPlaceholder, EnvPlaceholder
+from jd_config import Placeholder, RefPlaceholder, ImportPlaceholder
+from jd_config import EnvPlaceholder
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ def test_ValueType():
 
 def test_ValueReader():
     value_reader = ValueReader()
+
     def parse(x):
         return list(value_reader.parse(x))
 
@@ -86,7 +87,9 @@ def test_ValueReader():
     assert value == [ImportPlaceholder("./db/{ref:db}-config.yaml")]
 
     value = parse("{ref: ./db/{ref: db, {ref: mydef}}-config.yaml, default}")
-    assert value == [RefPlaceholder("./db/{ref: db, {ref: mydef}}-config.yaml", "default")]
+    assert value == [
+        RefPlaceholder("./db/{ref: db, {ref: mydef}}-config.yaml", "default")
+    ]
 
     should_fail = ["{ref:db", "{db}", "{:db}", "{xxx: db}", "{ref:,db}"]
     for fail in should_fail:
@@ -94,10 +97,13 @@ def test_ValueReader():
             parse(fail)
 
     value = list(value_reader.parse(" aaa, bbb,ccc ,   123, ddd ", sep=";"))
-    assert value == ["aaa, bbb,ccc ,   123, ddd"]   # Only leading and trailing whitespaces are stripped
+    assert value == [
+        "aaa, bbb,ccc ,   123, ddd"
+    ]  # Only leading and trailing whitespaces are stripped
 
     value = list(value_reader.parse(" aaa; bbb;ccc ;   123; ddd ", sep=";"))
     assert value == ["aaa", "bbb", "ccc", 123, "ddd"]
+
 
 @dataclass
 class MyBespokePlaceholder(Placeholder):

@@ -6,7 +6,7 @@
 import pytest
 import logging
 from typing import Mapping
-from jd_config import ResolverDictList, ObjectWalker, DeepGetterWithSearch
+from jd_config import ObjectWalker, DeepGetterWithSearch
 
 logger = logging.getLogger(__name__)
 

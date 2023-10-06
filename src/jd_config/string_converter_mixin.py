@@ -7,7 +7,6 @@
 import logging
 from typing import Any
 
-
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 

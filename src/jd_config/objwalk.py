@@ -9,14 +9,10 @@ events when stepping into or out of a container, and for every leaf-node.
 from dataclasses import dataclass
 import logging
 from typing import Any, Mapping, Optional, Sequence, Tuple, Iterator
-from .dict_list import DictList, NonStrSequence, ConfigContainerType
+from .utils import NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
-
-
-class ConfigException(Exception):
-    """Base class for Config Exceptions"""
 
 
 @dataclass
@@ -69,7 +65,7 @@ class DropContainerEvent:
     """Step out of Mapping or Sequence"""
 
     path: Tuple[str | int, ...]
-    value: ConfigContainerType
+    value: Mapping | NonStrSequence
     skip: bool = False
 
 
@@ -84,7 +80,7 @@ class ObjectWalker:
     @classmethod
     def objwalk(
         cls,
-        obj: ConfigContainerType,
+        obj: Mapping | NonStrSequence,
         *,
         nodes_only: bool = False,
         cb_get: Optional[callable] = None
@@ -103,11 +99,7 @@ class ObjectWalker:
         if not obj:
             return
 
-        if not isinstance(obj, DictList):
-            if isinstance(obj, ConfigContainerType):
-                obj = DictList(obj)
-
-        if not isinstance(obj, DictList):
+        if not isinstance(obj, (Mapping, NonStrSequence)):
             yield NodeEvent((), obj)
             return
 

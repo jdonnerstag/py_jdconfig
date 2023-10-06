@@ -4,8 +4,8 @@
 # pylint: disable=C
 # pylint: disable=protected-access
 
-from copy import deepcopy
 import logging
+from copy import deepcopy
 from typing import List, Mapping, Sequence
 from jd_config import ConfigGetter, ConfigException
 import pytest

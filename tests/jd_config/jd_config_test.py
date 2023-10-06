@@ -3,11 +3,11 @@
 
 # pylint: disable=C
 
+import os
+import re
 from dataclasses import dataclass
 from io import StringIO
-import os
 from pathlib import Path
-import re
 import logging
 import pytest
 from jd_config import JDConfig, Placeholder, ConfigException, NodeEvent

@@ -17,15 +17,15 @@ from typing import (
     Optional,
 )
 
-from .config_path import ConfigPath, PathType
+from .utils import PathType, NonStrSequence
+from .config_path import ConfigPath
 from .string_converter_mixin import StringConverterMixin
 from .objwalk import (
     ObjectWalker,
     NodeEvent,
     NewMappingEvent,
     NewSequenceEvent,
-    DropContainerEvent,
-    NonStrSequence,
+    DropContainerEvent
 )
 
 __parent__name__ = __name__.rpartition(".")[0]

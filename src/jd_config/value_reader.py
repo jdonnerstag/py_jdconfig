@@ -13,7 +13,7 @@ And it must be a yaml *string* value, surrounded by quotes.
 
 import logging
 from typing import Iterator, Optional, Union
-from .objwalk import ConfigException
+from .utils import ConfigException
 from .string_converter_mixin import StringConverterMixin
 from .placeholders import (
     Placeholder,

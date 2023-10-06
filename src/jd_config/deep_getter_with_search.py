@@ -9,8 +9,8 @@ search patterns, such as 'a..c', 'a.*.c'
 import logging
 from typing import Any, Mapping
 
-from .config_path import ConfigPath, PathType
-from .dict_list import NonStrSequence, ConfigContainerType
+from .utils import NonStrSequence, PathType, ConfigException
+from .config_path import ConfigPath
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -25,7 +25,9 @@ class DeepGetterWithSearch:
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def __init__(self, data: ConfigContainerType, path: PathType, *, _memo=()) -> None:
+    def __init__(
+        self, data: Mapping | NonStrSequence, path: PathType, *, _memo=()
+    ) -> None:
         self._data = data
         self._path = path
         self._memo = _memo
@@ -49,7 +51,7 @@ class DeepGetterWithSearch:
         Subclasses may auto-create elements if needed.
         By default, the exception is re-raised.
         """
-        raise exc
+        raise ConfigException(f"Config not found: '{key}'") from exc
 
     def get(self, path: PathType, default: Any = DEFAULT) -> Any:
         """Extended standard dict like getter to also support deep paths, and also
@@ -59,11 +61,14 @@ class DeepGetterWithSearch:
         try:
             data, _ = self.find(path)
             return data
-        except (KeyError, IndexError):
-            if default == DEFAULT:
+        except (KeyError, IndexError, ConfigException) as exc:
+            if default != DEFAULT:
+                return default
+
+            if isinstance(exc, ConfigException):
                 raise
 
-            return default
+            raise ConfigException(f"Unable to get config from path: '{path}'") from exc
 
     def get_path(self, path: PathType) -> list[str | int]:
         """Determine the real path by replacing the search patterns"""

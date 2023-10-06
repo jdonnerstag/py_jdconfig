@@ -3,10 +3,10 @@
 
 # pylint: disable=C
 
-from io import StringIO
 import os
-from pathlib import Path
 import logging
+from io import StringIO
+from pathlib import Path
 from typing import Mapping
 from jd_config import ConfigFileLoader
 from jd_config import ResolverMixin

@@ -6,7 +6,8 @@
 
 import logging
 from typing import Any, Iterator, Mapping, Sequence, Union
-from .config_getter import ConfigGetter, PathType, DEFAULT
+from .utils import PathType, DEFAULT
+from .config_getter import ConfigGetter
 from .resolver_mixin import ResolverMixin
 
 __parent__name__ = __name__.rpartition(".")[0]

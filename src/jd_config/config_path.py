@@ -8,15 +8,12 @@ Normalize config paths such as "a.b.c", "a.b[2].c", "a..c", "a.*.c", "a.b[*].c",
 
 import re
 import logging
-from typing import Iterable, Iterator, Type
+from typing import Iterable, Iterator
 
-from .objwalk import ConfigException
+from .utils import ConfigException, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
-
-
-PathType: Type = str | int | Iterable[str | int]
 
 
 class ConfigPath:
