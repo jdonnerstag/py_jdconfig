@@ -12,11 +12,9 @@ from typing import Iterable, Sequence, Type
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
-
 DEFAULT = object()
 
 PathType: Type = str | int | Iterable[str | int]
-
 
 class ConfigException(Exception):
     """Base class for Config Exceptions"""

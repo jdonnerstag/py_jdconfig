@@ -17,7 +17,7 @@ from typing import (
     Optional,
 )
 
-from .utils import PathType, NonStrSequence
+from .utils import PathType, NonStrSequence, ConfigException, DEFAULT
 from .config_path import ConfigPath
 from .string_converter_mixin import StringConverterMixin
 from .objwalk import (
@@ -31,8 +31,6 @@ from .objwalk import (
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
-
-DEFAULT = object()
 
 WalkResultType: Type = Union[Tuple[Mapping, str], Tuple[Sequence, int]]
 
@@ -263,7 +261,7 @@ class ConfigGetter(StringConverterMixin):
             data, key = self._walk_and_find(data, path)
             return data[key]
         except Exception as exc:  # pylint: disable=W0718
-            if default != DEFAULT:
+            if default is not DEFAULT:
                 return default
 
             if isinstance(exc, ConfigException):

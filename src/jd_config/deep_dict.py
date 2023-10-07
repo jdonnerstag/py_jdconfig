@@ -9,6 +9,7 @@ from typing import Any, Iterator, Mapping, Sequence, Union
 from .utils import ConfigException, PathType, DEFAULT
 from .deep_getter_with_search_and_resolver import DeepGetterWithResolve
 from .deep_update import DeepUpdateMixin
+from .config_path import ConfigPath
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -58,13 +59,13 @@ class DeepDict(Mapping, DeepUpdateMixin):
                 raise
 
     def on_missing_handler(
-        self, data: Mapping | Sequence, key: str | int, path: tuple
+        self, data: Mapping | Sequence, key: str | int, path: tuple, exc: Exception
     ) -> Mapping | Sequence:
         """A handler that will be invoked if a path element is missing and
         'create_missing has valid configuration.
         """
 
-        return self.getter.on_missing_default(data, key, path)
+        return self.getter.on_missing_default(data, key, path, exc)
 
     def set(
         self,
@@ -91,8 +92,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :param sep: 'path' separator. Default: '.'
         """
 
+        path = ConfigPath.normalize_path(path)
+        key = path.pop()
         data, path = self.getter.find(path)
-        key = path[-1]
         old_value = None
         try:
             old_value = data[key]

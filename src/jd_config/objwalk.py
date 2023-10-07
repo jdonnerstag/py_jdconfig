@@ -114,7 +114,7 @@ class ObjectWalker:
 
                 # get and resolve placeholders if needed.
                 value = iter_obj[-1]
-                value = cb_get(value, key) if callable(cb_get) else value[key]
+                value = cb_get(value, key, path_) if callable(cb_get) else value[key]
 
                 event = None
                 if isinstance(value, Mapping):

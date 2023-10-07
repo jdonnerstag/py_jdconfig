@@ -17,9 +17,6 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-DEFAULT = object()
-
-
 class DeepGetterWithResolve(DeepGetterWithSearch, ResolverMixin):
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
@@ -31,7 +28,7 @@ class DeepGetterWithResolve(DeepGetterWithSearch, ResolverMixin):
         DeepGetterWithSearch.__init__(self, data, path, _memo=_memo)
         ResolverMixin.__init__(self)
 
-    def cb_get(self, data, key) -> Any:
+    def cb_get(self, data, key, path) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """

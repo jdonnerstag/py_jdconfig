@@ -89,7 +89,7 @@ def test_simple_resolve():
         "b": "{ref:a}"
     }
 
-    def resolve(data, key):
+    def resolve(data, key, path):
         value = data[key]
         if isinstance(value, str) and value.find("{") != -1:
             return "<resolved>"

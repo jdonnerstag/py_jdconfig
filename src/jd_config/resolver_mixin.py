@@ -52,6 +52,10 @@ class ResolverMixin:
 
         logger.debug("resolve(%s)", value)
         key = value
+
+        if isinstance(value, list) and len(value) == 1:
+            value = value[0]
+
         if isinstance(value, Placeholder):
             if value in _memo:
                 _memo.append(value)

@@ -9,15 +9,12 @@ search patterns, such as 'a..c', 'a.*.c'
 import logging
 from typing import Any, Mapping
 
-from .utils import NonStrSequence, PathType, ConfigException
+from .utils import NonStrSequence, PathType, ConfigException, DEFAULT
 from .config_path import ConfigPath
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
-
-
-DEFAULT = object()
 
 
 class DeepGetterWithSearch:
@@ -32,28 +29,28 @@ class DeepGetterWithSearch:
         self._path = path
         self._memo = _memo
 
-    def cb_get(self, data, key) -> Any:
+    def cb_get(self, data, key, path) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """
         return data[key]
 
-    def _cb_get_internal(self, data, key) -> Any:
+    def _cb_get_internal(self, data, key, path) -> Any:
         """Internal:"""
         try:
-            return self.cb_get(data, key)
+            return self.cb_get(data, key, path)
         except (KeyError, IndexError) as exc:
-            return self.on_missing(data, key, exc)
+            return self.on_missing(data, key, path, exc)
 
-    def on_missing(self, data, key, exc) -> Any:
+    def on_missing(self, data, key, path, exc) -> Any:
         """A callback invoked, if a path can not be found.
 
         Subclasses may auto-create elements if needed.
         By default, the exception is re-raised.
         """
-        return self.on_missing_default(data, key, exc)
+        return self.on_missing_default(data, key, path, exc)
 
-    def on_missing_default(self, data, key, exc) -> Any:
+    def on_missing_default(self, data, key, path, exc) -> Any:
         """A callback invoked, if a path can not be found.
 
         Subclasses may auto-create elements if needed.
@@ -66,11 +63,13 @@ class DeepGetterWithSearch:
         search patterns, such as 'a..c', 'a.*.c'
         """
 
+        path = ConfigPath.normalize_path(path)
+
         try:
             data, _ = self.find(path)
             return data
         except (KeyError, IndexError, ConfigException) as exc:
-            if default != DEFAULT:
+            if default is not DEFAULT:
                 return default
 
             if isinstance(exc, ConfigException):
@@ -81,10 +80,11 @@ class DeepGetterWithSearch:
     def get_path(self, path: PathType) -> list[str | int]:
         """Determine the real path by replacing the search patterns"""
 
+        path = ConfigPath.normalize_path(path)
         _, path = self.find(path)
         return path
 
-    def find(self, path: PathType) -> (Any, list[str | int]):
+    def find(self, path: list[str|int]) -> (Any, list[str | int]):
         """Determine the value and the real path by replacing the search patterns"""
 
         target = ConfigPath.normalize_path(path)
@@ -105,7 +105,7 @@ class DeepGetterWithSearch:
                 i += 1
                 data, path = self.on_any_deep(data, target[i], path)
             else:
-                data = self._cb_get_internal(data, elem)
+                data = self._cb_get_internal(data, elem, path)
 
             path = path + (target[i],)
             i += 1
@@ -122,7 +122,7 @@ class DeepGetterWithSearch:
 
         for key in data.keys():
             # Allow to resolve placeholder if necessary
-            value = self._cb_get_internal(data, key)
+            value = self._cb_get_internal(data, key, path)
 
             if isinstance(value, Mapping) and isinstance(elem, str):
                 if elem in value:
@@ -146,7 +146,7 @@ class DeepGetterWithSearch:
 
         for key, value in enumerate(data):
             # Allow to resolve placeholder if necessary
-            value = self._cb_get_internal(data, key)
+            value = self._cb_get_internal(data, key, path)
 
             if isinstance(value, Mapping) and isinstance(elem, str):
                 if elem in value:
@@ -169,7 +169,7 @@ class DeepGetterWithSearch:
             if event.path and event.path[-1] == elem:
                 for node in event.path:
                     # Allow to resolve placeholder if necessary
-                    data = self._cb_get_internal(data, node)
+                    data = self._cb_get_internal(data, node, path)
                     path = path + (node,)
 
                 path = path[:-1]
