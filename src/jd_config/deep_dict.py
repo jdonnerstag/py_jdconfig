@@ -23,7 +23,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
     def __init__(self, obj: Mapping, path: PathType = ()) -> None:
         self.obj = obj
         self.getter = DeepGetterWithResolve(data=obj, path=path)
-        self.getter.on_missing = self.on_missing_handler  # TODO don't like this
+        self.getter.on_missing = self.on_missing_handler
+        self.missing_container_default = dict
+        self.missing_container = {}
 
     # pylint: disable=arguments-renamed
     def get(self, path: PathType, default: Any = DEFAULT) -> Any:
@@ -51,7 +53,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         """Similar to 'del dict[key]', but with deep path support"""
 
         try:
-            data, path = self.getter.find(path)
+            data, path = self.getter.find(path, create_missing=False)
             key = path[-1]
             del data[key]
         except (KeyError, IndexError, ConfigException):
@@ -65,7 +67,18 @@ class DeepDict(Mapping, DeepUpdateMixin):
         'create_missing has valid configuration.
         """
 
-        return self.getter.on_missing_default(data, key, path, exc)
+        elem = self.missing_container.get(path + (key,), None)
+        if elem is None:
+            elem = self.missing_container.get(key, None)
+        if elem is None:
+            elem = self.missing_container_default
+        if elem is None:
+            return self.getter.on_missing_default(data, key, path, exc)
+
+        if isinstance(elem, type):
+            elem = elem()
+
+        return elem
 
     def set(
         self,
@@ -94,7 +107,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
         path = ConfigPath.normalize_path(path)
         key = path.pop()
-        data, path = self.getter.find(path)
+        data, path = self.getter.find(path, create_missing=create_missing)
         old_value = None
         try:
             old_value = data[key]

@@ -35,12 +35,17 @@ class DeepGetterWithSearch:
         """
         return data[key]
 
-    def _cb_get_internal(self, data, key, path) -> Any:
+    def _cb_get_internal(self, data, key, path, create_missing:bool=False) -> Any:
         """Internal:"""
         try:
             return self.cb_get(data, key, path)
         except (KeyError, IndexError) as exc:
-            return self.on_missing(data, key, path, exc)
+            if create_missing:
+                rtn = self.on_missing(data, key, path, exc)
+                data[key] = rtn
+                return rtn
+
+            return self.on_missing_default(data, key, path, exc)
 
     def on_missing(self, data, key, path, exc) -> Any:
         """A callback invoked, if a path can not be found.
@@ -66,7 +71,7 @@ class DeepGetterWithSearch:
         path = ConfigPath.normalize_path(path)
 
         try:
-            data, _ = self.find(path)
+            data, _ = self.find(path, create_missing=False)
             return data
         except (KeyError, IndexError, ConfigException) as exc:
             if default is not DEFAULT:
@@ -81,14 +86,13 @@ class DeepGetterWithSearch:
         """Determine the real path by replacing the search patterns"""
 
         path = ConfigPath.normalize_path(path)
-        _, path = self.find(path)
+        _, path = self.find(path, create_missing=False)
         return path
 
-    def find(self, path: list[str|int]) -> (Any, list[str | int]):
+    def find(self, path: list[str|int], create_missing: bool) -> (Any, list[str | int]):
         """Determine the value and the real path by replacing the search patterns"""
 
-        target = ConfigPath.normalize_path(path)
-
+        target = path
         path: tuple[str | int] = ()
         data = self._data
 
@@ -105,7 +109,7 @@ class DeepGetterWithSearch:
                 i += 1
                 data, path = self.on_any_deep(data, target[i], path)
             else:
-                data = self._cb_get_internal(data, elem, path)
+                data = self._cb_get_internal(data, elem, path, create_missing)
 
             path = path + (target[i],)
             i += 1
