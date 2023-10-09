@@ -9,175 +9,111 @@ search patterns, such as 'a..c', 'a.*.c'
 import logging
 from typing import Any, Mapping
 
-from .utils import NonStrSequence, PathType, ConfigException, DEFAULT
+from .utils import NonStrSequence, PathType, ConfigException
 from .config_path import ConfigPath
+from .deep_getter_base import DeepGetter, GetterContext
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepGetterWithSearch:
+class DeepGetterWithSearch(DeepGetter):
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def __init__(
-        self, data: Mapping | NonStrSequence, path: PathType, *, _memo=()
-    ) -> None:
-        self._data = data
-        self._path = path
-        self._memo = _memo
+    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
+        if ctx.key == ConfigPath.PAT_ANY_KEY:
+            return self.on_any_key(ctx)
+        if ctx.key == ConfigPath.PAT_ANY_IDX:
+            return self.on_any_idx(ctx)
+        if ctx.key == ConfigPath.PAT_DEEP:
+            return self.on_any_deep(ctx)
 
-    def cb_get(self, data, key, path) -> Any:
-        """Retrieve the element. Subclasses may expand it, e.g. to resolve
-        placeholders
-        """
-        return data[key]
-
-    def _cb_get_internal(self, data, key, path, create_missing:bool=False) -> Any:
-        """Internal:"""
-        try:
-            return self.cb_get(data, key, path)
-        except (KeyError, IndexError) as exc:
-            if create_missing:
-                rtn = self.on_missing(data, key, path, exc)
-                data[key] = rtn
-                return rtn
-
-            return self.on_missing_default(data, key, path, exc)
-
-    def on_missing(self, data, key, path, exc) -> Any:
-        """A callback invoked, if a path can not be found.
-
-        Subclasses may auto-create elements if needed.
-        By default, the exception is re-raised.
-        """
-        return self.on_missing_default(data, key, path, exc)
-
-    def on_missing_default(self, data, key, path, exc) -> Any:
-        """A callback invoked, if a path can not be found.
-
-        Subclasses may auto-create elements if needed.
-        By default, the exception is re-raised.
-        """
-        raise ConfigException(f"Config not found: '{key}'") from exc
-
-    def get(self, path: PathType, default: Any = DEFAULT) -> Any:
-        """Extended standard dict like getter to also support deep paths, and also
-        search patterns, such as 'a..c', 'a.*.c'
-        """
-
-        path = ConfigPath.normalize_path(path)
-
-        try:
-            data, _ = self.find(path, create_missing=False)
-            return data
-        except (KeyError, IndexError, ConfigException) as exc:
-            if default is not DEFAULT:
-                return default
-
-            if isinstance(exc, ConfigException):
-                raise
-
-            raise ConfigException(f"Unable to get config from path: '{path}'") from exc
+        return super().cb_get_2_with_context(ctx)
 
     def get_path(self, path: PathType) -> list[str | int]:
         """Determine the real path by replacing the search patterns"""
 
-        path = ConfigPath.normalize_path(path)
-        _, path = self.find(path, create_missing=False)
-        return path
+        path = super().get_path(path)
+        if not path:
+            return path
 
-    def find(self, path: list[str|int], create_missing: bool) -> (Any, list[str | int]):
-        """Determine the value and the real path by replacing the search patterns"""
+        ctx = self.new_context(self._data, path, [])
+        ctx = self._get_ctx(ctx)
+        return ctx.path
 
-        target = path
-        path: tuple[str | int] = ()
-        data = self._data
-
-        i = 0
-        while i < len(target):
-            elem = target[i]
-            if elem == ConfigPath.PAT_ANY_KEY:
-                i += 1
-                data, path = self.on_any_key(data, target[i], path)
-            elif elem == ConfigPath.PAT_ANY_IDX:
-                i += 1
-                data, path = self.on_any_idx(data, target[i], path)
-            elif elem == ConfigPath.PAT_DEEP:
-                i += 1
-                data, path = self.on_any_deep(data, target[i], path)
-            else:
-                data = self._cb_get_internal(data, elem, path, create_missing)
-
-            path = path + (target[i],)
-            i += 1
-
-        return data, path
-
-    def on_any_key(
-        self, data: Mapping, elem: str, path: tuple[str | int]
-    ) -> (Any, Any):
+    def on_any_key(self, ctx: GetterContext) -> Any:
         """Callback if 'a.*.c' was found"""
 
-        if not isinstance(data, Mapping):
-            raise ConfigException(f"Expected a Mapping: '{path}'")
+        if not isinstance(ctx.data, Mapping):
+            raise ConfigException(f"Expected a Mapping: '{ctx.cur_path()}'")
 
-        for key in data.keys():
+        find_key = ctx.path[ctx.idx + 1]
+        for key in ctx.data.keys():
             # Allow to resolve placeholder if necessary
-            value = self._cb_get_internal(data, key, path)
+            ctx.key = key
+            value = self.cb_get_2_with_context(ctx)
 
-            if isinstance(value, Mapping) and isinstance(elem, str):
-                if elem in value:
-                    path = path + (key,)
-                    return value[elem], path
-            elif isinstance(value, NonStrSequence) and isinstance(elem, int):
-                if 0 <= elem < len(value):
-                    path = path + (key,)
-                    return value[elem], path
+            if isinstance(value, Mapping) and isinstance(find_key, str):
+                if find_key in value:
+                    ctx.data = value[find_key]
+                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.idx += 1
+                    return ctx.data
+            elif isinstance(value, NonStrSequence) and isinstance(find_key, int):
+                if 0 <= find_key < len(value):
+                    ctx.data = value[find_key]
+                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.idx += 1
+                    return ctx.data
 
-        path = path + ("*", elem)
-        raise ConfigException(f"Key not found: '{path}'")
+        raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
 
-    def on_any_idx(
-        self, data: NonStrSequence, elem: int, path: tuple[str | int]
-    ) -> (Any, Any):
+    def on_any_idx(self, ctx: GetterContext) -> GetterContext:
         """Callback if 'a[*].b' was found"""
 
-        if not isinstance(data, NonStrSequence):
-            raise ConfigException(f"Expected a Sequence, but not a string: '{path}'")
+        if not isinstance(ctx.data, NonStrSequence):
+            raise ConfigException(f"Expected a Sequence: '{ctx.cur_path()}'")
 
-        for key, value in enumerate(data):
+        find_key = ctx.path[ctx.idx + 1]
+        for key, value in enumerate(ctx.data):
             # Allow to resolve placeholder if necessary
-            value = self._cb_get_internal(data, key, path)
+            ctx.key = key
+            value = self.cb_get_2_with_context(ctx)
 
-            if isinstance(value, Mapping) and isinstance(elem, str):
-                if elem in value:
-                    path = path + (key,)
-                    return value[elem], path
-            elif isinstance(value, NonStrSequence) and isinstance(elem, int):
-                if 0 <= elem < len(value):
-                    path = path + (key,)
-                    return value[elem], path
+            if isinstance(value, Mapping) and isinstance(find_key, str):
+                if find_key in value:
+                    ctx.data = value[find_key]
+                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.idx += 1
+                    return ctx.data
+            elif isinstance(value, NonStrSequence) and isinstance(find_key, int):
+                if 0 <= find_key < len(value):
+                    ctx.data = value[find_key]
+                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.idx += 1
+                    return ctx.data
 
-        path = path + ("[*]", elem)
-        raise ConfigException(f"Key not found: '{path}'")
+        raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
 
-    def on_any_deep(
-        self, data: Mapping | NonStrSequence, elem: str | int, path: list[str | int]
-    ) -> (Any, Any):
+    def on_any_deep(self, ctx: GetterContext) -> GetterContext:
         """Callback if 'a..b' was found"""
 
-        for event in ObjectWalker.objwalk(data, nodes_only=False, cb_get=self.cb_get):
-            if event.path and event.path[-1] == elem:
-                for node in event.path:
-                    # Allow to resolve placeholder if necessary
-                    data = self._cb_get_internal(data, node, path)
-                    path = path + (node,)
+        find_key = ctx.path[ctx.idx + 1]
+        walk = ObjectWalker.objwalk
+        for event in walk(ctx.data, nodes_only=False, cb_get=self.cb_get):
+            if event.path and event.path[-1] == find_key:
+                ctx.data = event.value
+                ctx.path = self._path_replace(ctx.path, ctx.idx, event.path, 2)
+                ctx.idx += len(event.path) - 1
+                return ctx.data
 
-                path = path[:-1]
-                return data, path
+        raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
 
-        path = path + ("", elem)
-        raise ConfigException(f"Key not found: '{path}'")
+    def _path_replace(self, path, idx, replace, count = 1) -> tuple:
+        if not isinstance(replace, tuple):
+            replace = (replace,)
+
+        return path[: idx] + replace + path[idx + count:]

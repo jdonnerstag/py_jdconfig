@@ -81,6 +81,8 @@ def test_any_key_or_index():
     assert getter.get("b.*.ba", None) is None
     assert getter.get("c[*].c4b", None) == 55
     assert getter.get("c.*.c4b", None) is None
+    assert getter.get("*.ba") == 11
+    # assert getter.get("*.*.bbb") == 33   # TODO Not yet supported
 
 
 def test_simple_resolve():
@@ -89,7 +91,7 @@ def test_simple_resolve():
         "b": "{ref:a}"
     }
 
-    def resolve(data, key, path):
+    def resolve(data, key, _path):
         value = data[key]
         if isinstance(value, str) and value.find("{") != -1:
             return "<resolved>"

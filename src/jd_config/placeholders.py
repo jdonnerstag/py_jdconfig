@@ -68,11 +68,14 @@ class RefPlaceholder(Placeholder):
 
     def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
         try:
-            obj = getter.get(self.path)
+            obj = getter.get(self.path, _memo=_memo)
             return obj
-        except Exception as exc:  # pylint: disable=bare-except  # noqa: E722
+        except (KeyError, IndexError, ConfigException) as exc:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:
                 return obj
+
+            if isinstance(exc, ConfigException):
+                raise
 
             raise PlaceholderException(
                 f"Failed to resolve RefPlaceholder: '{self.path}'"

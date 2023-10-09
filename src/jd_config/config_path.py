@@ -90,7 +90,7 @@ class ConfigPath:
     @classmethod
     def normalize_path(
         cls, path: PathType, *, sep: str = ".", rtn: list = None
-    ) -> list:
+    ) -> list[str|int]:
         """Convert flexible path into normalized Tuple
 
         'path' is simple: e.g. "a.b.c", "a[1].b", ("a[1]", "b", "c"),

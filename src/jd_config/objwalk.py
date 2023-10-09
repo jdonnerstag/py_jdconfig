@@ -21,6 +21,7 @@ class NodeEvent:
 
     path: Tuple[str | int, ...]
     value: Any
+    container: Mapping|NonStrSequence
     skip: bool = False
 
     def is_sequence_node(self) -> bool:
@@ -100,7 +101,7 @@ class ObjectWalker:
             return
 
         if not isinstance(obj, (Mapping, NonStrSequence)):
-            yield NodeEvent((), obj)
+            yield NodeEvent((), obj, None)
             return
 
         path_ = ()  # Empty tuple
@@ -132,7 +133,7 @@ class ObjectWalker:
                     iter_obj.append(value)
                     iter_stack.append(cls._container_iter(value))
                 else:
-                    event = NodeEvent(path_ + (key,), value)
+                    event = NodeEvent(path_ + (key,), value, iter_obj[-1])
                     yield event
 
                 if event and event.skip:

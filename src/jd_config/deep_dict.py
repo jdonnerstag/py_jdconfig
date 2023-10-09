@@ -106,8 +106,16 @@ class DeepDict(Mapping, DeepUpdateMixin):
         """
 
         path = ConfigPath.normalize_path(path)
+        assert path
+
+        data = self.obj
         key = path.pop()
-        data, path = self.getter.find(path, create_missing=create_missing)
+        for ctx in self.getter.iter(path):
+            data = ctx.value
+            if create_missing and ctx.key not in data:
+                value = self.on_missing_handler(data, ctx.key, ctx.path, None)
+                data[ctx.key] = value
+
         old_value = None
         try:
             old_value = data[key]

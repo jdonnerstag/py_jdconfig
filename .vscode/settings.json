@@ -1,6 +1,6 @@
 {
     "python.analysis.extraPaths": ["src"],
-    "pylint.importStrategy": "fromEnvironment",
+    "pylint.importStrategy": "useBundled",
     "python.testing.pytestArgs": [
         "tests"
     ],

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Mapping
 import pytest
 import logging
-from jd_config import PlaceholderException, ConfigException
+from jd_config import ConfigException
 from jd_config import DeepGetterWithResolve, Placeholder
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def test_resolve():
     assert getter.get("b") == "aa"
     assert getter.get("c") == "aa"
 
-    with pytest.raises(PlaceholderException):
+    with pytest.raises(ConfigException):
         assert getter.get("d")
 
     with pytest.raises(ConfigException):
@@ -72,6 +72,7 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
+    # TODO {global:} so far is == {ref:}
     getter = DeepGetterWithResolve(data=cfg, path=())
     assert getter.get("a") == "aa"
     assert getter.get("b") == "aa"
@@ -126,7 +127,7 @@ def test_detect_recursion():
     }
 
     getter = DeepGetterWithResolve(data=cfg, path=())
-    with pytest.raises(ConfigException):
+    with pytest.raises(RecursionError):
         getter.get("a")
 
 
@@ -175,7 +176,7 @@ def test_deep_getter_1():
     assert getter.get("xxx", 99) == 99
 
 
-def test__deep_getter_2():
+def test_deep_getter_2():
     cfg = {
         "a": "aa",
         "b": {"ba": 11, "bb": {"bba": 22, "bbb": 33}},
@@ -204,7 +205,7 @@ def test__deep_getter_2():
     assert getter.get("b..xxx", 99) == 99
 
 
-def test__deep_getter_3():
+def test_deep_getter_3():
     cfg = {
         "a": "aa",
         "b": {"ba": 11, "bb": {"bba": 22, "bbb": 33}},

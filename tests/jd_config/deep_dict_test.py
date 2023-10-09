@@ -25,8 +25,12 @@ DATA = dict(
     ),
 )
 
-
 def test_get():
+
+    data = DeepDict({})
+    with pytest.raises(ConfigException):
+        data.get("a")
+
     data = DeepDict(deepcopy(DATA))
     assert data.get("a") == "aa"
     assert data.get("c.c1") == "c11"

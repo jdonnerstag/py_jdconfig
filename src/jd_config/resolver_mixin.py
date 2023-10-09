@@ -57,12 +57,13 @@ class ResolverMixin:
             value = value[0]
 
         if isinstance(value, Placeholder):
-            if value in _memo:
-                _memo.append(value)
-                raise ConfigException(f"Recursion detected: {_memo}")
+            placeholder = value
+            if placeholder in _memo:
+                _memo.append(placeholder)
+                raise RecursionError(f"Config recursion detected: {_memo}")
 
-            _memo.append(value)
-            value = value.resolve(self, data, _memo=_memo)
+            _memo.append(placeholder)
+            value = placeholder.resolve(self, data, _memo=_memo)
 
         if isinstance(value, list):
             value = [self.resolve(x, data, _memo=_memo) for x in value]

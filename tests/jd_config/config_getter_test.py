@@ -7,7 +7,7 @@
 import logging
 from copy import deepcopy
 from typing import List, Mapping, Sequence
-from jd_config import ConfigGetter, ConfigException
+from jd_config import ConfigGetter, ConfigException, ConfigPath
 import pytest
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def test_walk():
     data = deepcopy(DATA)
 
     def walk(obj, path):
-        path = ConfigGetter().normalize_path(path)
+        path = ConfigPath.normalize_path(path)
         return ConfigGetter()._walk(obj, path, False)
 
     _d, key = walk(data, "a")
