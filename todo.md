@@ -1,5 +1,6 @@
 # Todos / Requirements
 
+- on missing, it should not be required to add the new object to the parent.
 - right now we are re-importing config file all the time => cache
 - I like structured configs with dataclass and pydantic
 - support making a subtree read-only

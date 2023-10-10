@@ -80,11 +80,11 @@ def test_resolve():
     ref = RefPlaceholder("c")
     assert ref.resolve(resolver, cfg) == "aa"
 
-    with pytest.raises(PlaceholderException):
+    with pytest.raises(ConfigException):
         ref = RefPlaceholder("d")
         ref.resolve(resolver, cfg)
 
-    with pytest.raises(PlaceholderException):
+    with pytest.raises(ConfigException):
         ref = RefPlaceholder("xxx")
         ref.resolve(resolver, cfg)
 
@@ -161,5 +161,5 @@ def test_detect_recursion():
 
     resolver = DeepGetterWithResolve(data=cfg, path=())
     ref = RefPlaceholder("a")
-    with pytest.raises(ConfigException):
+    with pytest.raises(RecursionError):
         assert ref.resolve(resolver, cfg)

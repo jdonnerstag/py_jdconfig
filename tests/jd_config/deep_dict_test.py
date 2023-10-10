@@ -25,8 +25,8 @@ DATA = dict(
     ),
 )
 
-def test_get():
 
+def test_get():
     data = DeepDict({})
     with pytest.raises(ConfigException):
         data.get("a")
@@ -64,7 +64,7 @@ def test_set():
     assert data.set("z.a.b", 11, create_missing=True) is None
     assert data.get("z.a.b") == 11
 
-    # 'a' is not a mapping. Even with create_missing, it will not change the structure
+    # 'a' exists, but is no container. Even with create_missing, it will not change the structure
     with pytest.raises(ConfigException):
         data.set("a.new", 11, create_missing=True, replace_path=False)
 
@@ -94,9 +94,7 @@ def test_set():
     assert data.set("y.a[0]", 12, create_missing=missing_1) is None
     assert data.get("y.a[0]") == 12
 
-    assert (
-        data.set("w.a[0]", 13, create_missing={"a": [None] * 1}) is None
-    )
+    assert data.set("w.a[0]", 13, create_missing={"a": [None] * 1}) is None
     assert data.get("w.a[0]") == 13
 
     # My preference and most easiest way
@@ -133,12 +131,14 @@ def test_delete():
 
 def test_deep_update():
     data = DeepDict(deepcopy(DATA))
-    assert data.deep_update({"a":"AA"}).get("a") == "AA"
-    assert data.deep_update({"b":{"b1": "BB"}}).get("b.b1") == "BB"
-    assert data.deep_update({"b":{"b1": "BB"}}).get("b.b1") == "BB"
+    assert data.deep_update({"a": "AA"}).get("a") == "AA"
+    assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"
+    assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"
     assert data.deep_update({"c": {"c2": {"c22": "C_222"}}}).get("c.c2.c22") == "C_222"
     assert data.deep_update({"z": "new"})["z"] == "new"
-    assert data.deep_update({"b": {"b1": {"b2": "B222B"}}}).get("b.b1") == {"b2": "B222B"}
+    assert data.deep_update({"b": {"b1": {"b2": "B222B"}}}).get("b.b1") == {
+        "b2": "B222B"
+    }
     assert data.deep_update({"b": {"b1": [1, 2, 3, 4]}}).get("b.b1") == [1, 2, 3, 4]
 
 

@@ -5,11 +5,12 @@
 """
 
 import logging
+from functools import partial
 from typing import Any, Iterator, Mapping, Sequence, Union
 from .utils import ConfigException, PathType, DEFAULT
 from .deep_getter_with_search_and_resolver import DeepGetterWithResolve
 from .deep_update import DeepUpdateMixin
-from .config_path import ConfigPath
+from .deep_getter_base import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -23,9 +24,6 @@ class DeepDict(Mapping, DeepUpdateMixin):
     def __init__(self, obj: Mapping, path: PathType = ()) -> None:
         self.obj = obj
         self.getter = DeepGetterWithResolve(data=obj, path=path)
-        self.getter.on_missing = self.on_missing_handler
-        self.missing_container_default = dict
-        self.missing_container = {}
 
     # pylint: disable=arguments-renamed
     def get(self, path: PathType, default: Any = DEFAULT) -> Any:
@@ -61,23 +59,31 @@ class DeepDict(Mapping, DeepUpdateMixin):
                 raise
 
     def on_missing_handler(
-        self, data: Mapping | Sequence, key: str | int, path: tuple, exc: Exception
+        self,
+        ctx: GetterContext,
+        exc: Exception,
+        *,
+        missing_container_default=None,
+        missing_container=None,
     ) -> Mapping | Sequence:
         """A handler that will be invoked if a path element is missing and
         'create_missing has valid configuration.
         """
 
-        elem = self.missing_container.get(path + (key,), None)
+        elem = None
+        if missing_container:
+            elem = missing_container.get(ctx.cur_path(), None)
+            if elem is None:
+                elem = missing_container.get(ctx.key, None)
         if elem is None:
-            elem = self.missing_container.get(key, None)
+            elem = missing_container_default
         if elem is None:
-            elem = self.missing_container_default
-        if elem is None:
-            return self.getter.on_missing_default(data, key, path, exc)
+            return self.getter.on_missing(ctx, exc)
 
         if isinstance(elem, type):
             elem = elem()
 
+        ctx.data[ctx.key] = elem
         return elem
 
     def set(
@@ -105,16 +111,31 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :param sep: 'path' separator. Default: '.'
         """
 
-        path = ConfigPath.normalize_path(path)
-        assert path
+        path = self.getter.normalize_path(path)
+        if not path:
+            raise ConfigException("Empty path not allowed for set()")
 
-        data = self.obj
-        key = path.pop()
-        for ctx in self.getter.iter(path):
-            data = ctx.value
-            if create_missing and ctx.key not in data:
-                value = self.on_missing_handler(data, ctx.key, ctx.path, None)
-                data[ctx.key] = value
+        on_missing = None
+        if callable(create_missing):
+            on_missing = create_missing
+        elif isinstance(create_missing, bool) and create_missing is True:
+            on_missing = partial(
+                self.on_missing_handler, missing_container_default=dict
+            )
+        elif isinstance(create_missing, Mapping):
+            on_missing = partial(
+                self.on_missing_handler,
+                missing_container_default=dict,
+                missing_container=create_missing,
+            )
+
+        args = None
+        if replace_path:
+            args = {"cb_get_2_with_context": replace_path}
+
+        key = path[-1]
+        path = path[:-1]
+        data = self.getter.get(path, on_missing=on_missing, args=args)
 
         old_value = None
         try:

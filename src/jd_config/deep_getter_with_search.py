@@ -40,9 +40,13 @@ class DeepGetterWithSearch(DeepGetter):
         if not path:
             return path
 
-        ctx = self.new_context(self._data, path, [])
-        ctx = self._get_ctx(ctx)
-        return ctx.path
+        ctx = self.new_context(self._data, path, None, [])
+        try:
+            ctx = self.walk_path(ctx)
+            return ctx.path
+        except (KeyError, IndexError) as exc:
+            raise ConfigException(f"Config not found: '{ctx.cur_path}'") from exc
+
 
     def on_any_key(self, ctx: GetterContext) -> Any:
         """Callback if 'a.*.c' was found"""
@@ -59,13 +63,13 @@ class DeepGetterWithSearch(DeepGetter):
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
                     ctx.data = value[find_key]
-                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.path = ctx.path_replace(key)
                     ctx.idx += 1
                     return ctx.data
             elif isinstance(value, NonStrSequence) and isinstance(find_key, int):
                 if 0 <= find_key < len(value):
                     ctx.data = value[find_key]
-                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.path = ctx.path_replace(key)
                     ctx.idx += 1
                     return ctx.data
 
@@ -86,13 +90,13 @@ class DeepGetterWithSearch(DeepGetter):
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
                     ctx.data = value[find_key]
-                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.path = ctx.path_replace(key)
                     ctx.idx += 1
                     return ctx.data
             elif isinstance(value, NonStrSequence) and isinstance(find_key, int):
                 if 0 <= find_key < len(value):
                     ctx.data = value[find_key]
-                    ctx.path = self._path_replace(ctx.path, ctx.idx, key)
+                    ctx.path = ctx.path_replace(key)
                     ctx.idx += 1
                     return ctx.data
 
@@ -106,14 +110,8 @@ class DeepGetterWithSearch(DeepGetter):
         for event in walk(ctx.data, nodes_only=False, cb_get=self.cb_get):
             if event.path and event.path[-1] == find_key:
                 ctx.data = event.value
-                ctx.path = self._path_replace(ctx.path, ctx.idx, event.path, 2)
+                ctx.path = ctx.path_replace(event.path, 2)
                 ctx.idx += len(event.path) - 1
                 return ctx.data
 
         raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
-
-    def _path_replace(self, path, idx, replace, count = 1) -> tuple:
-        if not isinstance(replace, tuple):
-            replace = (replace,)
-
-        return path[: idx] + replace + path[idx + count:]
