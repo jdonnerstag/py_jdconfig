@@ -27,7 +27,8 @@ def test_simple():
     assert getter.get_path("b.ba") == ("b", "ba")
     assert getter.get_path("c[3].c4b") == ("c", 3, "c4b")
 
-    assert getter.get_path("xxx") == ("xxx",) # get_path() is not validate it exists
+    with pytest.raises(ConfigException):
+        getter.get_path("xxx") # path does not exist
 
     assert getter.get("a") == "aa"
     assert getter.get("b")

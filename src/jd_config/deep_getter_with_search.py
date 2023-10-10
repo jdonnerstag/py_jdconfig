@@ -33,21 +33,6 @@ class DeepGetterWithSearch(DeepGetter):
 
         return super().cb_get_2_with_context(ctx)
 
-    def get_path(self, path: PathType) -> list[str | int]:
-        """Determine the real path by replacing the search patterns"""
-
-        path = super().get_path(path)
-        if not path:
-            return path
-
-        ctx = self.new_context(self._data, path, None, [])
-        try:
-            ctx = self.walk_path(ctx)
-            return ctx.path
-        except (KeyError, IndexError) as exc:
-            raise ConfigException(f"Config not found: '{ctx.cur_path}'") from exc
-
-
     def on_any_key(self, ctx: GetterContext) -> Any:
         """Callback if 'a.*.c' was found"""
 

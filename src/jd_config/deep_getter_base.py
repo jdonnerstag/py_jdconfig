@@ -45,9 +45,9 @@ class GetterContext:
     # While walking, the current index within the path
     idx: int
 
-    on_missing: callable
+    on_get_with_context: callable
 
-    args: Optional[Mapping] = None
+    on_missing: callable
 
     # internal: detect recursions
     memo: list = field(default_factory=list)
@@ -75,6 +75,9 @@ class DeepGetter:
         self._data = data
         self._path = path  # TODO used anywhere?
         self._memo = _memo  # TODO used anywhere?
+
+        self.on_get_ctx_wf: list[callable] = [self.cb_get_2_with_context]
+        self.on_missing_wf: list[callable] = [self.on_missing]
 
     def cb_get(self, data, key, path) -> Any:
         """Retrieve an element from its parent container.
@@ -107,9 +110,8 @@ class DeepGetter:
         :param ctx: a mutable context
         :return: the value representing the element in the parent container
         """
-        cb_get_2_with_context = self._from_args(ctx, "cb_get_2_with_context")
         try:
-            return cb_get_2_with_context(ctx)
+            return ctx.on_get_with_context(ctx)
         except (KeyError, IndexError) as exc:
             rtn = ctx.on_missing(ctx, exc)
             return rtn
@@ -139,11 +141,14 @@ class DeepGetter:
         :return: the normalized path
         """
 
-        return self.normalize_path(path)
+        ctx = self.get_ctx(path)
+        return ctx.path
 
-    def new_context(self, data, path, args: Optional[Mapping], _memo) -> GetterContext:
+    def new_context(self, data, path, _memo) -> GetterContext:
         """Create a new context. Allow subclasses to provide an extended version"""
-        return GetterContext(data, path[0], path, 0, self.on_missing, args, _memo)
+        return GetterContext(
+            data, path[0], path, 0, self.cb_get_2_with_context, self.on_missing, _memo
+        )
 
     def get(
         self,
@@ -151,9 +156,39 @@ class DeepGetter:
         default: Any = DEFAULT,
         *,
         on_missing: Optional[callable] = None,
-        args: Optional[Mapping] = None,
-        _memo=None,
+        on_get_with_context: Optional[callable] = None,
+        _memo: list = None,
     ) -> Any:
+        """The main entry point: walk the provided path and return whatever the
+        value at that end of that path will be.
+
+        :param path: A user provided (config) path like object, e.g. `a.b[2].c`
+        :param default: Optional default value, if the value was not found
+        :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
+        """
+
+        try:
+            ctx = self.get_ctx(
+                path,
+                on_missing=on_missing,
+                on_get_with_context=on_get_with_context,
+                _memo=_memo,
+            )
+            return ctx.data
+        except ConfigException:
+            if default is not DEFAULT:
+                return default
+
+            raise
+
+    def get_ctx(
+        self,
+        path: PathType,
+        *,
+        on_missing: Optional[callable] = None,
+        on_get_with_context: Optional[callable] = None,
+        _memo: list = None,
+    ) -> GetterContext:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
 
@@ -166,21 +201,18 @@ class DeepGetter:
         if not path:
             return self._data
 
-        ctx = self.new_context(self._data, path, args, _memo)
+        ctx = self.new_context(self._data, path, _memo)
 
         if callable(on_missing):
             ctx.on_missing = on_missing
 
+        if callable(on_get_with_context):
+            ctx.on_get_with_context = on_get_with_context
+
         try:
             ctx = self.walk_path(ctx)
-            return ctx.data
-        except (KeyError, IndexError, ConfigException) as exc:
-            if default is not DEFAULT:
-                return default
-
-            if isinstance(exc, ConfigException):
-                raise
-
+            return ctx
+        except (KeyError, IndexError) as exc:
             raise ConfigException(f"Config not found: '{ctx.cur_path()}'") from exc
 
     def walk_path(self, ctx: GetterContext) -> GetterContext:
@@ -188,21 +220,9 @@ class DeepGetter:
         the way
         """
 
-        cb_get_3_with_missing = self._from_args(ctx, "cb_get_3_with_missing")
-
         while ctx.idx < len(ctx.path):
             ctx.key = ctx.path[ctx.idx]
-            ctx.data = cb_get_3_with_missing(ctx)
+            ctx.data = self.cb_get_3_with_missing(ctx)
             ctx.idx += 1
 
         return ctx
-
-    def _from_args(self, ctx: GetterContext, name: str) -> callable:
-
-        arg = getattr(self, name)
-        if ctx.args and name in ctx.args:
-            arg = ctx.args[name]
-
-        assert callable(arg)
-
-        return arg
