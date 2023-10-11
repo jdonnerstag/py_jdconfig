@@ -11,14 +11,14 @@ from typing import Any, Mapping
 
 from .utils import NonStrSequence, ConfigException
 from .config_path import ConfigPath
-from .deep_getter_base import GetterContext, GetterPlugin
+from .deep_getter_base import GetterContext
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class ConfigSearchPlugin(GetterPlugin):
+class ConfigSearchPlugin:
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """

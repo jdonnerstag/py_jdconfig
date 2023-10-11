@@ -50,6 +50,5 @@ from .deep_access_mixin import DeepAccessMixin
 from .deep_dict import DeepDict
 from .config_file_loader import ConfigFileLoader
 from .deep_export_mixin import DeepExportMixin
-from .resolver_mixin import ResolverMixin
 from .deep_update import DeepUpdateMixin
 from .jd_config import JDConfig

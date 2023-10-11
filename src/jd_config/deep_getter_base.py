@@ -20,7 +20,7 @@ Either the base class or a subclass should support:
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional, Sequence, Protocol
+from typing import Any, Mapping, Optional, Sequence, Callable
 
 from .utils import NonStrSequence, PathType, ConfigException, DEFAULT
 from .config_path import ConfigPath
@@ -29,9 +29,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class GetterPlugin(Protocol):
-    def cb_get_2_with_context(self, ctx: "GetterContext", value: Any, idx: int) -> Any:
-        pass
+GetterPlugin: type = Callable[["GetterContext", Any, int], Any]
 
 
 @dataclass
@@ -56,6 +54,8 @@ class GetterContext:
 
     on_missing: callable
 
+    getter: "DeepGetter"
+
     # internal: detect recursions
     memo: list = field(default_factory=list)
 
@@ -79,10 +79,19 @@ class GetterContext:
         assert idx >= 0
 
         plugin = self.on_get_with_context[idx]
-        return plugin.cb_get_2_with_context(self, value, idx - 1)
+        return plugin(self, value, idx - 1)
+
+    def get(self, path: PathType, default: Any = DEFAULT, *, _memo=None):
+        return self.getter(
+            path,
+            default,
+            _memo=_memo,
+            on_missing=self.on_missing,
+            on_get_with_context=self.on_get_with_context,
+        )
 
 
-class DeepGetter(GetterPlugin):
+class DeepGetter:
     """Getter for deep container structures (Mapping and NonStrSequence)"""
 
     def __init__(
@@ -93,7 +102,9 @@ class DeepGetter(GetterPlugin):
         self._memo = _memo  # TODO used anywhere?
 
         self.on_get_default: callable = self.cb_get
-        self.on_get_with_context_default: list[GetterPlugin] = [self]
+        self.on_get_with_context_default: list[GetterPlugin] = [
+            self.cb_get_2_with_context
+        ]
         self.on_missing_default: callable = self.on_missing
 
     def cb_get(self, data, key, path) -> Any:
@@ -171,6 +182,7 @@ class DeepGetter(GetterPlugin):
             self.on_get_default,  # Apply pre-configured default values
             self.on_get_with_context_default,
             self.on_missing_default,
+            self,
             _memo,
         )
 

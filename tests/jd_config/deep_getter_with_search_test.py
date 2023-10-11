@@ -3,10 +3,11 @@
 
 # pylint: disable=C
 
+from typing import Any
 import pytest
 import logging
 from jd_config import ConfigException
-from jd_config.deep_getter_base import DeepGetter
+from jd_config.deep_getter_base import DeepGetter, GetterContext
 from jd_config.deep_getter_with_search import ConfigSearchPlugin
 
 logger = logging.getLogger(__name__)
@@ -24,8 +25,8 @@ def test_simple():
 
     getter = DeepGetter(data=cfg, path=())
     getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
+        getter.cb_get_2_with_context,
+        ConfigSearchPlugin().cb_get_2_with_context,
     ]
 
     assert getter.get_path("a") == ("a",)
@@ -37,8 +38,8 @@ def test_simple():
         getter.get_path("xxx")
 
     on_get_with_context = [
-        getter,
-        ConfigSearchPlugin(),
+        getter.cb_get_2_with_context,
+        ConfigSearchPlugin().cb_get_2_with_context,
     ]
     getter = DeepGetter(data=cfg, path=())
     assert getter.get("a", on_get_with_context=on_get_with_context) == "aa"
@@ -61,8 +62,8 @@ def test_deep():
 
     getter = DeepGetter(data=cfg, path=())
     getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
+        getter.cb_get_2_with_context,
+        ConfigSearchPlugin().cb_get_2_with_context,
     ]
     assert getter.get_path("..a") == ("a",)
     assert getter.get_path("..bbb") == ("b", "bb", "bbb")
@@ -94,8 +95,8 @@ def test_any_key_or_index():
 
     getter = DeepGetter(data=cfg, path=())
     getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
+        getter.cb_get_2_with_context,
+        ConfigSearchPlugin().cb_get_2_with_context,
     ]
     assert getter.get("b.*.bbb") == 33
     assert getter.get("b.*.ba", None) is None
@@ -108,8 +109,9 @@ def test_any_key_or_index():
 def test_simple_resolve():
     cfg = {"a": "aa", "b": "{ref:a}"}
 
-    def resolve(data, key, _path):
-        value = data[key]
+    def resolve(ctx: GetterContext, value: Any, idx: int):
+        value = ctx.data[ctx.key]
+
         if isinstance(value, str) and value.find("{") != -1:
             return "<resolved>"
 
@@ -117,8 +119,9 @@ def test_simple_resolve():
 
     getter = DeepGetter(data=cfg, path=())
     getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
+        getter.cb_get_2_with_context,
+        ConfigSearchPlugin().cb_get_2_with_context,
+        resolve,
     ]
     getter.cb_get = resolve
     assert getter.get("b") == "<resolved>"

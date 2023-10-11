@@ -33,7 +33,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, ctx, data: Mapping, *, _memo: list | None = None):
         """Resolve the placeholder"""
 
 
@@ -49,9 +49,10 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
-        file = getter.resolve(self.file, data, _memo=_memo)
-        rtn = getter.load(file)
+    def resolve(self, ctx, data: Mapping, *, _memo: list | None = None):
+        assert hasattr(ctx.getter, "resolve"), ""
+        file = ctx.getter.resolve(self.file, data, _memo=_memo)
+        rtn = ctx.getter.load(file)
         return rtn
 
 
@@ -66,9 +67,9 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, ctx, data: Mapping, *, _memo: list | None = None):
         try:
-            obj = getter.get(self.path, _memo=_memo)
+            obj = ctx.get(self.path, _memo=_memo)
             return obj
         except (KeyError, IndexError, ConfigException) as exc:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:
