@@ -8,7 +8,7 @@ import logging
 from functools import partial
 from typing import Any, Iterator, Mapping, Sequence, Union
 from .utils import ConfigException, PathType, DEFAULT
-from .deep_getter_with_search_and_resolver import DeepGetterWithResolve
+from .deep_getter_with_search_and_resolver import ConfigResolvePlugin
 from .deep_update import DeepUpdateMixin
 from .deep_getter_base import GetterContext
 
@@ -23,7 +23,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
     def __init__(self, obj: Mapping, path: PathType = ()) -> None:
         self.obj = obj
-        self.getter = DeepGetterWithResolve(data=obj, path=path)
+        self.getter = ConfigResolvePlugin(data=obj, path=path)
 
     # pylint: disable=arguments-renamed
     def get(self, path: PathType, default: Any = DEFAULT) -> Any:

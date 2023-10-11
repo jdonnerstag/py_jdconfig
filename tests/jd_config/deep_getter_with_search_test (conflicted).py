@@ -7,7 +7,6 @@ import pytest
 import logging
 from jd_config import ConfigException
 from jd_config.deep_getter_base import DeepGetter
-from jd_config.deep_getter_with_search import ConfigSearchPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +22,7 @@ def test_simple():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
-    ]
-
+    getter.on_get_with_context_default
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)
     assert getter.get_path("b.ba") == ("b", "ba")
@@ -37,9 +32,10 @@ def test_simple():
         getter.get_path("xxx")
 
     on_get_with_context = [
-        getter,
-        ConfigSearchPlugin(),
+        self.cb_get_2_with_context,
+        self.cb_get_2_with_search,
     ]
+
     getter = DeepGetter(data=cfg, path=())
     assert getter.get("a", on_get_with_context=on_get_with_context) == "aa"
     assert getter.get("b")
@@ -59,11 +55,7 @@ def test_deep():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
-    ]
+    getter = DeepGetterWithSearch(data=cfg, path=())
     assert getter.get_path("..a") == ("a",)
     assert getter.get_path("..bbb") == ("b", "bb", "bbb")
     assert getter.get_path("b..bbb") == ("b", "bb", "bbb")
@@ -92,11 +84,7 @@ def test_any_key_or_index():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
-    ]
+    getter = DeepGetterWithSearch(data=cfg, path=())
     assert getter.get("b.*.bbb") == 33
     assert getter.get("b.*.ba", None) is None
     assert getter.get("c[*].c4b", None) == 55
@@ -106,7 +94,10 @@ def test_any_key_or_index():
 
 
 def test_simple_resolve():
-    cfg = {"a": "aa", "b": "{ref:a}"}
+    cfg = {
+        "a": "aa",
+        "b": "{ref:a}"
+    }
 
     def resolve(data, key, _path):
         value = data[key]
@@ -115,10 +106,6 @@ def test_simple_resolve():
 
         return value
 
-    getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter,
-        ConfigSearchPlugin(),
-    ]
+    getter = DeepGetterWithSearch(data=cfg, path=())
     getter.cb_get = resolve
     assert getter.get("b") == "<resolved>"

@@ -9,21 +9,21 @@ search patterns, such as 'a..c', 'a.*.c'
 import logging
 from typing import Any, Mapping
 
-from .utils import NonStrSequence, PathType, ConfigException
+from .utils import NonStrSequence, ConfigException
 from .config_path import ConfigPath
-from .deep_getter_base import DeepGetter, GetterContext
+from .deep_getter_base import GetterContext, GetterPlugin
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepGetterWithSearch(DeepGetter):
+class ConfigSearchPlugin(GetterPlugin):
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
+    def cb_get_2_with_context(self, ctx: GetterContext, value: Any, idx: int) -> Any:
         if ctx.key == ConfigPath.PAT_ANY_KEY:
             return self.on_any_key(ctx)
         if ctx.key == ConfigPath.PAT_ANY_IDX:
@@ -31,7 +31,7 @@ class DeepGetterWithSearch(DeepGetter):
         if ctx.key == ConfigPath.PAT_DEEP:
             return self.on_any_deep(ctx)
 
-        return super().cb_get_2_with_context(ctx)
+        return ctx.invoke_next(value, idx)
 
     def on_any_key(self, ctx: GetterContext) -> Any:
         """Callback if 'a.*.c' was found"""
@@ -43,7 +43,8 @@ class DeepGetterWithSearch(DeepGetter):
         for key in ctx.data.keys():
             # Allow to resolve placeholder if necessary
             ctx.key = key
-            value = self.cb_get_2_with_context(ctx)
+            value = ctx.invoke_next(None, -1)
+            # value = self.cb_get_2_with_context(ctx)
 
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
@@ -70,7 +71,8 @@ class DeepGetterWithSearch(DeepGetter):
         for key, value in enumerate(ctx.data):
             # Allow to resolve placeholder if necessary
             ctx.key = key
-            value = self.cb_get_2_with_context(ctx)
+            value = ctx.invoke_next(None, -1)
+            # value = self.cb_get_2_with_context(ctx)
 
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
@@ -92,7 +94,7 @@ class DeepGetterWithSearch(DeepGetter):
 
         find_key = ctx.path[ctx.idx + 1]
         walk = ObjectWalker.objwalk
-        for event in walk(ctx.data, nodes_only=False, cb_get=self.cb_get):
+        for event in walk(ctx.data, nodes_only=False, cb_get=ctx.on_get):
             if event.path and event.path[-1] == find_key:
                 ctx.data = event.value
                 ctx.path = ctx.path_replace(event.path, 2)

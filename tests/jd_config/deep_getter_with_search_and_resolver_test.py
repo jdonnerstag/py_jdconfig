@@ -8,7 +8,7 @@ from typing import Mapping
 import pytest
 import logging
 from jd_config import ConfigException
-from jd_config import DeepGetterWithResolve, Placeholder
+from jd_config import ConfigResolvePlugin, Placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def test_no_placeholders():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)
     assert getter.get_path("b.ba") == ("b", "ba")
@@ -51,7 +51,7 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
 
     assert getter.get("a") == "aa"
     assert getter.get("b") == "aa"
@@ -73,7 +73,7 @@ def test_global_ref():
     }
 
     # TODO {global:} so far is == {ref:}
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     assert getter.get("a") == "aa"
     assert getter.get("b") == "aa"
     assert getter.get("c") == "aa"
@@ -99,7 +99,7 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     getter.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     assert getter.get("a") == "it's me"
 
@@ -110,11 +110,11 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     with pytest.raises(ConfigException):
         assert getter.get("a")
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     with pytest.raises(ConfigException):
         assert getter.get("b")
 
@@ -126,7 +126,7 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     with pytest.raises(RecursionError):
         getter.get("a")
 
@@ -139,7 +139,7 @@ def test_resolve_2():
         "d": {"da": "{ref:a}"},
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     assert isinstance(getter.get("c"), Mapping)
     assert getter.get("a") == "aa"
     assert getter.get("b") == "aa"
@@ -156,7 +156,7 @@ def test_deep_getter_1():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)
     assert getter.get_path("b.ba") == ("b", "ba")
@@ -183,7 +183,7 @@ def test_deep_getter_2():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     assert getter.get_path("..a") == ("a",)
     assert getter.get_path("..bbb") == ("b", "bb", "bbb")
     assert getter.get_path("b..bbb") == ("b", "bb", "bbb")
@@ -212,7 +212,7 @@ def test_deep_getter_3():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetterWithResolve(data=cfg, path=())
+    getter = ConfigResolvePlugin(data=cfg, path=())
     assert getter.get("b.*.bbb") == 33
     assert getter.get("b.*.ba", None) is None
     assert getter.get("c[*].c4b", None) == 55

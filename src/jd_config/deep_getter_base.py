@@ -20,13 +20,18 @@ Either the base class or a subclass should support:
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence, Protocol
 
 from .utils import NonStrSequence, PathType, ConfigException, DEFAULT
 from .config_path import ConfigPath
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+class GetterPlugin(Protocol):
+    def cb_get_2_with_context(self, ctx: "GetterContext", value: Any, idx: int) -> Any:
+        pass
 
 
 @dataclass
@@ -45,7 +50,9 @@ class GetterContext:
     # While walking, the current index within the path
     idx: int
 
-    on_get_with_context: callable
+    on_get: callable
+
+    on_get_with_context: list[GetterPlugin]
 
     on_missing: callable
 
@@ -65,19 +72,29 @@ class GetterContext:
 
         return self.path[: self.idx] + replace + self.path[self.idx + count :]
 
+    def invoke_next(self, value: Any, idx: int) -> Any:
+        if idx < 0:
+            idx = len(self.on_get_with_context) + idx
 
-class DeepGetter:
+        assert idx >= 0
+
+        plugin = self.on_get_with_context[idx]
+        return plugin.cb_get_2_with_context(self, value, idx - 1)
+
+
+class DeepGetter(GetterPlugin):
     """Getter for deep container structures (Mapping and NonStrSequence)"""
 
     def __init__(
-        self, data: Mapping | NonStrSequence, path: PathType, *, _memo=()
+        self, data: Mapping | NonStrSequence, path: PathType, *, _memo=None
     ) -> None:
         self._data = data
         self._path = path  # TODO used anywhere?
         self._memo = _memo  # TODO used anywhere?
 
-        self.on_get_ctx_wf: list[callable] = [self.cb_get_2_with_context]
-        self.on_missing_wf: list[callable] = [self.on_missing]
+        self.on_get_default: callable = self.cb_get
+        self.on_get_with_context_default: list[GetterPlugin] = [self]
+        self.on_missing_default: callable = self.on_missing
 
     def cb_get(self, data, key, path) -> Any:
         """Retrieve an element from its parent container.
@@ -92,7 +109,7 @@ class DeepGetter:
         """
         return data[key]
 
-    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
+    def cb_get_2_with_context(self, ctx: GetterContext, _value: Any, _idx: int) -> Any:
         """Retrieve an element from its parent container.
 
         Sometimes more flexibility is required. E.g. deep search pattern (e.g. `a..c`)
@@ -101,7 +118,7 @@ class DeepGetter:
         :param ctx: a mutable context
         :return: the value representing the element in the parent container
         """
-        return self.cb_get(ctx.data, ctx.key, ctx.cur_path())
+        return ctx.on_get(ctx.data, ctx.key, ctx.cur_path())
 
     def cb_get_3_with_missing(self, ctx: GetterContext) -> Any:
         """A wrapper around lower level getters to catch exception and
@@ -111,7 +128,7 @@ class DeepGetter:
         :return: the value representing the element in the parent container
         """
         try:
-            return ctx.on_get_with_context(ctx)
+            return ctx.invoke_next(None, -1)
         except (KeyError, IndexError) as exc:
             rtn = ctx.on_missing(ctx, exc)
             return rtn
@@ -147,7 +164,14 @@ class DeepGetter:
     def new_context(self, data, path, _memo) -> GetterContext:
         """Create a new context. Allow subclasses to provide an extended version"""
         return GetterContext(
-            data, path[0], path, 0, self.cb_get_2_with_context, self.on_missing, _memo
+            data,
+            path[0],
+            path,
+            0,
+            self.on_get_default,  # Apply pre-configured default values
+            self.on_get_with_context_default,
+            self.on_missing_default,
+            _memo,
         )
 
     def get(
@@ -156,7 +180,7 @@ class DeepGetter:
         default: Any = DEFAULT,
         *,
         on_missing: Optional[callable] = None,
-        on_get_with_context: Optional[callable] = None,
+        on_get_with_context: Optional[list[GetterPlugin]] = None,
         _memo: list = None,
     ) -> Any:
         """The main entry point: walk the provided path and return whatever the
@@ -186,7 +210,7 @@ class DeepGetter:
         path: PathType,
         *,
         on_missing: Optional[callable] = None,
-        on_get_with_context: Optional[callable] = None,
+        on_get_with_context: Optional[list[GetterPlugin]] = None,
         _memo: list = None,
     ) -> GetterContext:
         """The main entry point: walk the provided path and return whatever the
@@ -206,7 +230,7 @@ class DeepGetter:
         if callable(on_missing):
             ctx.on_missing = on_missing
 
-        if callable(on_get_with_context):
+        if isinstance(on_get_with_context, Sequence) and on_get_with_context:
             ctx.on_get_with_context = on_get_with_context
 
         try:
