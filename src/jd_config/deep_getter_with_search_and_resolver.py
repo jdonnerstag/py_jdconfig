@@ -41,14 +41,14 @@ class ConfigResolveMixin:
 
         while isinstance(value, str) and value.find("{") != -1:
             value = list(self.value_reader.parse(value))
-            value = self.resolve(ctx, value, _memo=ctx._memo)
+            value = self.resolve(ctx, value)
 
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{ctx.cur_path()}'")
 
         return value
 
-    def resolve(self, ctx: GetterContext, value: Any, *, _memo: Optional[list]) -> Any:
+    def resolve(self, ctx: GetterContext, value: Any) -> Any:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -58,8 +58,8 @@ class ConfigResolveMixin:
         """
 
         # Used to detected recursions in resolving placeholders
-        if _memo is None:
-            _memo = []
+        if ctx.memo is None:
+            ctx.memo = []
 
         logger.debug("resolve(%s)", value)
         key = value
@@ -69,15 +69,15 @@ class ConfigResolveMixin:
 
         if isinstance(value, Placeholder):
             placeholder = value
-            if placeholder in _memo:
-                _memo.append(placeholder)
-                raise RecursionError(f"Config recursion detected: {_memo}")
+            if placeholder in ctx.memo:
+                ctx.memo.append(placeholder)
+                raise RecursionError(f"Config recursion detected: {ctx.memo}")
 
-            _memo.append(placeholder)
-            value = placeholder.resolve(self, ctx, _memo=_memo)
+            ctx.memo.append(placeholder)
+            value = placeholder.resolve(self, ctx)
 
         if isinstance(value, list):
-            value = [self.resolve(ctx, x, _memo=_memo) for x in value]
+            value = [self.resolve(ctx, x) for x in value]
             value = "".join(value)
             return value
 
@@ -85,7 +85,7 @@ class ConfigResolveMixin:
             value = list(self.value_reader.parse(value))
             if len(value) == 1:
                 value = value[0]
-            value = self.resolve(ctx, value, _memo=_memo)
+            value = self.resolve(ctx, value)
 
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{key}'")

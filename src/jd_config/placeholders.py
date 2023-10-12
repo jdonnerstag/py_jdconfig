@@ -34,7 +34,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, data: Mapping):
         """Resolve the placeholder"""
 
 
@@ -50,10 +50,10 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, data: Mapping):
         # TODO It is not possible to recursively call get()
         assert hasattr(getter, "resolve")
-        file = getter.resolve(self.file, data, _memo=_memo)
+        file = getter.resolve(self.file, data)
         rtn = getter.load(file)
         return rtn
 
@@ -69,10 +69,10 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, data: Mapping):
         try:
             # TODO It is not possible to recursively call get()
-            obj = getter.get(self.path, _memo=_memo)
+            obj = getter.get(self.path)
             return obj
         except (
             KeyError,

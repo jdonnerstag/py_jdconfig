@@ -50,7 +50,6 @@ def test_manual_context():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    getter.new_context()    # This is basically doing nothing
     assert getter.get("a") == "aa"
     assert getter.get("b")
     assert getter.get("b.ba") == 11
@@ -59,8 +58,11 @@ def test_manual_context():
     with pytest.raises(ConfigException):
         getter.get("xxx")
 
-    def on_missing(_) -> Any:
+    def on_missing(*_) -> Any:
         return "not found"
 
-    getter.new_context(on_missing=on_missing)
+    getter.on_missing = on_missing
+    assert getter.get("xxx") == "not found"
+
+    getter = DeepGetter(data=cfg, path=(), on_missing = on_missing)
     assert getter.get("xxx") == "not found"
