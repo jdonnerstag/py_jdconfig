@@ -9,7 +9,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Mapping
 from jd_config import ConfigFileLoader
-from jd_config import ResolverMixin
+from jd_config.resolver_mixin import ResolverMixin
 
 
 logger = logging.getLogger(__name__)

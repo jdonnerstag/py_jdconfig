@@ -7,14 +7,10 @@ Package utilities
 
 from abc import ABC
 import logging
-from typing import Iterable, Sequence, Type, Mapping
+from typing import Iterable, Sequence, Mapping
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
-
-DEFAULT = object()
-
-PathType: Type = str | int | Iterable[str | int]
 
 
 class ConfigException(Exception):
@@ -32,4 +28,8 @@ class NonStrSequence(ABC):
         return issubclass(C, Sequence)
 
 
-ContainerType: Type = Mapping | NonStrSequence
+ContainerType = Mapping | NonStrSequence
+
+PathType = str | int | Iterable[str | int]
+
+DEFAULT = object()

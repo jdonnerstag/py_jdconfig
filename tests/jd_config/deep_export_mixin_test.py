@@ -6,7 +6,8 @@
 import os
 import re
 import logging
-from jd_config import DeepExportMixin, ResolverMixin, DeepAccessMixin
+from jd_config import DeepExportMixin, DeepAccessMixin
+from jd_config.resolver_mixin import ResolverMixin
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ def test_to_dict_to_yaml():
     data = cfg.to_yaml("b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
     assert data == "c1: 1cc\nc2: aa\n"
+
 
 def test_lazy_resolve():
     cfg = MyMixinTestClass()

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import logging
 import pytest
 from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder
-from jd_config import ResolverMixin, GlobalRefPlaceholder
+from jd_config import GlobalRefPlaceholder
 from jd_config import ConfigException, Placeholder, PlaceholderException
 from jd_config import ConfigResolvePlugin
 

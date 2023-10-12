@@ -7,36 +7,22 @@ play an important role. DictList harmonizes access to these dicts and lists,
 and thus simplies the code accessing configs.
 """
 
-from abc import ABC
 import logging
-from typing import Any, Mapping, Sequence, Iterator
+from typing import Any, Mapping, Iterator
+
+from .utils import NonStrSequence, DEFAULT, ContainerType
 
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-DEFAULT = object()
-
-class NonStrSequence(ABC):
-    """Avoid having to do `isinstance(x, Sequence) and not isinstance(x, str)` all the time"""
-
-    @classmethod
-    def __subclasshook__(cls, C: type):
-        # not possible to do with AnyStr
-        if C is str:
-            return NotImplemented
-
-        return issubclass(C, Sequence)
-
-ConfigContainerType: type = Mapping | NonStrSequence
-
 class DictList(Mapping, NonStrSequence):
     """Harmonize access to configs managed in dict- and/or list-like
     containers.
     """
 
-    def __init__(self, obj: ConfigContainerType) -> None:
+    def __init__(self, obj: ContainerType) -> None:
         assert isinstance(obj, (Mapping, NonStrSequence))
         self.obj = obj
 

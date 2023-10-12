@@ -6,7 +6,7 @@
 import pytest
 import logging
 from jd_config import ConfigException
-from jd_config.deep_getter_base import DeepGetter
+from jd_config.deep_getter_base import DeepGetter, GetterContext
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # show logs: pytest --log-cli-level=DEBUG
 
 
-def test_simple():
+def test_auto_created_context():
     cfg = {
         "a": "aa",
         "b": {"ba": 11, "bb": {"bba": 22, "bbb": 33}},
@@ -28,7 +28,7 @@ def test_simple():
     assert getter.get_path("c[3].c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path("xxx") # path does not exist
+        getter.get_path("xxx")  # path does not exist
 
     assert getter.get("a") == "aa"
     assert getter.get("b")
@@ -41,15 +41,7 @@ def test_simple():
     assert getter.get("xxx", 99) == 99
 
 
-def test_resolve_only():
-    """
-    Imagine `{import: ./db/{ref:db}/config.yaml}` where {import:..} should load
-    a file, but the filename `./db/{ref:db}/config.yaml` itself is a combination
-    of text and reference placeholder. Obviously we want to re-use the same
-    source code (resolver), which is doing exactly the same in other places. 
-
-
-    """
+def test_manual_context():
     cfg = {
         "a": "aa",
         "b": {"ba": 11, "bb": {"bba": 22, "bbb": 33}},
@@ -57,13 +49,8 @@ def test_resolve_only():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    assert getter.get_path("a") == ("a",)
-    assert getter.get_path("b") == ("b",)
-    assert getter.get_path("b.ba") == ("b", "ba")
-    assert getter.get_path("c[3].c4b") == ("c", 3, "c4b")
-
-    with pytest.raises(ConfigException):
-        getter.get_path("xxx") # path does not exist
-
-    assert getter.get("a") == "aa"
-    assert getter.get("b")
+    ctx = GetterContext(cfg)  # TODO make more meaningful, e.g. on_missing...
+    assert getter.get("a", ctx=ctx) == "aa"
+    assert getter.get("b", ctx=ctx)
+    assert getter.get("b.ba", ctx=ctx) == 11
+    assert getter.get("c[3].c4b", ctx=ctx) == 55
