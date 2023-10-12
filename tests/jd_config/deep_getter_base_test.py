@@ -3,10 +3,11 @@
 
 # pylint: disable=C
 
+from typing import Any
 import pytest
 import logging
 from jd_config import ConfigException
-from jd_config.deep_getter_base import DeepGetter, GetterContext
+from jd_config.deep_getter_base import DeepGetter
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +50,17 @@ def test_manual_context():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    ctx = GetterContext(cfg)  # TODO make more meaningful, e.g. on_missing...
-    assert getter.get("a", ctx=ctx) == "aa"
-    assert getter.get("b", ctx=ctx)
-    assert getter.get("b.ba", ctx=ctx) == 11
-    assert getter.get("c[3].c4b", ctx=ctx) == 55
+    getter.new_context()    # This is basically doing nothing
+    assert getter.get("a") == "aa"
+    assert getter.get("b")
+    assert getter.get("b.ba") == 11
+    assert getter.get("c[3].c4b") == 55
+
+    with pytest.raises(ConfigException):
+        getter.get("xxx")
+
+    def on_missing(_) -> Any:
+        return "not found"
+
+    getter.new_context(on_missing=on_missing)
+    assert getter.get("xxx") == "not found"

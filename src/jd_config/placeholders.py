@@ -16,7 +16,7 @@ import logging
 from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Protocol
 
 from .utils import ConfigException
 
@@ -29,11 +29,11 @@ class PlaceholderException(ConfigException):
     pass
 
 
-class Placeholder(ABC):
+# pylint: disable=too-few-public-methods
+class Placeholder(Protocol):
     """A common base class for all Placeholders"""
 
-    @abstractmethod
-    def resolve(self, ctx, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
         """Resolve the placeholder"""
 
 
@@ -49,10 +49,11 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, ctx, data: Mapping, *, _memo: list | None = None):
-        assert hasattr(ctx.getter, "resolve"), ""
-        file = ctx.getter.resolve(self.file, data, _memo=_memo)
-        rtn = ctx.getter.load(file)
+    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+        # TODO It is not possible to recursively call get()
+        assert hasattr(getter, "resolve")
+        file = getter.resolve(self.file, data, _memo=_memo)
+        rtn = getter.load(file)
         return rtn
 
 
@@ -67,11 +68,16 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, ctx, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
         try:
-            obj = ctx.get(self.path, _memo=_memo)
+            # TODO It is not possible to recursively call get()
+            obj = getter.get(self.path, _memo=_memo)
             return obj
-        except (KeyError, IndexError, ConfigException) as exc:  # pylint: disable=bare-except  # noqa: E722
+        except (
+            KeyError,
+            IndexError,
+            ConfigException,
+        ) as exc:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:
                 return obj
 

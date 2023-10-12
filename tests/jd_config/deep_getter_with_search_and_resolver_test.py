@@ -26,11 +26,12 @@ def test_no_placeholders():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter.cb_get_2_with_context,
-        ConfigResolvePlugin(getter).cb_get_2_with_context,
-        ConfigSearchPlugin().cb_get_2_with_context,
-    ]
+    getter.add_callbacks(
+        [
+            ConfigResolvePlugin(getter).cb_get_2_with_context,
+            ConfigSearchPlugin(getter).cb_get_2_with_context,
+        ]
+    )
 
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)

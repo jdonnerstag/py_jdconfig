@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from .utils import NonStrSequence, ConfigException
 from .config_path import ConfigPath
-from .deep_getter_base import GetterContext
+from .deep_getter_base import DeepGetter, GetterContext
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -22,6 +22,9 @@ class ConfigSearchPlugin:
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """
+
+    def __init__(self, getter: DeepGetter) -> None:
+        self.getter = getter
 
     def cb_get_2_with_context(self, ctx: GetterContext, value: Any, idx: int) -> Any:
         if ctx.key == ConfigPath.PAT_ANY_KEY:
@@ -94,7 +97,7 @@ class ConfigSearchPlugin:
 
         find_key = ctx.path[ctx.idx + 1]
         walk = ObjectWalker.objwalk
-        for event in walk(ctx.data, nodes_only=False, cb_get=ctx.on_get):
+        for event in walk(ctx.data, nodes_only=False, cb_get=self.getter.cb_get):
             if event.path and event.path[-1] == find_key:
                 ctx.data = event.value
                 ctx.path = ctx.path_replace(event.path, 2)

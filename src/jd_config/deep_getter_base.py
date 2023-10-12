@@ -21,8 +21,7 @@ Either the base class or a subclass should support:
 import logging
 from typing import Any, Iterator, Mapping, Optional, Callable
 
-from .dict_list import DictList
-from .utils import NonStrSequence, PathType, ConfigException, DEFAULT
+from .utils import ContainerType, NonStrSequence, PathType, ConfigException, DEFAULT
 from .config_path import ConfigPath
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -37,9 +36,9 @@ class GetterContext:
 
     def __init__(
         self,
-        data: Mapping | NonStrSequence,
-        on_missing: Optional[callable] = None,
-        on_get_with_context: Optional[list[callable]] = None,
+        data: ContainerType,
+        on_missing: Optional[Callable] = None,
+        on_get_with_context: Optional[list[Callable]] = None,
         _memo: Optional[list] = None,
     ) -> None:
         # Current parent container
@@ -55,12 +54,32 @@ class GetterContext:
         # While walking, the current index within the path
         self.idx: int = 0
 
-        self.on_missing: callable = on_missing
+        # internal: detect recursions
+        self._memo: list = [] if _memo is None else _memo
+
+        self.on_missing: Callable = on_missing
 
         self.on_get_with_context: Optional[list[GetterPlugin]] = on_get_with_context
 
+    def reset(
+        self, data: ContainerType, _memo: Optional[list] = None
+    ) -> "GetterContext":
+        """Reset the context"""
+
+        # Current parent container
+        self.data = data
+
+        # Current key to retrieve the element from the parent
+        # Note that 'key' may not be 'path[idx]'
+        self.key: str | int | None = None
+
+        # While walking, the current index within the path
+        self.idx: int = 0
+
         # internal: detect recursions
         self._memo: list = [] if _memo is None else _memo
+
+        return self
 
     @property
     def value(self) -> Any:
@@ -94,17 +113,62 @@ class DeepGetter:
     """Getter for deep container structures (Mapping and NonStrSequence)"""
 
     def __init__(
-        self, data: Mapping | NonStrSequence, path: PathType, *, _memo=None
+        self,
+        data: Mapping | NonStrSequence,
+        path: PathType,
+        *,
+        _memo: Optional[list] = None,
     ) -> None:
         self._data = data
         self._path = path  # TODO used anywhere?
         self._memo = _memo  # TODO used anywhere?
 
-        self.on_missing_default: callable = self.on_missing
-        self.on_get_default: callable = self.cb_get
-        self.on_get_with_context_default: list[GetterPlugin] = [
-            self.cb_get_2_with_context
-        ]
+        # TODO This is not a good idea, as it prevents recursively calling get()
+        self.ctx = GetterContext(
+            self._data,
+            on_get_with_context=[self.cb_get_2_with_context],
+            _memo=_memo,
+        )
+
+    def new_context(
+        self,
+        *,
+        data: Optional[ContainerType] = None,
+        on_missing: Optional[Callable] = None,
+        on_get: Optional[list[GetterPlugin]] = None,
+    ) -> GetterContext:
+        """Assign a new context to the getter, optionally providing
+        `on_missing` and `getter` overrides
+        """
+
+        if data is None:
+            data = self._data
+
+        ctx = self.ctx.reset(data)
+        ctx.on_missing = on_missing
+
+        if not on_get:
+            on_get = [self.cb_get_2_with_context]
+
+        ctx.on_get_with_context = on_get
+
+        return ctx
+
+    def add_callbacks(
+        self,
+        on_get_with_context: Optional[list[GetterPlugin]],
+        *,
+        on_missing: Optional[Callable] = None,
+    ) -> GetterContext:
+        if on_missing is not None:
+            self.ctx.on_missing = on_missing
+
+        if isinstance(on_get_with_context, list):
+            self.ctx.on_get_with_context.extend(on_get_with_context)
+        elif callable(on_get_with_context):
+            self.ctx.on_get_with_context.append(on_get_with_context)
+
+        return self.ctx
 
     def cb_get(self, data, key, path) -> Any:
         """Retrieve an element from its parent container.
@@ -130,7 +194,7 @@ class DeepGetter:
         """
         return self.cb_get(ctx.data, ctx.key, ctx.cur_path())
 
-    def on_missing(self, ctx: GetterContext) -> Any:
+    def on_missing(self, ctx: GetterContext, exc: Exception) -> Any:
         """Default behavior if an element along the path is missing.
         => Re-raise the exception.
         """
@@ -158,20 +222,15 @@ class DeepGetter:
         """
 
         # pylint: disable=redefined-argument-from-local
-        for ctx in self.walk_path(path, ctx):
-            data = DictList(ctx.data)
-            if ctx.key not in data:
-                raise ConfigException(f"Config not found for: '{ctx.cur_path()}'")
+        try:
+            for ctx in self.walk_path(path):
+                ctx.data = ctx.invoke_next(None, -1)
+        except (KeyError, IndexError) as exc:
+            raise ConfigException(f"Config not found: '{ctx.cur_path()}'") from exc
 
         return ctx.path
 
-    def get(
-        self,
-        path: PathType,
-        default: Any = DEFAULT,
-        *,
-        ctx: Optional[GetterContext] = None,
-    ) -> Any:
+    def get(self, path: PathType, default: Any = DEFAULT) -> Any:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
 
@@ -180,27 +239,26 @@ class DeepGetter:
         :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
         """
 
-        value = None
-
         # pylint: disable=redefined-argument-from-local
-        for ctx in self.walk_path(path, ctx):
-            data = DictList(ctx.data)
-            if ctx.key in data:
-                value = self.cb_get_2_with_context(ctx, value, -1)
-            else:
+        ctx = None
+        for ctx in self.walk_path(path):
+            try:
+                ctx.data = ctx.invoke_next(None, -1)
+            except (KeyError, IndexError, ConfigException) as exc:
                 if default is not DEFAULT:
                     return default
 
                 if callable(ctx.on_missing):
-                    value = ctx.on_missing(ctx)
+                    ctx.data = ctx.on_missing(ctx)
                 else:
-                    value = self.on_missing(ctx)
+                    ctx.data = self.on_missing(ctx, exc)
 
-        return value
+                if not isinstance(ctx.data, ContainerType):
+                    return ctx.data
 
-    def walk_path(
-        self, path: PathType, ctx: Optional[GetterContext] = None
-    ) -> Iterator[GetterContext]:
+        return ctx.data
+
+    def walk_path(self, path: PathType) -> Iterator[GetterContext]:
         """Walk the path and yield the current context.
 
         1) For search patterns (e.g. "a..c") to work, the 'path' and 'idx'
@@ -210,18 +268,17 @@ class DeepGetter:
            retrieve the value easily
         """
 
-        if ctx is None:
-            ctx = GetterContext(self._data)
+        ctx = self.ctx.reset(self._data)
 
         ctx.path = self.normalize_path(path)
         if not ctx.path:
             return
 
         try:
+            ctx.idx = 0
             while ctx.idx < len(ctx.path):
                 ctx.key = ctx.path[ctx.idx]
                 yield ctx
-                ctx.data = ctx.data[ctx.key]
                 ctx.idx += 1
         except (KeyError, IndexError) as exc:
             raise ConfigException(f"Config not found: '{ctx.cur_path()}'") from exc

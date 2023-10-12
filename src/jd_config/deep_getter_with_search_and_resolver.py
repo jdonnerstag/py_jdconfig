@@ -24,7 +24,9 @@ class ConfigResolvePlugin:
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def __init__(self) -> None:
+    def __init__(self, getter: DeepGetter) -> None:
+
+        self.getter = getter
 
         # Read string into Placeholders ...
         self.value_reader = ValueReader()
@@ -76,7 +78,7 @@ class ConfigResolvePlugin:
                 raise RecursionError(f"Config recursion detected: {_memo}")
 
             _memo.append(placeholder)
-            value = placeholder.resolve(self, ctx, _memo=_memo)
+            value = placeholder.resolve(self.getter, ctx, _memo=_memo)
 
         if isinstance(value, list):
             value = [self.resolve(ctx, x, _memo=_memo) for x in value]

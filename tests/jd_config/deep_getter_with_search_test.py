@@ -24,10 +24,12 @@ def test_simple():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter.cb_get_2_with_context,
-        ConfigSearchPlugin().cb_get_2_with_context,
-    ]
+    getter.new_context(
+        on_get=[
+            getter.cb_get_2_with_context,
+            ConfigSearchPlugin(getter).cb_get_2_with_context,
+        ]
+    )
 
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)
@@ -36,21 +38,6 @@ def test_simple():
 
     with pytest.raises(ConfigException):
         getter.get_path("xxx")
-
-    on_get_with_context = [
-        getter.cb_get_2_with_context,
-        ConfigSearchPlugin().cb_get_2_with_context,
-    ]
-    getter = DeepGetter(data=cfg, path=())
-    assert getter.get("a", on_get_with_context=on_get_with_context) == "aa"
-    assert getter.get("b")
-    assert getter.get("b.ba") == 11
-    assert getter.get("c[3].c4b") == 55
-
-    with pytest.raises(ConfigException):
-        getter.get("xxx")
-
-    assert getter.get("xxx", 99) == 99
 
 
 def test_deep():
@@ -61,10 +48,8 @@ def test_deep():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter.cb_get_2_with_context,
-        ConfigSearchPlugin().cb_get_2_with_context,
-    ]
+    getter.add_callbacks(ConfigSearchPlugin(getter).cb_get_2_with_context)
+
     assert getter.get_path("..a") == ("a",)
     assert getter.get_path("..bbb") == ("b", "bb", "bbb")
     assert getter.get_path("b..bbb") == ("b", "bb", "bbb")
@@ -94,10 +79,8 @@ def test_any_key_or_index():
     }
 
     getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter.cb_get_2_with_context,
-        ConfigSearchPlugin().cb_get_2_with_context,
-    ]
+    getter.add_callbacks(ConfigSearchPlugin(getter).cb_get_2_with_context)
+
     assert getter.get("b.*.bbb") == 33
     assert getter.get("b.*.ba", None) is None
     assert getter.get("c[*].c4b", None) == 55
@@ -118,10 +101,6 @@ def test_simple_resolve():
         return value
 
     getter = DeepGetter(data=cfg, path=())
-    getter.on_get_with_context_default = [
-        getter.cb_get_2_with_context,
-        ConfigSearchPlugin().cb_get_2_with_context,
-        resolve,
-    ]
+    getter.add_callbacks([ConfigSearchPlugin(getter).cb_get_2_with_context, resolve])
     getter.cb_get = resolve
     assert getter.get("b") == "<resolved>"
