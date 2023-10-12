@@ -38,7 +38,6 @@ class GetterContext:
         self,
         data: ContainerType,
         on_missing: Optional[Callable] = None,
-        on_get_with_context: Optional[list[Callable]] = None,
         _memo: Optional[list] = None,
     ) -> None:
         # Current parent container
@@ -58,8 +57,6 @@ class GetterContext:
         self._memo: list = [] if _memo is None else _memo
 
         self.on_missing: Callable = on_missing
-
-        self.on_get_with_context: Optional[list[GetterPlugin]] = on_get_with_context
 
     def reset(
         self, data: ContainerType, _memo: Optional[list] = None
@@ -99,15 +96,6 @@ class GetterContext:
 
         return self.path[: self.idx] + replace + self.path[self.idx + count :]
 
-    def invoke_next(self, value: Any, idx: int) -> Any:
-        if idx < 0:
-            idx = len(self.on_get_with_context) + idx
-
-        assert idx >= 0
-
-        plugin = self.on_get_with_context[idx]
-        return plugin(self, value, idx - 1)
-
 
 class DeepGetter:
     """Getter for deep container structures (Mapping and NonStrSequence)"""
@@ -124,18 +112,13 @@ class DeepGetter:
         self._memo = _memo  # TODO used anywhere?
 
         # TODO This is not a good idea, as it prevents recursively calling get()
-        self.ctx = GetterContext(
-            self._data,
-            on_get_with_context=[self.cb_get_2_with_context],
-            _memo=_memo,
-        )
+        self.ctx = GetterContext(self._data, _memo=_memo)
 
     def new_context(
         self,
         *,
         data: Optional[ContainerType] = None,
         on_missing: Optional[Callable] = None,
-        on_get: Optional[list[GetterPlugin]] = None,
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
         `on_missing` and `getter` overrides
@@ -147,26 +130,15 @@ class DeepGetter:
         ctx = self.ctx.reset(data)
         ctx.on_missing = on_missing
 
-        if not on_get:
-            on_get = [self.cb_get_2_with_context]
-
-        ctx.on_get_with_context = on_get
-
         return ctx
 
     def add_callbacks(
         self,
-        on_get_with_context: Optional[list[GetterPlugin]],
         *,
         on_missing: Optional[Callable] = None,
     ) -> GetterContext:
         if on_missing is not None:
             self.ctx.on_missing = on_missing
-
-        if isinstance(on_get_with_context, list):
-            self.ctx.on_get_with_context.extend(on_get_with_context)
-        elif callable(on_get_with_context):
-            self.ctx.on_get_with_context.append(on_get_with_context)
 
         return self.ctx
 
@@ -183,7 +155,7 @@ class DeepGetter:
         """
         return data[key]
 
-    def cb_get_2_with_context(self, ctx: GetterContext, _value: Any, _idx: int) -> Any:
+    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
         """Retrieve an element from its parent container.
 
         Sometimes more flexibility is required. E.g. deep search pattern (e.g. `a..c`)
@@ -224,7 +196,7 @@ class DeepGetter:
         # pylint: disable=redefined-argument-from-local
         try:
             for ctx in self.walk_path(path):
-                ctx.data = ctx.invoke_next(None, -1)
+                ctx.data = self.cb_get_2_with_context(ctx)
         except (KeyError, IndexError) as exc:
             raise ConfigException(f"Config not found: '{ctx.cur_path()}'") from exc
 
@@ -243,7 +215,7 @@ class DeepGetter:
         ctx = None
         for ctx in self.walk_path(path):
             try:
-                ctx.data = ctx.invoke_next(None, -1)
+                ctx.data = self.cb_get_2_with_context(ctx)
             except (KeyError, IndexError, ConfigException) as exc:
                 if default is not DEFAULT:
                     return default

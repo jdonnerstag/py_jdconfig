@@ -11,32 +11,29 @@ from typing import Any, Mapping
 
 from .utils import NonStrSequence, ConfigException
 from .config_path import ConfigPath
-from .deep_getter_base import DeepGetter, GetterContext
+from .deep_getter_base import GetterContext
 from .objwalk import ObjectWalker
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class ConfigSearchPlugin:
+class ConfigSearchMixin:
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def __init__(self, getter: DeepGetter) -> None:
-        self.getter = getter
-
-    def cb_get_2_with_context(self, ctx: GetterContext, value: Any, idx: int) -> Any:
+    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
         if ctx.key == ConfigPath.PAT_ANY_KEY:
-            return self.on_any_key(ctx)
+            return self._on_any_key(ctx)
         if ctx.key == ConfigPath.PAT_ANY_IDX:
-            return self.on_any_idx(ctx)
+            return self._on_any_idx(ctx)
         if ctx.key == ConfigPath.PAT_DEEP:
-            return self.on_any_deep(ctx)
+            return self._on_any_deep(ctx)
 
-        return ctx.invoke_next(value, idx)
+        return super().cb_get_2_with_context(ctx)
 
-    def on_any_key(self, ctx: GetterContext) -> Any:
+    def _on_any_key(self, ctx: GetterContext) -> Any:
         """Callback if 'a.*.c' was found"""
 
         if not isinstance(ctx.data, Mapping):
@@ -46,8 +43,7 @@ class ConfigSearchPlugin:
         for key in ctx.data.keys():
             # Allow to resolve placeholder if necessary
             ctx.key = key
-            value = ctx.invoke_next(None, -1)
-            # value = self.cb_get_2_with_context(ctx)
+            value = self.cb_get_2_with_context(ctx)
 
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
@@ -64,7 +60,7 @@ class ConfigSearchPlugin:
 
         raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
 
-    def on_any_idx(self, ctx: GetterContext) -> GetterContext:
+    def _on_any_idx(self, ctx: GetterContext) -> GetterContext:
         """Callback if 'a[*].b' was found"""
 
         if not isinstance(ctx.data, NonStrSequence):
@@ -74,8 +70,7 @@ class ConfigSearchPlugin:
         for key, value in enumerate(ctx.data):
             # Allow to resolve placeholder if necessary
             ctx.key = key
-            value = ctx.invoke_next(None, -1)
-            # value = self.cb_get_2_with_context(ctx)
+            value = self.cb_get_2_with_context(ctx)
 
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
@@ -92,12 +87,12 @@ class ConfigSearchPlugin:
 
         raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
 
-    def on_any_deep(self, ctx: GetterContext) -> GetterContext:
+    def _on_any_deep(self, ctx: GetterContext) -> GetterContext:
         """Callback if 'a..b' was found"""
 
         find_key = ctx.path[ctx.idx + 1]
         walk = ObjectWalker.objwalk
-        for event in walk(ctx.data, nodes_only=False, cb_get=self.getter.cb_get):
+        for event in walk(ctx.data, nodes_only=False, cb_get=self.cb_get):
             if event.path and event.path[-1] == find_key:
                 ctx.data = event.value
                 ctx.path = ctx.path_replace(event.path, 2)

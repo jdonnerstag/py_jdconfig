@@ -19,15 +19,12 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class ConfigResolvePlugin:
+class ConfigResolveMixin:
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def __init__(self, getter: DeepGetter) -> None:
-
-        self.getter = getter
-
+    def __init__(self, *_, **__) -> None:
         # Read string into Placeholders ...
         self.value_reader = ValueReader()
 
@@ -36,21 +33,20 @@ class ConfigResolvePlugin:
 
         self.value_reader.registry[name] = type_
 
-    def cb_get_2_with_context(self, ctx: GetterContext, value: Any, idx: int) -> Any:
+    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """
-        value = ctx.invoke_next(value, idx)
+        value = super().cb_get_2_with_context(ctx)
 
         while isinstance(value, str) and value.find("{") != -1:
             value = list(self.value_reader.parse(value))
-            value = self.resolve(ctx, value, _memo=ctx.memo)
+            value = self.resolve(ctx, value, _memo=ctx._memo)
 
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{ctx.cur_path()}'")
 
         return value
-
 
     def resolve(self, ctx: GetterContext, value: Any, *, _memo: Optional[list]) -> Any:
         """Lazily resolve Placeholders
@@ -78,7 +74,7 @@ class ConfigResolvePlugin:
                 raise RecursionError(f"Config recursion detected: {_memo}")
 
             _memo.append(placeholder)
-            value = placeholder.resolve(self.getter, ctx, _memo=_memo)
+            value = placeholder.resolve(self, ctx, _memo=_memo)
 
         if isinstance(value, list):
             value = [self.resolve(ctx, x, _memo=_memo) for x in value]

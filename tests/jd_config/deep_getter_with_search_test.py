@@ -3,17 +3,23 @@
 
 # pylint: disable=C
 
-from typing import Any
+from typing import Mapping, Optional
 import pytest
 import logging
-from jd_config import ConfigException
-from jd_config.deep_getter_base import DeepGetter, GetterContext
-from jd_config.deep_getter_with_search import ConfigSearchPlugin
+from jd_config import ConfigException, NonStrSequence, PathType
+from jd_config.deep_getter_base import DeepGetter
+from jd_config.deep_getter_with_search import ConfigSearchMixin
 
 logger = logging.getLogger(__name__)
 
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
+
+
+class MyConfig(ConfigSearchMixin, DeepGetter):
+    def __init__(self, data: Mapping | NonStrSequence, path: PathType, *, _memo: list | None = None) -> None:
+        DeepGetter.__init__(self, data, path, _memo=_memo)
+        ConfigSearchMixin.__init__(self)
 
 
 def test_simple():
@@ -23,14 +29,7 @@ def test_simple():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg, path=())
-    getter.new_context(
-        on_get=[
-            getter.cb_get_2_with_context,
-            ConfigSearchPlugin(getter).cb_get_2_with_context,
-        ]
-    )
-
+    getter = MyConfig(data=cfg, path=())
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)
     assert getter.get_path("b.ba") == ("b", "ba")
@@ -47,9 +46,7 @@ def test_deep():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg, path=())
-    getter.add_callbacks(ConfigSearchPlugin(getter).cb_get_2_with_context)
-
+    getter = MyConfig(data=cfg, path=())
     assert getter.get_path("..a") == ("a",)
     assert getter.get_path("..bbb") == ("b", "bb", "bbb")
     assert getter.get_path("b..bbb") == ("b", "bb", "bbb")
@@ -78,29 +75,10 @@ def test_any_key_or_index():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg, path=())
-    getter.add_callbacks(ConfigSearchPlugin(getter).cb_get_2_with_context)
-
+    getter = MyConfig(data=cfg, path=())
     assert getter.get("b.*.bbb") == 33
     assert getter.get("b.*.ba", None) is None
     assert getter.get("c[*].c4b", None) == 55
     assert getter.get("c.*.c4b", None) is None
     assert getter.get("*.ba") == 11
     # assert getter.get("*.*.bbb") == 33   # TODO Not yet supported
-
-
-def test_simple_resolve():
-    cfg = {"a": "aa", "b": "{ref:a}"}
-
-    def resolve(ctx: GetterContext, value: Any, idx: int):
-        value = ctx.data[ctx.key]
-
-        if isinstance(value, str) and value.find("{") != -1:
-            return "<resolved>"
-
-        return value
-
-    getter = DeepGetter(data=cfg, path=())
-    getter.add_callbacks([ConfigSearchPlugin(getter).cb_get_2_with_context, resolve])
-    getter.cb_get = resolve
-    assert getter.get("b") == "<resolved>"

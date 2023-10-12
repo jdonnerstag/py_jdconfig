@@ -30,9 +30,10 @@ class PlaceholderException(ConfigException):
 
 
 # pylint: disable=too-few-public-methods
-class Placeholder(Protocol):
+class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
+    @abstractmethod
     def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
         """Resolve the placeholder"""
 

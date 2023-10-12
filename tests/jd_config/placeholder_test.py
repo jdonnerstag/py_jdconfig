@@ -9,7 +9,7 @@ import pytest
 from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder
 from jd_config import GlobalRefPlaceholder
 from jd_config import ConfigException, Placeholder, PlaceholderException
-from jd_config import ConfigResolvePlugin
+from jd_config import ConfigResolveMixin
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    resolver = ConfigResolvePlugin(data=cfg, path=())
+    resolver = ConfigResolveMixin(data=cfg, path=())
     ref = RefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -97,7 +97,7 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    resolver = ConfigResolvePlugin(data=cfg, path=())
+    resolver = ConfigResolveMixin(data=cfg, path=())
     ref = GlobalRefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -130,7 +130,7 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    resolver = ConfigResolvePlugin(data=cfg, path=())
+    resolver = ConfigResolveMixin(data=cfg, path=())
     resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     ref = RefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "it's me"
@@ -142,7 +142,7 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    resolver = ConfigResolvePlugin(data=cfg, path=())
+    resolver = ConfigResolveMixin(data=cfg, path=())
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
         assert ref.resolve(resolver, cfg)
@@ -159,7 +159,7 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    resolver = ConfigResolvePlugin(data=cfg, path=())
+    resolver = ConfigResolveMixin(data=cfg, path=())
     ref = RefPlaceholder("a")
     with pytest.raises(RecursionError):
         assert ref.resolve(resolver, cfg)
