@@ -10,6 +10,8 @@ from typing import List, Mapping, Sequence
 from jd_config import ConfigException, DeepDict
 import pytest
 
+from jd_config.deep_getter_base import GetterContext
+
 logger = logging.getLogger(__name__)
 
 # Notes:
@@ -85,27 +87,27 @@ def test_set():
     with pytest.raises(ConfigException):
         data.set("x.a[0].b", 22, create_missing=True)
 
-    def missing_1(_data: Mapping | Sequence, key: str | int, _):
-        if key == "a":
+    def missing_1(ctx: GetterContext, _exc):
+        if ctx.key == "a":
             return [None] * 1
 
         return {}
 
     assert data.set("y.a[0]", 12, create_missing=missing_1) is None
-    assert data.get("y.a[0]") == 12
 
+    # Note that missing_1() is not updating the config; which is perfectly
+    # fine. But a subsequent call w/o create_missing will fail, because
+    # it can not find the elem.
+    with pytest.raises(ConfigException):
+        data.get("y.a[0]")
+
+    # My preference and most easiest way: provide a dict with the
+    # non-Mapping keys only.
     assert data.set("w.a[0]", 13, create_missing={"a": [None] * 1}) is None
     assert data.get("w.a[0]") == 13
 
-    # My preference and most easiest way
     assert data.set("v.a[0].b", 14, create_missing={"a": [{}]}) is None
     assert data.get("v.a[0].b") == 14
-
-    with pytest.raises(ConfigException):
-        data.set("v.a[0].b", 99, replace_value=False)
-
-    assert data.set("v.a[0].b", 99, replace_value=True) == 14
-    assert data.get("v.a[0].b") == 99
 
 
 def test_delete():

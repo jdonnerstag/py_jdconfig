@@ -24,7 +24,7 @@ class ConfigResolveMixin:
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def __init__(self, *_, **__) -> None:
+    def __init__(self) -> None:
         # Read string into Placeholders ...
         self.value_reader = ValueReader()
 

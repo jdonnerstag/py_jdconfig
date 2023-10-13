@@ -173,7 +173,13 @@ class DeepGetter:
 
         return ctx.path
 
-    def get(self, path: PathType, default: Any = DEFAULT) -> Any:
+    def get(
+        self,
+        path: PathType,
+        default: Any = DEFAULT,
+        *,
+        on_missing: Optional[Callable] = None,
+    ) -> Any:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
 
@@ -191,7 +197,9 @@ class DeepGetter:
                 if default is not DEFAULT:
                     return default
 
-                if callable(ctx.on_missing):
+                if callable(on_missing):
+                    ctx.data = on_missing(ctx, exc)
+                elif callable(ctx.on_missing):
                     ctx.data = ctx.on_missing(ctx, exc)
                 else:
                     ctx.data = self.on_missing(ctx, exc)
