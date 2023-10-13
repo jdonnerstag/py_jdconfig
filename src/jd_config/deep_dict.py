@@ -75,19 +75,27 @@ class DeepDict(Mapping, DeepUpdateMixin):
         key, path = path[-1], path[:-1]
 
         old_data = None
-        data = None
         try:
             data = self.getter.get(path)
+
+            try:
+                old_data = data[key]
+            except:  # pylint: disable=bare-except
+                pass
+
+            if isinstance(data, Mapping) and isinstance(key, str):
+                del data[key]
+            elif isinstance(data, NonStrSequence) and isinstance(key, int):
+                data.pop(key)
+            else:
+                raise ConfigException(
+                    f"Don't know how to delete elem: '{key}' from '{path}'"
+                )
+
         except (KeyError, IndexError, ConfigException):
             if exception:
                 raise
 
-            return old_data
-
-        if data is not None:
-            old_data = data[key]
-
-        del data[key]
         return old_data
 
     def on_missing(
@@ -157,23 +165,27 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
                 if (ctx.idx + 1) < len(ctx.path):
                     next_key = ctx.path[ctx.idx + 1]
-                    expected_container_type = None
+                    missing_container = None
                     if isinstance(next_key, str):
-                        expected_container_type = Mapping
+                        replace = not isinstance(ctx.data, Mapping)
+                        missing_container = dict
                     elif isinstance(next_key, int):
-                        expected_container_type = NonStrSequence
+                        replace = not isinstance(ctx.data, NonStrSequence)
+                        missing_container = list
 
-                    if not isinstance(ctx.data, expected_container_type):
+                    if replace:
                         if replace_path:
                             ctx.data = last_parent
-                            ctx.data = self._on_missing(ctx, None, create_missing)
+                            ctx.data = self._on_missing(
+                                ctx, None, create_missing, missing_container
+                            )
                         else:
                             raise_exc = True
                             break
 
             except (KeyError, IndexError, ConfigException) as exc:
                 if (ctx.idx + 1) < len(ctx.path):
-                    ctx.data = self._on_missing(ctx, exc, create_missing)
+                    ctx.data = self._on_missing(ctx, exc, create_missing, dict)
                 else:
                     old_value = None
 
@@ -183,20 +195,30 @@ class DeepDict(Mapping, DeepUpdateMixin):
                 f" '{ctx.cur_path()}'"
             )
 
-        last_parent[ctx.key] = value
+        # Append if it is a list, and index == list size
+        if (
+            isinstance(last_parent, NonStrSequence)
+            and isinstance(ctx.key, int)
+            and ctx.key == len(last_parent)
+        ):
+            last_parent.append(value)
+        else:
+            last_parent[ctx.key] = value
 
         return old_value
 
-    def _on_missing(self, ctx, exc, create_missing):
+    def _on_missing(self, ctx, exc, create_missing, missing_container):
         if callable(create_missing):
             return create_missing(ctx, exc)
         if isinstance(create_missing, bool) and create_missing is True:
-            return self.on_missing(ctx, exc, missing_container_default=dict)
+            return self.on_missing(
+                ctx, exc, missing_container_default=missing_container
+            )
         if isinstance(create_missing, Mapping):
             return self.on_missing(
                 ctx,
                 exc,
-                missing_container_default=dict,
+                missing_container_default=missing_container,
                 missing_container=create_missing,
             )
 

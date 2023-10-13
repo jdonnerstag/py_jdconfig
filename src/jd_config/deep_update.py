@@ -5,7 +5,8 @@
 """
 
 import logging
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence, TYPE_CHECKING
+
 from .utils import NonStrSequence, ConfigException
 from .objwalk import (
     ObjectWalker,
@@ -15,6 +16,9 @@ from .objwalk import (
     DropContainerEvent,
 )
 
+if TYPE_CHECKING:
+    from jd_config.deep_dict import DeepDict
+
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
@@ -22,10 +26,7 @@ logger = logging.getLogger(__parent__name__)
 class DeepUpdateMixin:
     """ """
 
-    def __init__(self):
-        pass
-
-    def deep_update(self, obj: Mapping, updates: Mapping | None) -> Mapping:
+    def deep_update(self, updates: Optional[Mapping]) -> "DeepDict":
         """Deep update the 'obj' with only the leafs from 'updates'. Create
         missing paths.
 
@@ -36,69 +37,9 @@ class DeepUpdateMixin:
         """
 
         if not updates:
-            return obj
+            return self.obj
 
-        stack = [obj]
-        any_elem = False
-        gen = ObjectWalker.objwalk(updates, nodes_only=False)
-        for event in gen:
-            cur = stack[-1]
+        for event in ObjectWalker.objwalk(updates, nodes_only=True):
+            self.set(event.path, event.value, create_missing=True, replace_path=True)
 
-            key = None
-            if event.path:
-                key = event.path[-1]
-                if key.endswith("[*]") and not isinstance(event, NewMappingEvent):
-                    raise ConfigException(
-                        f"'xyz[*]' syntax requires a value of type mapping: '{event.path}'"
-                    )
-
-            if any_elem:
-                if not isinstance(cur, NonStrSequence):
-                    raise ConfigException(
-                        f"'xyz[*]' syntax is only allowed with lists: '{event.path}'"
-                    )
-
-                for elem in cur:
-                    if isinstance(elem, Mapping) and key in elem:
-                        stack.pop()
-                        stack.append(elem)
-                        cur = elem
-                        break
-                else:
-                    raise ConfigException(f"Element does not exist: '{event.path}'")
-
-                any_elem = False
-
-            if isinstance(event, NewMappingEvent):
-                if event.path:
-                    if key.endswith("[*]"):
-                        key = key[:-3]
-                        any_elem = True
-                        if not isinstance(cur, Mapping) or (key not in cur):
-                            raise ConfigException(
-                                "Config element does not exist: '{path}'"
-                            )
-                    elif (key not in cur) or not isinstance(cur[key], Mapping):
-                        cur[key] = event.value
-                        if not any_elem:
-                            event.skip = True
-
-                    stack.append(cur[key])
-            elif isinstance(event, NewSequenceEvent):
-                # TODO List in list?
-                key = event.path[-1]
-                if (
-                    (key not in cur)
-                    or not isinstance(cur[key], Sequence)
-                    or isinstance(cur[key], str)
-                ):
-                    cur[key] = event.value
-                    event.skip = True
-                stack.append(cur[key])
-            elif isinstance(event, NodeEvent):
-                key = event.path[-1]
-                cur[key] = event.value
-            elif isinstance(event, DropContainerEvent):
-                stack.pop()
-
-        return obj
+        return self

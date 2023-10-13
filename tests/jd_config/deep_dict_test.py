@@ -109,13 +109,18 @@ def test_set():
     assert data.set("v.a[0].b", 14, create_missing={"a": [{}]}) is None
     assert data.get("v.a[0].b") == 14
 
+    assert data.set("b.b1", {"bb1": "B"}, create_missing=True, replace_path=True) is None
+    assert data.get("b.b1") == {"bb1": "B"}
+    assert data.set("b.b1", [1, 2, 3, 4], create_missing=True, replace_path=True) is not None
+    assert data.get("b.b1") == [1, 2, 3, 4]
+
 
 def test_delete():
     data = DeepDict(deepcopy(DATA))
     assert data.delete("a") == "aa"
     assert data.delete("does-not-exist", exception=False) is None
 
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         data.delete("does-not-exist", exception=True)
 
     assert data.delete("c.c3[4].c32") == "c322"
@@ -141,6 +146,8 @@ def test_deep_update():
     assert data.deep_update({"b": {"b1": {"b2": "B222B"}}}).get("b.b1") == {
         "b2": "B222B"
     }
+
+    # This one is tricky
     assert data.deep_update({"b": {"b1": [1, 2, 3, 4]}}).get("b.b1") == [1, 2, 3, 4]
 
 
