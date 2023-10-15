@@ -101,6 +101,7 @@ class DeepGetter:
         *,
         data: Optional[ContainerType] = None,
         on_missing: Optional[Callable] = None,
+        _memo: list = None
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
         `on_missing` and `getter` overrides
@@ -112,7 +113,7 @@ class DeepGetter:
         if not callable(on_missing):
             on_missing = self.on_missing
 
-        return GetterContext(data, on_missing=on_missing)
+        return GetterContext(data, on_missing=on_missing, _memo = _memo)
 
     def cb_get(self, data, key, path) -> Any:
         """Retrieve an element from its parent container.
@@ -179,6 +180,7 @@ class DeepGetter:
         default: Any = DEFAULT,
         *,
         on_missing: Optional[Callable] = None,
+        _memo: list = None,
     ) -> Any:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
@@ -188,7 +190,7 @@ class DeepGetter:
         :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
         """
 
-        ctx = self.new_context(data=self._data)
+        ctx = self.new_context(data=self._data, _memo=_memo)
 
         for ctx in self.walk_path(ctx, path):
             try:

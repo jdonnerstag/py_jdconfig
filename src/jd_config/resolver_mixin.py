@@ -56,6 +56,11 @@ class ResolverMixin:
         if isinstance(value, list) and len(value) == 1:
             value = value[0]
 
+        if isinstance(value, str) and value.find("{") != -1:
+            value = list(self.value_reader.parse(value))
+            if len(value) == 1:
+                value = value[0]
+
         if isinstance(value, Placeholder):
             placeholder = value
             if placeholder in _memo:
@@ -69,12 +74,6 @@ class ResolverMixin:
             value = [self.resolve(x, data, _memo=_memo) for x in value]
             value = "".join(value)
             return value
-
-        if isinstance(value, str) and value.find("{") != -1:
-            value = list(self.value_reader.parse(value))
-            if len(value) == 1:
-                value = value[0]
-            value = self.resolve(value, data, _memo=_memo)
 
         if value == "???":
             raise ConfigException(f"Mandatory config value missing: '{key}'")

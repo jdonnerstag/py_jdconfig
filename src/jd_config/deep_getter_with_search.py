@@ -7,12 +7,12 @@ search patterns, such as 'a..c', 'a.*.c'
 """
 
 import logging
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 from .utils import NonStrSequence, ConfigException
 from .config_path import ConfigPath
 from .deep_getter_base import GetterContext
-from .objwalk import ObjectWalker
+from .objwalk import ObjectWalker, WalkerEvent
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -91,8 +91,7 @@ class ConfigSearchMixin:
         """Callback if 'a..b' was found"""
 
         find_key = ctx.path[ctx.idx + 1]
-        walk = ObjectWalker.objwalk
-        for event in walk(ctx.data, nodes_only=False, cb_get=self.cb_get):
+        for event in self.walk_tree(ctx.data, nodes_only=False):
             if event.path and event.path[-1] == find_key:
                 ctx.data = event.value
                 ctx.path = ctx.path_replace(event.path, 2)
@@ -100,3 +99,11 @@ class ConfigSearchMixin:
                 return ctx.data
 
         raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
+
+    def walk_tree(
+        self, obj: Mapping | NonStrSequence, *, nodes_only: bool = False
+    ) -> Iterator[WalkerEvent]:
+        """Like walking a deep filesystem, walk a deep object structure"""
+
+        walk = ObjectWalker.objwalk
+        yield from walk(obj, nodes_only=nodes_only, cb_get=self.cb_get)

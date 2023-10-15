@@ -5,11 +5,10 @@
 """
 
 import logging
-from functools import partial
-from typing import Any, Callable, Iterator, Mapping, Optional, Sequence, Type, Union
+from typing import Any, Callable, Iterator, Mapping, Optional, Union
 
 from jd_config.deep_getter_with_search import ConfigSearchMixin
-from .utils import ConfigException, ContainerType, NonStrSequence, PathType, DEFAULT
+from .utils import ConfigException, NonStrSequence, PathType, DEFAULT
 from .deep_getter_with_search_and_resolver import ConfigResolveMixin
 from .deep_update import DeepUpdateMixin
 from .deep_getter_base import DeepGetter, GetterContext
@@ -46,12 +45,16 @@ class DeepDict(Mapping, DeepUpdateMixin):
         self.obj = obj
         self.getter = self.new_getter(obj, path) if getter is None else getter
 
+        DeepUpdateMixin.__init__(self)
+
     def new_getter(self, obj: Mapping, path: PathType) -> DeepGetter:
         """Create a new Getter. Subclasses may provide their own."""
         return DefaultConfigGetter(obj, path, on_missing=self.on_missing)
 
     # pylint: disable=arguments-renamed
-    def get(self, path: PathType, default: Any = DEFAULT) -> Any:
+    def get(
+        self, path: PathType, default: Any = DEFAULT, *, _memo: Optional[list] = None
+    ) -> Any:
         """Similar to dict.get(), but with deep path support.
 
         Example paths: "a.b.c", "a[1].b", ("a[1]", "b", "c"),
@@ -64,7 +67,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :return: The config value
         """
 
-        rtn = self.getter.get(path, default=default)
+        rtn = self.getter.get(path, default=default, _memo=_memo)
         return rtn
 
     def delete(self, path: PathType, *, exception: bool = True) -> Any:

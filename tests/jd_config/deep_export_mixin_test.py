@@ -6,8 +6,12 @@
 import os
 import re
 import logging
-from jd_config import DeepExportMixin, DeepAccessMixin
-from jd_config.resolver_mixin import ResolverMixin
+from typing import Mapping, Optional
+from jd_config import DeepExportMixin
+from jd_config.deep_dict import DeepDict
+from jd_config.deep_getter_base import DeepGetter
+from jd_config.utils import PathType
+from jd_config.deep_getter_with_search_and_resolver import ConfigResolveMixin
 
 logger = logging.getLogger(__name__)
 
@@ -19,19 +23,16 @@ def data_dir(*args):
     return os.path.join(os.path.dirname(__file__), "data", *args)
 
 
-class MyMixinTestClass(DeepExportMixin, ResolverMixin, DeepAccessMixin):
-    def __init__(self) -> None:
-        self.data = None
-
-        ResolverMixin.__init__(self)
+class MyMixinTestClass(DeepExportMixin, ConfigResolveMixin, DeepGetter):
+    def __init__(
+        self, data: Mapping, path: PathType = ()) -> None:
+        DeepGetter.__init__(self, data, path)
+        ConfigResolveMixin.__init__(self)
         DeepExportMixin.__init__(self)
-        DeepAccessMixin.__init__(self)
 
 
 def test_to_dict_to_yaml():
-    cfg = MyMixinTestClass()
-
-    cfg.data = {
+    cfg = {
         "a": "aa",
         "b": {
             "b1": {
@@ -41,9 +42,12 @@ def test_to_dict_to_yaml():
             "b2": 22,
         },
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
+        "d": "{ref:b.b1}"
     }
 
-    data = cfg.to_dict(resolve=False)
+    getter = MyMixinTestClass(data=cfg, path=())
+
+    data = getter.to_dict(resolve=False)
     assert data["a"] == "aa"
     assert data["b"]["b1"]["c1"] == "1cc"
     assert data["b"]["b1"]["c2"] == "{ref:a}"
@@ -52,22 +56,28 @@ def test_to_dict_to_yaml():
     assert data["c"][1] == "y"
     assert data["c"][2]["z1"] == "zz"
     assert data["c"][2]["z2"] == "2zz"
+    assert data["d"] == "{ref:b.b1}"
 
-    data = cfg.to_dict(resolve=True)
+    data = getter.to_dict(resolve=True)
     assert data["b"]["b1"]["c2"] == "aa"
+    assert data["d"]["c1"] == "1cc"
+    assert data["d"]["c2"] == "aa"
 
-    data = cfg.to_dict("b.b1")
+    data = getter.to_dict("b.b1")
     assert data["c1"] == "1cc"
     assert data["c2"] == "aa"
 
-    data = cfg.to_yaml("b.b1")
+    data = getter.to_dict("d")
+    assert data["c1"] == "1cc"
+    assert data["c2"] == "aa"
+
+    data = getter.to_yaml("b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
     assert data == "c1: 1cc\nc2: aa\n"
 
 
 def test_lazy_resolve():
-    cfg = MyMixinTestClass()
-    cfg.data = {
+    cfg = {
         "a": "aa",
         "b": {
             "b1": {
@@ -79,8 +89,9 @@ def test_lazy_resolve():
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
     }
 
-    data = cfg.to_dict(resolve=False)
+    getter = MyMixinTestClass(data=cfg, path=())
+    data = getter.to_dict(resolve=False)
     assert data["b"]["b1"]["c2"] == "{ref:a}"
 
-    data = cfg.to_dict(resolve=True)
+    data = getter.to_dict(resolve=True)
     assert data["b"]["b1"]["c2"] == "aa"

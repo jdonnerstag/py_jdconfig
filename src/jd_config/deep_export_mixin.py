@@ -31,23 +31,21 @@ class DeepExportMixin:
     """
 
     def __init__(self) -> None:
-        assert hasattr(self, "data"), "Mixin depends on self.data"
-        assert hasattr(self, "resolve"), "Mixin depends on self.resolve()"
         assert hasattr(self, "get"), "Mixin depends on self.get()"
+        assert hasattr(self, "cb_get"), "Mixin depends on self.cb_get()"
 
-    def to_dict(self, root: Optional[PathType] = None, resolve: bool = True) -> dict:
+    def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
         """Walk the config items with an optional starting point, and create a
         dict from it.
         """
 
-        obj = self.data
-        if root:
-            obj = self.get(root)
+        self.skip_resolver = not resolve
 
+        root = self.get(path)
         cur: Mapping | Sequence = {}
         stack = [cur]
 
-        for event in ObjectWalker.objwalk(obj, nodes_only=False):
+        for event in ObjectWalker.objwalk(root, nodes_only=False, cb_get=self.cb_get):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 new = event.new()
                 stack.append(new)
@@ -60,9 +58,6 @@ class DeepExportMixin:
                     cur = stack[-1]
             elif isinstance(event, NodeEvent):
                 value = event.value
-                if resolve:
-                    value = self.resolve(value, self.data)
-
                 self._add_to_dict_or_list(cur, event.path[-1], value)
 
         return cur
