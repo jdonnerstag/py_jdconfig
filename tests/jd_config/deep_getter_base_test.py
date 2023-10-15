@@ -22,7 +22,7 @@ def test_auto_created_context():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg, path=())
+    getter = DeepGetter(data=cfg)
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)
     assert getter.get_path("b.ba") == ("b", "ba")
@@ -49,7 +49,7 @@ def test_manual_context():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg, path=())
+    getter = DeepGetter(data=cfg)
     assert getter.get("a") == "aa"
     assert getter.get("b")
     assert getter.get("b.ba") == 11
@@ -64,5 +64,5 @@ def test_manual_context():
     getter.on_missing = on_missing
     assert getter.get("xxx") == "not found"
 
-    getter = DeepGetter(data=cfg, path=(), on_missing = on_missing)
+    getter = DeepGetter(data=cfg, on_missing = on_missing)
     assert getter.get("xxx") == "not found"

@@ -19,18 +19,15 @@ logger = logging.getLogger(__parent__name__)
 
 
 # Note: the order of the subclasses is relevant !!!
-class DefaultConfigGetter(DeepExportMixin, ConfigSearchMixin, ConfigResolveMixin, DeepGetter):
+class DefaultConfigGetter(
+    DeepExportMixin, ConfigSearchMixin, ConfigResolveMixin, DeepGetter
+):
     """Default Deep Container Getter for Configs"""
 
     def __init__(
-        self,
-        data: Mapping | NonStrSequence,
-        path: PathType,
-        *,
-        on_missing: Optional[Callable] = None,
-        _memo: list | None = None,
+        self, data: Mapping | NonStrSequence, *, on_missing: Optional[Callable] = None
     ) -> None:
-        DeepGetter.__init__(self, data, path, on_missing=on_missing, _memo=_memo)
+        DeepGetter.__init__(self, data, on_missing=on_missing)
         ConfigResolveMixin.__init__(self)
         ConfigSearchMixin.__init__(self)
         DeepExportMixin.__init__(self)
@@ -41,17 +38,15 @@ class DeepDict(Mapping, DeepUpdateMixin):
     Mapping- and Sequence-like structures.
     """
 
-    def __init__(
-        self, obj: Mapping, path: PathType = (), getter: Optional[DeepGetter] = None
-    ) -> None:
+    def __init__(self, obj: Mapping, getter: Optional[DeepGetter] = None) -> None:
         self.obj = obj
-        self.getter = self.new_getter(obj, path) if getter is None else getter
+        self.getter = self.new_getter(obj) if getter is None else getter
 
         DeepUpdateMixin.__init__(self)
 
-    def new_getter(self, obj: Mapping, path: PathType) -> DeepGetter:
+    def new_getter(self, obj: Mapping) -> DeepGetter:
         """Create a new Getter. Subclasses may provide their own."""
-        return DefaultConfigGetter(obj, path, on_missing=self.on_missing)
+        return DefaultConfigGetter(obj, on_missing=self.on_missing)
 
     # pylint: disable=arguments-renamed
     def get(

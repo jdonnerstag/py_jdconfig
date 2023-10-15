@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 class MyConfig(ConfigSearchMixin, DeepGetter):
-    def __init__(self, data: Mapping | NonStrSequence, path: PathType, *, _memo: list | None = None) -> None:
-        DeepGetter.__init__(self, data, path, _memo=_memo)
+    def __init__(self, data: Mapping | NonStrSequence) -> None:
+        DeepGetter.__init__(self, data)
         ConfigSearchMixin.__init__(self)
 
 
@@ -29,7 +29,7 @@ def test_simple():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig(data=cfg, path=())
+    getter = MyConfig(data=cfg)
     assert getter.get_path("a") == ("a",)
     assert getter.get_path("b") == ("b",)
     assert getter.get_path("b.ba") == ("b", "ba")
@@ -46,7 +46,7 @@ def test_deep():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig(data=cfg, path=())
+    getter = MyConfig(data=cfg)
     assert getter.get_path("..a") == ("a",)
     assert getter.get_path("..bbb") == ("b", "bb", "bbb")
     assert getter.get_path("b..bbb") == ("b", "bb", "bbb")
@@ -75,7 +75,7 @@ def test_any_key_or_index():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig(data=cfg, path=())
+    getter = MyConfig(data=cfg)
     assert getter.get("b.*.bbb") == 33
     assert getter.get("b.*.ba", None) is None
     assert getter.get("c[*].c4b", None) == 55

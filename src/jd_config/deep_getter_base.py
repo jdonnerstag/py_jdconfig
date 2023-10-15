@@ -83,14 +83,10 @@ class DeepGetter:
     def __init__(
         self,
         data: Mapping | NonStrSequence,
-        path: PathType,
         *,
         on_missing: Optional[Callable] = None,
-        _memo: Optional[list] = None,
     ) -> None:
         self._data = data
-        self._path = path  # TODO used anywhere?
-        self._memo = _memo  # TODO used anywhere?
 
         self.on_missing = (
             on_missing if callable(on_missing) else self.on_missing_default

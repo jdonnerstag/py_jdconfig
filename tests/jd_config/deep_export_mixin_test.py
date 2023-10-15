@@ -25,8 +25,8 @@ def data_dir(*args):
 
 class MyMixinTestClass(DeepExportMixin, ConfigResolveMixin, DeepGetter):
     def __init__(
-        self, data: Mapping, path: PathType = ()) -> None:
-        DeepGetter.__init__(self, data, path)
+        self, data: Mapping) -> None:
+        DeepGetter.__init__(self, data)
         ConfigResolveMixin.__init__(self)
         DeepExportMixin.__init__(self)
 
@@ -45,7 +45,7 @@ def test_to_dict_to_yaml():
         "d": "{ref:b.b1}"
     }
 
-    getter = MyMixinTestClass(data=cfg, path=())
+    getter = MyMixinTestClass(data=cfg)
 
     data = getter.to_dict(resolve=False)
     assert data["a"] == "aa"
@@ -89,7 +89,7 @@ def test_lazy_resolve():
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
     }
 
-    getter = MyMixinTestClass(data=cfg, path=())
+    getter = MyMixinTestClass(data=cfg)
     data = getter.to_dict(resolve=False)
     assert data["b"]["b1"]["c2"] == "{ref:a}"
 

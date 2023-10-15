@@ -22,14 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class MyConfig(ConfigResolveMixin, DeepGetter):
-    def __init__(
-        self,
-        data: Mapping | NonStrSequence,
-        path: PathType,
-        *,
-        _memo: list | None = None
-    ) -> None:
-        DeepGetter.__init__(self, data, path, _memo=_memo)
+    def __init__(self, data: Mapping | NonStrSequence) -> None:
+        DeepGetter.__init__(self, data)
         ConfigResolveMixin.__init__(self)
 
 
@@ -86,7 +80,7 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    resolver = MyConfig(data=cfg, path=())
+    resolver = MyConfig(data=cfg)
     ref = RefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -113,7 +107,7 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    resolver = MyConfig(data=cfg, path=())
+    resolver = MyConfig(data=cfg)
     ref = GlobalRefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -146,7 +140,7 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    resolver = MyConfig(data=cfg, path=())
+    resolver = MyConfig(data=cfg)
     resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     ref = RefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "it's me"
@@ -158,7 +152,7 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    resolver = MyConfig(data=cfg, path=())
+    resolver = MyConfig(data=cfg)
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
         assert ref.resolve(resolver, cfg)
@@ -175,7 +169,7 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    resolver = MyConfig(data=cfg, path=())
+    resolver = MyConfig(data=cfg)
     ref = RefPlaceholder("a")
     with pytest.raises(RecursionError):
         assert ref.resolve(resolver, cfg)
