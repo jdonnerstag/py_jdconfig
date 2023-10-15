@@ -5,7 +5,8 @@
 
 import logging
 from copy import deepcopy
-from jd_config import ObjectWalker, DropContainerEvent
+
+from jd_config import DropContainerEvent, ObjectWalker
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ DATA = dict(
         c3=[11, 22, 33, "4a", dict(c32="c322")],
     ),
 )
+
 
 def test_objwalk():
     data = list(x.path for x in ObjectWalker.objwalk(DATA, nodes_only=True))
@@ -77,15 +79,25 @@ def test_skip():
     assert len(rtn) == 3
     assert rtn == [("a",), ("b",), ("c",)]
 
-    rtn = func(("c","c1",))
+    rtn = func(
+        (
+            "c",
+            "c1",
+        )
+    )
     assert len(rtn) == 4
     assert rtn == [("a",), ("b",), ("c",), ("c", "c1")]
 
-    rtn = func(("c","c3",))
+    rtn = func(
+        (
+            "c",
+            "c3",
+        )
+    )
     assert len(rtn) == 12
 
-    rtn = func(("c","c3", 2))
+    rtn = func(("c", "c3", 2))
     assert len(rtn) == 15
 
-    rtn = func(("c","c3", 4, "c32"))
+    rtn = func(("c", "c3", 4, "c32"))
     assert len(rtn) == 18

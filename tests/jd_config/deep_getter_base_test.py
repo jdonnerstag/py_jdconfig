@@ -3,9 +3,11 @@
 
 # pylint: disable=C
 
-from typing import Any
-import pytest
 import logging
+from typing import Any
+
+import pytest
+
 from jd_config import ConfigException
 from jd_config.deep_getter_base import DeepGetter
 

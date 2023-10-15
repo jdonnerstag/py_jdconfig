@@ -3,8 +3,9 @@
 
 # pylint: disable=C
 
-import os
 import logging
+import os
+
 from jd_config import ConfigIniMixin
 
 logger = logging.getLogger(__name__)

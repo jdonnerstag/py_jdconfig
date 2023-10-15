@@ -3,14 +3,13 @@
 
 # pylint: disable=C
 
+import logging
 import os
 import re
-import logging
-from typing import Mapping, Optional
+from typing import Mapping
+
 from jd_config import DeepExportMixin
-from jd_config.deep_dict import DeepDict
 from jd_config.deep_getter_base import DeepGetter
-from jd_config.utils import PathType
 from jd_config.deep_getter_with_search_and_resolver import ConfigResolveMixin
 
 logger = logging.getLogger(__name__)
@@ -24,8 +23,7 @@ def data_dir(*args):
 
 
 class MyMixinTestClass(DeepExportMixin, ConfigResolveMixin, DeepGetter):
-    def __init__(
-        self, data: Mapping) -> None:
+    def __init__(self, data: Mapping) -> None:
         DeepGetter.__init__(self, data)
         ConfigResolveMixin.__init__(self)
         DeepExportMixin.__init__(self)
@@ -42,7 +40,7 @@ def test_to_dict_to_yaml():
             "b2": 22,
         },
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
-        "d": "{ref:b.b1}"
+        "d": "{ref:b.b1}",
     }
 
     getter = MyMixinTestClass(data=cfg)

@@ -7,26 +7,18 @@ a path and support dict-like get(), set() and delete() operations.
 """
 
 import logging
-from typing import (
-    Any,
-    Mapping,
-    Tuple,
-    Type,
-    Sequence,
-    Union,
-    Optional,
-)
+from typing import Any, Mapping, Optional, Sequence, Tuple, Type, Union
 
-from .utils import PathType, NonStrSequence, ConfigException, DEFAULT
 from .config_path import ConfigPath
-from .string_converter_mixin import StringConverterMixin
 from .objwalk import (
-    ObjectWalker,
-    NodeEvent,
+    DropContainerEvent,
     NewMappingEvent,
     NewSequenceEvent,
-    DropContainerEvent
+    NodeEvent,
+    ObjectWalker,
 )
+from .string_converter_mixin import StringConverterMixin
+from .utils import DEFAULT, ConfigException, NonStrSequence, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

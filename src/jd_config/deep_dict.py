@@ -6,13 +6,14 @@
 
 import logging
 from typing import Any, Callable, Iterator, Mapping, Optional, Union
-from jd_config.deep_export_mixin import DeepExportMixin
 
-from jd_config.deep_getter_with_search import ConfigSearchMixin
-from .utils import ConfigException, NonStrSequence, PathType, DEFAULT
+from .deep_export_mixin import DeepExportMixin
+from .deep_getter_with_search import ConfigSearchMixin
+
+from .deep_getter_base import DeepGetter, GetterContext
 from .deep_getter_with_search_and_resolver import ConfigResolveMixin
 from .deep_update import DeepUpdateMixin
-from .deep_getter_base import DeepGetter, GetterContext
+from .utils import DEFAULT, ConfigException, NonStrSequence, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

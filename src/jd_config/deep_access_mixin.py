@@ -7,10 +7,10 @@ Provide getter and setter to access deep config structures.
 
 import logging
 from typing import Any, Iterator, Optional
-from .utils import PathType, DEFAULT
-from .objwalk import ObjectWalker, NodeEvent
-from .config_getter import ConfigGetter
 
+from .config_getter import ConfigGetter
+from .objwalk import NodeEvent, ObjectWalker
+from .utils import DEFAULT, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

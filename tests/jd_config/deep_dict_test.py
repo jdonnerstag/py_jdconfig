@@ -4,12 +4,13 @@
 # pylint: disable=C
 # pylint: disable=protected-access
 
-from copy import deepcopy
 import logging
-from typing import List, Mapping, Sequence
-from jd_config import ConfigException, DeepDict
+from copy import deepcopy
+from typing import List, Mapping
+
 import pytest
 
+from jd_config import ConfigException, DeepDict
 from jd_config.deep_getter_base import GetterContext
 
 logger = logging.getLogger(__name__)
@@ -109,9 +110,14 @@ def test_set():
     assert data.set("v.a[0].b", 14, create_missing={"a": [{}]}) is None
     assert data.get("v.a[0].b") == 14
 
-    assert data.set("b.b1", {"bb1": "B"}, create_missing=True, replace_path=True) is None
+    assert (
+        data.set("b.b1", {"bb1": "B"}, create_missing=True, replace_path=True) is None
+    )
     assert data.get("b.b1") == {"bb1": "B"}
-    assert data.set("b.b1", [1, 2, 3, 4], create_missing=True, replace_path=True) is not None
+    assert (
+        data.set("b.b1", [1, 2, 3, 4], create_missing=True, replace_path=True)
+        is not None
+    )
     assert data.get("b.b1") == [1, 2, 3, 4]
 
 

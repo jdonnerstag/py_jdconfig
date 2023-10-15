@@ -7,8 +7,10 @@
 import logging
 from copy import deepcopy
 from typing import List, Mapping, Sequence
-from jd_config import ConfigGetter, ConfigException, ConfigPath
+
 import pytest
+
+from jd_config import ConfigException, ConfigGetter, ConfigPath
 
 logger = logging.getLogger(__name__)
 

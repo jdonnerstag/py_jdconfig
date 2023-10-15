@@ -5,9 +5,9 @@
 Mixin to load "system" configs from config.ini
 """
 
-import os
-import logging
 import configparser
+import logging
+import os
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

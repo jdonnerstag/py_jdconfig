@@ -3,17 +3,24 @@
 
 # pylint: disable=C
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import Mapping
+
 import pytest
-from jd_config import RefPlaceholder, ImportPlaceholder, EnvPlaceholder
-from jd_config import GlobalRefPlaceholder
-from jd_config import ConfigException, Placeholder, PlaceholderException
-from jd_config import ConfigResolveMixin
+
+from jd_config import (
+    ConfigException,
+    ConfigResolveMixin,
+    EnvPlaceholder,
+    GlobalRefPlaceholder,
+    ImportPlaceholder,
+    Placeholder,
+    RefPlaceholder,
+)
 from jd_config.deep_getter_base import DeepGetter
 from jd_config.resolver_mixin import ResolverMixin
-from jd_config.utils import PathType, NonStrSequence
+from jd_config.utils import NonStrSequence
 
 logger = logging.getLogger(__name__)
 

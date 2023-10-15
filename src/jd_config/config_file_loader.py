@@ -5,13 +5,14 @@
 Load yaml config files and handle the placeholders
 """
 
-from io import StringIO
 import logging
+from io import StringIO
 from pathlib import Path
 from typing import Mapping, Optional
-import yaml
-from .config_getter import ConfigGetter
 
+import yaml
+
+from .config_getter import ConfigGetter
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

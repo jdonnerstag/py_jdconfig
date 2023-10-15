@@ -3,15 +3,17 @@
 
 # pylint: disable=C
 
+import logging
 from dataclasses import dataclass
 from typing import Mapping
+
 import pytest
-import logging
+
 from jd_config import ConfigException, Placeholder
-from jd_config.deep_getter_with_search_and_resolver import ConfigResolveMixin
 from jd_config.deep_getter_base import DeepGetter
 from jd_config.deep_getter_with_search import ConfigSearchMixin
-from jd_config.utils import NonStrSequence, PathType
+from jd_config.deep_getter_with_search_and_resolver import ConfigResolveMixin
+from jd_config.utils import NonStrSequence
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Note: the order of the subclasses is relevant !!!
 class MyConfig(ConfigSearchMixin, ConfigResolveMixin, DeepGetter):
-    def __init__(
-        self,
-        data: Mapping | NonStrSequence
-    ) -> None:
+    def __init__(self, data: Mapping | NonStrSequence) -> None:
         DeepGetter.__init__(self, data)
         ConfigResolveMixin.__init__(self)
         ConfigSearchMixin.__init__(self)

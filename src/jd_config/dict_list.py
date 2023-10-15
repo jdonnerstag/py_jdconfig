@@ -8,10 +8,9 @@ and thus simplies the code accessing configs.
 """
 
 import logging
-from typing import Any, Mapping, Iterator
+from typing import Any, Iterator, Mapping
 
-from .utils import NonStrSequence, DEFAULT, ContainerType
-
+from .utils import DEFAULT, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

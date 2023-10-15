@@ -6,8 +6,8 @@ Normalize config paths such as "a.b.c", "a.b[2].c", "a..c", "a.*.c", "a.b[*].c",
 ["a.b.c"], ["a", "b.c"], ["a", ["b.c"]], "a/b/c"
 """
 
-import re
 import logging
+import re
 from typing import Iterable, Iterator
 
 from .utils import ConfigException, PathType
@@ -90,7 +90,7 @@ class ConfigPath:
     @classmethod
     def normalize_path(
         cls, path: PathType, *, sep: str = ".", rtn: list = None
-    ) -> list[str|int]:
+    ) -> list[str | int]:
         """Convert flexible path into normalized Tuple
 
         'path' is simple: e.g. "a.b.c", "a[1].b", ("a[1]", "b", "c"),

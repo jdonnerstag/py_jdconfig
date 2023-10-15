@@ -10,16 +10,15 @@ Placeholders can only occur in yaml values. They are not allowed in keys.
 And it must be a yaml *string* value, surrounded by quotes.
 """
 
-from abc import ABC, abstractmethod
-import os
 import logging
-from datetime import datetime
+import os
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Mapping, Optional, Protocol
+from typing import Any, Mapping, Optional
 
 from .utils import ConfigException
-
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

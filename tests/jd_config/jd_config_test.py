@@ -3,14 +3,16 @@
 
 # pylint: disable=C
 
+import logging
 import os
 import re
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-import logging
+
 import pytest
-from jd_config import JDConfig, Placeholder, ConfigException, NodeEvent
+
+from jd_config import ConfigException, JDConfig, NodeEvent, Placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +110,12 @@ def test_load_jdconfig_2(monkeypatch):
 
     cfg = JDConfig(ini_file=None)
     cfg.env = None  # Make sure, we are not even trying to load an env file
-    cfg.config_dir = data_dir("configs-2")  # config-2 has imports. Make sure, it is available for imports.
-    data = cfg.load("main_config.yaml") # if config_dir provided to load() it is only used for this one file
+    cfg.config_dir = data_dir(
+        "configs-2"
+    )  # config-2 has imports. Make sure, it is available for imports.
+    data = cfg.load(
+        "main_config.yaml"
+    )  # if config_dir provided to load() it is only used for this one file
     assert data
 
     monkeypatch.setenv("DB_USER", "dbuser")

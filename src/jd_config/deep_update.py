@@ -5,16 +5,9 @@
 """
 
 import logging
-from typing import Mapping, Optional, Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING, Mapping, Optional
 
-from .utils import NonStrSequence, ConfigException
-from .objwalk import (
-    ObjectWalker,
-    NodeEvent,
-    NewMappingEvent,
-    NewSequenceEvent,
-    DropContainerEvent,
-)
+from .objwalk import ObjectWalker
 
 if TYPE_CHECKING:
     from jd_config.deep_dict import DeepDict

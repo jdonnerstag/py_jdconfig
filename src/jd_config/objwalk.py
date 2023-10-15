@@ -6,10 +6,11 @@ Walk a tree-like structure of Mapping- and Sequence-like object, and yield
 events when stepping into or out of a container, and for every leaf-node.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Any, Mapping, Optional, Sequence, Tuple, Iterator
-from .utils import NonStrSequence, ConfigException
+from dataclasses import dataclass
+from typing import Any, Iterator, Mapping, Optional, Sequence, Tuple
+
+from .utils import ConfigException, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -21,7 +22,7 @@ class NodeEvent:
 
     path: Tuple[str | int, ...]
     value: Any
-    container: Mapping|NonStrSequence
+    container: Mapping | NonStrSequence
     skip: bool = False
 
     def is_sequence_node(self) -> bool:
@@ -84,7 +85,7 @@ class ObjectWalker:
         obj: Mapping | NonStrSequence,
         *,
         nodes_only: bool = False,
-        cb_get: Optional[callable] = None
+        cb_get: Optional[callable] = None,
     ) -> Iterator[WalkerEvent]:
         """A generic function to walk any Mapping- and Sequence- like objects.
 

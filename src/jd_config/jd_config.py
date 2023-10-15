@@ -5,15 +5,13 @@
 Main config package to load and access config values.
 """
 
-from io import StringIO
 import logging
+from io import StringIO
 from pathlib import Path
 from typing import Mapping, Optional, Sequence, Union
-from .config_ini_mixin import ConfigIniMixin
-from .deep_access_mixin import DeepAccessMixin
+
 from .config_file_loader import ConfigFileLoader
-from .deep_export_mixin import DeepExportMixin
-from .resolver_mixin import ResolverMixin
+from .config_ini_mixin import ConfigIniMixin
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

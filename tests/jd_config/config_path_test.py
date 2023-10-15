@@ -5,8 +5,10 @@
 # pylint: disable=protected-access
 
 import logging
-from jd_config import ConfigPath, ConfigException
+
 import pytest
+
+from jd_config import ConfigException, ConfigPath
 
 logger = logging.getLogger(__name__)
 

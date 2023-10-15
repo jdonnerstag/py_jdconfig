@@ -19,10 +19,10 @@ Either the base class or a subclass should support:
 """
 
 import logging
-from typing import Any, Iterator, Mapping, Optional, Callable
+from typing import Any, Callable, Iterator, Mapping, Optional
 
-from .utils import ContainerType, NonStrSequence, PathType, ConfigException, DEFAULT
 from .config_path import ConfigPath
+from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -97,7 +97,7 @@ class DeepGetter:
         *,
         data: Optional[ContainerType] = None,
         on_missing: Optional[Callable] = None,
-        _memo: list = None
+        _memo: list = None,
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
         `on_missing` and `getter` overrides
@@ -109,7 +109,7 @@ class DeepGetter:
         if not callable(on_missing):
             on_missing = self.on_missing
 
-        return GetterContext(data, on_missing=on_missing, _memo = _memo)
+        return GetterContext(data, on_missing=on_missing, _memo=_memo)
 
     def cb_get(self, data, key, path, **kvargs) -> Any:
         """Retrieve an element from its parent container.

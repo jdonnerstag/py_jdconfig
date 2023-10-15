@@ -9,10 +9,10 @@ search patterns, such as 'a..c', 'a.*.c'
 import logging
 from typing import Any, Iterator, Mapping
 
-from .utils import NonStrSequence, ConfigException
 from .config_path import ConfigPath
 from .deep_getter_base import GetterContext
 from .objwalk import ObjectWalker, WalkerEvent
+from .utils import ConfigException, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

@@ -7,10 +7,10 @@ Mixin to resolve preprocessed placeholders
 
 import logging
 from typing import Any, Mapping, Optional
-from .utils import ConfigException
-from .placeholders import Placeholder
-from .value_reader import ValueReader
 
+from .placeholders import Placeholder
+from .utils import ConfigException
+from .value_reader import ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

@@ -8,11 +8,9 @@ search patterns, such as 'a..c', 'a.*.c'
 
 import logging
 from typing import Any
-from jd_config.placeholders import Placeholder
-from jd_config.resolver_mixin import ResolverMixin
-from jd_config.value_reader import ValueReader
+
+from .resolver_mixin import ResolverMixin
 from .utils import ConfigException
-from .deep_getter_base import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

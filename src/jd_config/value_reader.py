@@ -13,16 +13,17 @@ And it must be a yaml *string* value, surrounded by quotes.
 
 import logging
 from typing import Iterator, Optional, Union
-from .utils import ConfigException
-from .string_converter_mixin import StringConverterMixin
+
 from .placeholders import (
-    Placeholder,
+    EnvPlaceholder,
     GlobalRefPlaceholder,
     ImportPlaceholder,
+    Placeholder,
     RefPlaceholder,
-    EnvPlaceholder,
     TimestampPlaceholder,
 )
+from .string_converter_mixin import StringConverterMixin
+from .utils import ConfigException
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

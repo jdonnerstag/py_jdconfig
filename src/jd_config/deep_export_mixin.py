@@ -5,11 +5,12 @@
 Mixin to export deep config data
 """
 
-from functools import partial
 import logging
+from functools import partial
 from typing import Any, Mapping, Optional, Sequence
+
 import yaml
-from .utils import PathType
+
 from .objwalk import (
     DropContainerEvent,
     NewMappingEvent,
@@ -17,6 +18,7 @@ from .objwalk import (
     NodeEvent,
     ObjectWalker,
 )
+from .utils import PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

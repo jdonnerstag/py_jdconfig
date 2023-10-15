@@ -3,10 +3,12 @@
 
 # pylint: disable=C
 
-from typing import Mapping, Optional
-import pytest
 import logging
-from jd_config import ConfigException, NonStrSequence, PathType
+from typing import Mapping
+
+import pytest
+
+from jd_config import ConfigException, NonStrSequence
 from jd_config.deep_getter_base import DeepGetter
 from jd_config.deep_getter_with_search import ConfigSearchMixin
 
