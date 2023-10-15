@@ -115,7 +115,7 @@ class DeepGetter:
 
         return GetterContext(data, on_missing=on_missing, _memo = _memo)
 
-    def cb_get(self, data, key, path) -> Any:
+    def cb_get(self, data, key, path, **kvargs) -> Any:
         """Retrieve an element from its parent container.
 
         Subclasses may extend it, e.g. to resolve the value `{ref:a}`,

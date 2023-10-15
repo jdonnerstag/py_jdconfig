@@ -5,6 +5,7 @@
 Mixin to export deep config data
 """
 
+from functools import partial
 import logging
 from typing import Any, Mapping, Optional, Sequence
 import yaml
@@ -39,13 +40,15 @@ class DeepExportMixin:
         dict from it.
         """
 
-        self.skip_resolver = not resolve
+        cb_get = self.cb_get
+        if not resolve:
+            cb_get = partial(self.cb_get, skip_resolver=True)
 
         root = self.get(path)
         cur: Mapping | Sequence = {}
         stack = [cur]
 
-        for event in ObjectWalker.objwalk(root, nodes_only=False, cb_get=self.cb_get):
+        for event in ObjectWalker.objwalk(root, nodes_only=False, cb_get=cb_get):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 new = event.new()
                 stack.append(new)

@@ -19,7 +19,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class JDConfig(ConfigIniMixin, ResolverMixin, DeepAccessMixin, DeepExportMixin):
+class JDConfig(ConfigIniMixin):
     """Main class load and access config values."""
 
     def __init__(self, *, ini_file: str = "config.ini") -> None:
@@ -50,12 +50,6 @@ class JDConfig(ConfigIniMixin, ResolverMixin, DeepAccessMixin, DeepExportMixin):
         self.data = None
 
         ConfigIniMixin.__init__(self, ini_file=ini_file)
-
-        ResolverMixin.__init__(self)
-
-        DeepAccessMixin.__init__(self)
-
-        DeepExportMixin.__init__(self)
 
         # Why this approach and not a Mixin/Base Class. ConfigFileLoader
         # is comparatively large with a number of functions. Functions

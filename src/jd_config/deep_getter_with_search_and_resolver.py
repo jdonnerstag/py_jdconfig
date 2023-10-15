@@ -23,18 +23,13 @@ class ConfigResolveMixin(ResolverMixin):
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.skip_resolver = False
-
-    def cb_get(self, data, key, path) -> Any:
+    def cb_get(self, data, key, path, **kvargs) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """
         value = super().cb_get(data, key, path)
 
-        if not self.skip_resolver:
+        if "skip_resolver" not in kvargs:
             while isinstance(value, str) and value.find("{") != -1:
                 value = list(self.value_reader.parse(value))
                 value = self.resolve(value)

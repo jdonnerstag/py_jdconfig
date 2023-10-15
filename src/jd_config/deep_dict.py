@@ -6,6 +6,7 @@
 
 import logging
 from typing import Any, Callable, Iterator, Mapping, Optional, Union
+from jd_config.deep_export_mixin import DeepExportMixin
 
 from jd_config.deep_getter_with_search import ConfigSearchMixin
 from .utils import ConfigException, NonStrSequence, PathType, DEFAULT
@@ -18,7 +19,7 @@ logger = logging.getLogger(__parent__name__)
 
 
 # Note: the order of the subclasses is relevant !!!
-class DefaultConfigGetter(ConfigSearchMixin, ConfigResolveMixin, DeepGetter):
+class DefaultConfigGetter(DeepExportMixin, ConfigSearchMixin, ConfigResolveMixin, DeepGetter):
     """Default Deep Container Getter for Configs"""
 
     def __init__(
@@ -32,6 +33,7 @@ class DefaultConfigGetter(ConfigSearchMixin, ConfigResolveMixin, DeepGetter):
         DeepGetter.__init__(self, data, path, on_missing=on_missing, _memo=_memo)
         ConfigResolveMixin.__init__(self)
         ConfigSearchMixin.__init__(self)
+        DeepExportMixin.__init__(self)
 
 
 class DeepDict(Mapping, DeepUpdateMixin):
