@@ -19,10 +19,10 @@ Either the base class or a subclass should support:
 """
 
 import logging
-from typing import Any, Callable, Iterator, Mapping, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from .config_path import ConfigPath
-from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
+from .utils import DEFAULT, ConfigException, ContainerType, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -80,31 +80,21 @@ class GetterContext:
 class DeepGetter:
     """Getter for deep container structures (Mapping and NonStrSequence)"""
 
-    def __init__(
-        self,
-        data: Mapping | NonStrSequence,
-        *,
-        on_missing: Optional[Callable] = None,
-    ) -> None:
-        self._data = data
-
+    def __init__(self, *, on_missing: Optional[Callable] = None) -> None:
         self.on_missing = (
             on_missing if callable(on_missing) else self.on_missing_default
         )
 
     def new_context(
         self,
+        data: ContainerType,
         *,
-        data: Optional[ContainerType] = None,
         on_missing: Optional[Callable] = None,
         _memo: list = None,
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
         `on_missing` and `getter` overrides
         """
-
-        if data is None:
-            data = self._data
 
         if not callable(on_missing):
             on_missing = self.on_missing
@@ -147,7 +137,7 @@ class DeepGetter:
         # TODO Need a version without search pattern support
         return tuple(ConfigPath.normalize_path(path))
 
-    def get_path(self, path: PathType) -> list[str | int]:
+    def get_path(self, data: ContainerType, path: PathType) -> list[str | int]:
         """Determine the real path.
 
         The base implementation just returns the normalized path, without
@@ -160,7 +150,7 @@ class DeepGetter:
         :return: the normalized path
         """
 
-        ctx = self.new_context(data=self._data)
+        ctx = self.new_context(data)
 
         try:
             for ctx in self.walk_path(ctx, path):
@@ -172,6 +162,7 @@ class DeepGetter:
 
     def get(
         self,
+        data: ContainerType,
         path: PathType,
         default: Any = DEFAULT,
         *,
@@ -186,7 +177,7 @@ class DeepGetter:
         :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
         """
 
-        ctx = self.new_context(data=self._data, _memo=_memo)
+        ctx = self.new_context(data, _memo=_memo)
 
         for ctx in self.walk_path(ctx, path):
             try:

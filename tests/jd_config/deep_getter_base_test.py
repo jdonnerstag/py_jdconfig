@@ -24,24 +24,24 @@ def test_auto_created_context():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg)
-    assert getter.get_path("a") == ("a",)
-    assert getter.get_path("b") == ("b",)
-    assert getter.get_path("b.ba") == ("b", "ba")
-    assert getter.get_path("c[3].c4b") == ("c", 3, "c4b")
+    getter = DeepGetter()
+    assert getter.get_path(cfg, "a") == ("a",)
+    assert getter.get_path(cfg, "b") == ("b",)
+    assert getter.get_path(cfg, "b.ba") == ("b", "ba")
+    assert getter.get_path(cfg, "c[3].c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path("xxx")  # path does not exist
+        getter.get_path(cfg, "xxx")  # path does not exist
 
-    assert getter.get("a") == "aa"
-    assert getter.get("b")
-    assert getter.get("b.ba") == 11
-    assert getter.get("c[3].c4b") == 55
+    assert getter.get(cfg, "a") == "aa"
+    assert getter.get(cfg, "b")
+    assert getter.get(cfg, "b.ba") == 11
+    assert getter.get(cfg, "c[3].c4b") == 55
 
     with pytest.raises(ConfigException):
-        getter.get("xxx")
+        getter.get(cfg, "xxx")
 
-    assert getter.get("xxx", 99) == 99
+    assert getter.get(cfg, "xxx", 99) == 99
 
 
 def test_manual_context():
@@ -51,20 +51,20 @@ def test_manual_context():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = DeepGetter(data=cfg)
-    assert getter.get("a") == "aa"
-    assert getter.get("b")
-    assert getter.get("b.ba") == 11
-    assert getter.get("c[3].c4b") == 55
+    getter = DeepGetter()
+    assert getter.get(cfg, "a") == "aa"
+    assert getter.get(cfg, "b")
+    assert getter.get(cfg, "b.ba") == 11
+    assert getter.get(cfg, "c[3].c4b") == 55
 
     with pytest.raises(ConfigException):
-        getter.get("xxx")
+        getter.get(cfg, "xxx")
 
     def on_missing(*_) -> Any:
         return "not found"
 
     getter.on_missing = on_missing
-    assert getter.get("xxx") == "not found"
+    assert getter.get(cfg, "xxx") == "not found"
 
-    getter = DeepGetter(data=cfg, on_missing = on_missing)
-    assert getter.get("xxx") == "not found"
+    getter = DeepGetter(on_missing = on_missing)
+    assert getter.get(cfg, "xxx") == "not found"

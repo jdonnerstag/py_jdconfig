@@ -5,7 +5,6 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Mapping
 
 import pytest
 
@@ -20,7 +19,6 @@ from jd_config import (
 )
 from jd_config.deep_getter_base import DeepGetter
 from jd_config.resolver_mixin import ResolverMixin
-from jd_config.utils import NonStrSequence
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 class MyConfig(ConfigResolveMixin, DeepGetter):
-    def __init__(self, data: Mapping | NonStrSequence) -> None:
-        DeepGetter.__init__(self, data)
+    def __init__(self) -> None:
+        DeepGetter.__init__(self)
         ConfigResolveMixin.__init__(self)
 
 
@@ -87,7 +85,7 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    resolver = MyConfig(data=cfg)
+    resolver = MyConfig()
     ref = RefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -114,7 +112,7 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    resolver = MyConfig(data=cfg)
+    resolver = MyConfig()
     ref = GlobalRefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "aa"
 
@@ -147,7 +145,7 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    resolver = MyConfig(data=cfg)
+    resolver = MyConfig()
     resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     ref = RefPlaceholder("a")
     assert ref.resolve(resolver, cfg) == "it's me"
@@ -159,7 +157,7 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    resolver = MyConfig(data=cfg)
+    resolver = MyConfig()
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
         assert ref.resolve(resolver, cfg)
@@ -176,7 +174,7 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    resolver = MyConfig(data=cfg)
+    resolver = MyConfig()
     ref = RefPlaceholder("a")
     with pytest.raises(RecursionError):
         assert ref.resolve(resolver, cfg)

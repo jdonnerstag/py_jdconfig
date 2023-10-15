@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 # Note: the order of the subclasses is relevant !!!
 class MyConfig(ConfigSearchMixin, ConfigResolveMixin, DeepGetter):
-    def __init__(self, data: Mapping | NonStrSequence) -> None:
-        DeepGetter.__init__(self, data)
+    def __init__(self) -> None:
+        DeepGetter.__init__(self)
         ConfigResolveMixin.__init__(self)
         ConfigSearchMixin.__init__(self)
 
@@ -36,24 +36,24 @@ def test_no_placeholders():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig(data=cfg)
-    assert getter.get_path("a") == ("a",)
-    assert getter.get_path("b") == ("b",)
-    assert getter.get_path("b.ba") == ("b", "ba")
-    assert getter.get_path("c[3].c4b") == ("c", 3, "c4b")
+    getter = MyConfig()
+    assert getter.get_path(cfg, "a") == ("a",)
+    assert getter.get_path(cfg, "b") == ("b",)
+    assert getter.get_path(cfg, "b.ba") == ("b", "ba")
+    assert getter.get_path(cfg, "c[3].c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path("xxx")
+        getter.get_path(cfg, "xxx")
 
-    assert getter.get("a") == "aa"
-    assert getter.get("b")
-    assert getter.get("b.ba") == 11
-    assert getter.get("c[3].c4b") == 55
+    assert getter.get(cfg, "a") == "aa"
+    assert getter.get(cfg, "b")
+    assert getter.get(cfg, "b.ba") == 11
+    assert getter.get(cfg, "c[3].c4b") == 55
 
     with pytest.raises(ConfigException):
-        getter.get("xxx")
+        getter.get(cfg, "xxx")
 
-    assert getter.get("xxx", 99) == 99
+    assert getter.get(cfg, "xxx", 99) == 99
 
 
 def test_resolve():
@@ -64,16 +64,16 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    getter = MyConfig(data=cfg)
-    assert getter.get("a") == "aa"
-    assert getter.get("b") == "aa"
-    assert getter.get("c") == "aa"
+    getter = MyConfig()
+    assert getter.get(cfg, "a") == "aa"
+    assert getter.get(cfg, "b") == "aa"
+    assert getter.get(cfg, "c") == "aa"
 
     with pytest.raises(ConfigException):
-        assert getter.get("d")
+        assert getter.get(cfg, "d")
 
     with pytest.raises(ConfigException):
-        assert getter.get("xxx")
+        assert getter.get(cfg, "xxx")
 
 
 def test_global_ref():
@@ -85,16 +85,16 @@ def test_global_ref():
     }
 
     # TODO {global:} so far is == {ref:}
-    getter = MyConfig(data=cfg)
-    assert getter.get("a") == "aa"
-    assert getter.get("b") == "aa"
-    assert getter.get("c") == "aa"
+    getter = MyConfig()
+    assert getter.get(cfg, "a") == "aa"
+    assert getter.get(cfg, "b") == "aa"
+    assert getter.get(cfg, "c") == "aa"
 
     with pytest.raises(ConfigException):
-        assert getter.get("d")
+        assert getter.get(cfg, "d")
 
     with pytest.raises(ConfigException):
-        assert getter.get("xxx")
+        assert getter.get(cfg, "xxx")
 
 
 @dataclass
@@ -111,9 +111,9 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    getter = MyConfig(data=cfg)
+    getter = MyConfig()
     getter.register_placeholder_handler("bespoke", MyBespokePlaceholder)
-    assert getter.get("a") == "it's me"
+    assert getter.get(cfg, "a") == "it's me"
 
 
 def test_mandatory_value():
@@ -122,12 +122,12 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    getter = MyConfig(data=cfg)
+    getter = MyConfig()
     with pytest.raises(ConfigException):
-        assert getter.get("a")
+        assert getter.get(cfg, "a")
 
     with pytest.raises(ConfigException):
-        assert getter.get("b")
+        assert getter.get(cfg, "b")
 
 
 def test_detect_recursion():
@@ -137,9 +137,9 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    getter = MyConfig(data=cfg)
+    getter = MyConfig()
     with pytest.raises(RecursionError):
-        getter.get("a")
+        getter.get(cfg, "a")
 
 
 def test_resolve_2():
@@ -150,14 +150,14 @@ def test_resolve_2():
         "d": {"da": "{ref:a}"},
     }
 
-    getter = MyConfig(data=cfg)
-    assert isinstance(getter.get("c"), Mapping)
-    assert getter.get("a") == "aa"
-    assert getter.get("b") == "aa"
-    assert getter.get("c.ca") == {"da": "{ref:a}"}
-    assert getter.get("c.cb[0]") == 1
-    assert getter.get("c.cb[3].cb4") == "aa"
-    assert getter.get("c.ca.da") == "aa"
+    getter = MyConfig()
+    assert isinstance(getter.get(cfg, "c"), Mapping)
+    assert getter.get(cfg, "a") == "aa"
+    assert getter.get(cfg, "b") == "aa"
+    assert getter.get(cfg, "c.ca") == {"da": "{ref:a}"}
+    assert getter.get(cfg, "c.cb[0]") == 1
+    assert getter.get(cfg, "c.cb[3].cb4") == "aa"
+    assert getter.get(cfg, "c.ca.da") == "aa"
 
 
 def test_deep_getter_1():
@@ -167,24 +167,24 @@ def test_deep_getter_1():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig(data=cfg)
-    assert getter.get_path("a") == ("a",)
-    assert getter.get_path("b") == ("b",)
-    assert getter.get_path("b.ba") == ("b", "ba")
-    assert getter.get_path("c[3].c4b") == ("c", 3, "c4b")
+    getter = MyConfig()
+    assert getter.get_path(cfg, "a") == ("a",)
+    assert getter.get_path(cfg, "b") == ("b",)
+    assert getter.get_path(cfg, "b.ba") == ("b", "ba")
+    assert getter.get_path(cfg, "c[3].c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path("xxx")
+        getter.get_path(cfg, "xxx")
 
-    assert getter.get("a") == "aa"
-    assert getter.get("b")
-    assert getter.get("b.ba") == 11
-    assert getter.get("c[3].c4b") == 55
+    assert getter.get(cfg, "a") == "aa"
+    assert getter.get(cfg, "b")
+    assert getter.get(cfg, "b.ba") == 11
+    assert getter.get(cfg, "c[3].c4b") == 55
 
     with pytest.raises(ConfigException):
-        getter.get("xxx")
+        getter.get(cfg, "xxx")
 
-    assert getter.get("xxx", 99) == 99
+    assert getter.get(cfg, "xxx", 99) == 99
 
 
 def test_deep_getter_2():
@@ -194,26 +194,26 @@ def test_deep_getter_2():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig(data=cfg)
-    assert getter.get_path("..a") == ("a",)
-    assert getter.get_path("..bbb") == ("b", "bb", "bbb")
-    assert getter.get_path("b..bbb") == ("b", "bb", "bbb")
-    assert getter.get_path("b..bb..bbb") == ("b", "bb", "bbb")
-    assert getter.get_path("c..c4b") == ("c", 3, "c4b")
+    getter = MyConfig()
+    assert getter.get_path(cfg, "..a") == ("a",)
+    assert getter.get_path(cfg, "..bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(cfg, "b..bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(cfg, "b..bb..bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(cfg, "c..c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path("b..xxx")
+        getter.get_path(cfg, "b..xxx")
 
-    assert getter.get("..a") == "aa"
-    assert getter.get("..bbb") == 33
-    assert getter.get("b..bbb") == 33
-    assert getter.get("b..bb..bbb") == 33
-    assert getter.get("c..c4b") == 55
+    assert getter.get(cfg, "..a") == "aa"
+    assert getter.get(cfg, "..bbb") == 33
+    assert getter.get(cfg, "b..bbb") == 33
+    assert getter.get(cfg, "b..bb..bbb") == 33
+    assert getter.get(cfg, "c..c4b") == 55
 
     with pytest.raises(ConfigException):
-        getter.get("b..xxx")
+        getter.get(cfg, "b..xxx")
 
-    assert getter.get("b..xxx", 99) == 99
+    assert getter.get(cfg, "b..xxx", 99) == 99
 
 
 def test_deep_getter_3():
@@ -223,8 +223,8 @@ def test_deep_getter_3():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig(data=cfg)
-    assert getter.get("b.*.bbb") == 33
-    assert getter.get("b.*.ba", None) is None
-    assert getter.get("c[*].c4b", None) == 55
-    assert getter.get("c.*.c4b", None) is None
+    getter = MyConfig()
+    assert getter.get(cfg, "b.*.bbb") == 33
+    assert getter.get(cfg, "b.*.ba", None) is None
+    assert getter.get(cfg, "c[*].c4b", None) == 55
+    assert getter.get(cfg, "c.*.c4b", None) is None

@@ -70,7 +70,7 @@ class RefPlaceholder(Placeholder):
 
     def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
         try:
-            obj = getter.get(self.path, _memo=_memo)
+            obj = getter.get(data, self.path, _memo=_memo)
             return obj
         except (
             KeyError,
