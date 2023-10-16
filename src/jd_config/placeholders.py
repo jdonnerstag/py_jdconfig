@@ -16,16 +16,19 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from .utils import ConfigException
+
+if TYPE_CHECKING:
+    from .deep_getter_base import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 class PlaceholderException(ConfigException):
-    pass
+    """Placeholder exception"""
 
 
 # pylint: disable=too-few-public-methods
@@ -33,7 +36,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, ctx: "GetterContext"):
         """Resolve the placeholder"""
 
 
@@ -49,10 +52,10 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, ctx: "GetterContext"):
         # TODO It is not possible to recursively call get()
         assert hasattr(getter, "resolve")
-        file = getter.resolve(self.file, data, _memo=_memo)
+        file = getter.resolve(self.file, ctx)
         rtn = getter.load(file)
         return rtn
 
@@ -68,9 +71,9 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, getter, data: Mapping, *, _memo: list | None = None):
+    def resolve(self, getter, ctx: "GetterContext"):
         try:
-            obj = getter.get(data, self.path, _memo=_memo)
+            obj = getter.get(ctx.root, self.path, _memo=ctx.memo)
             return obj
         except (
             KeyError,

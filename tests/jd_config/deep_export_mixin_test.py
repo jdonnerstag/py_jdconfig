@@ -23,8 +23,8 @@ def data_dir(*args):
 
 
 class MyMixinTestClass(DeepExportMixin, ConfigResolveMixin, DeepGetter):
-    def __init__(self, data: Mapping) -> None:
-        DeepGetter.__init__(self, data)
+    def __init__(self) -> None:
+        DeepGetter.__init__(self)
         ConfigResolveMixin.__init__(self)
         DeepExportMixin.__init__(self)
 
@@ -43,9 +43,9 @@ def test_to_dict_to_yaml():
         "d": "{ref:b.b1}",
     }
 
-    getter = MyMixinTestClass(data=cfg)
+    getter = MyMixinTestClass()
 
-    data = getter.to_dict(resolve=False)
+    data = getter.to_dict(cfg, resolve=False)
     assert data["a"] == "aa"
     assert data["b"]["b1"]["c1"] == "1cc"
     assert data["b"]["b1"]["c2"] == "{ref:a}"
@@ -56,20 +56,20 @@ def test_to_dict_to_yaml():
     assert data["c"][2]["z2"] == "2zz"
     assert data["d"] == "{ref:b.b1}"
 
-    data = getter.to_dict(resolve=True)
+    data = getter.to_dict(cfg, resolve=True)
     assert data["b"]["b1"]["c2"] == "aa"
     assert data["d"]["c1"] == "1cc"
     assert data["d"]["c2"] == "aa"
 
-    data = getter.to_dict("b.b1")
+    data = getter.to_dict(cfg, "b.b1")
     assert data["c1"] == "1cc"
     assert data["c2"] == "aa"
 
-    data = getter.to_dict("d")
+    data = getter.to_dict(cfg, "d")
     assert data["c1"] == "1cc"
     assert data["c2"] == "aa"
 
-    data = getter.to_yaml("b.b1")
+    data = getter.to_yaml(cfg, "b.b1")
     data = re.sub(r"[\r\n]+", r"\n", data)
     assert data == "c1: 1cc\nc2: aa\n"
 
@@ -87,9 +87,9 @@ def test_lazy_resolve():
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
     }
 
-    getter = MyMixinTestClass(data=cfg)
-    data = getter.to_dict(resolve=False)
+    getter = MyMixinTestClass()
+    data = getter.to_dict(cfg, resolve=False)
     assert data["b"]["b1"]["c2"] == "{ref:a}"
 
-    data = getter.to_dict(resolve=True)
+    data = getter.to_dict(cfg, resolve=True)
     assert data["b"]["b1"]["c2"] == "aa"

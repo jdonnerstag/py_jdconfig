@@ -18,7 +18,7 @@ from .objwalk import (
     NodeEvent,
     ObjectWalker,
 )
-from .utils import PathType
+from .utils import ContainerType, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -37,16 +37,16 @@ class DeepExportMixin:
         assert hasattr(self, "get"), "Mixin depends on self.get()"
         assert hasattr(self, "cb_get"), "Mixin depends on self.cb_get()"
 
-    def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
+    def to_dict(
+        self, data: ContainerType, path: Optional[PathType] = None, resolve: bool = True
+    ) -> dict:
         """Walk the config items with an optional starting point, and create a
         dict from it.
         """
 
-        cb_get = self.cb_get
-        if not resolve:
-            cb_get = partial(self.cb_get, skip_resolver=True)
-
-        root = self.get(path)
+        ctx = self.new_context(data)
+        cb_get = partial(self.cb_get, ctx=ctx, skip_resolver=not resolve, clear_memo=True)
+        root = self.get(data, path)
         cur: Mapping | Sequence = {}
         stack = [cur]
 
@@ -74,8 +74,8 @@ class DeepExportMixin:
         elif isinstance(obj, Sequence):
             obj.append(value)
 
-    def to_yaml(self, root: Optional[PathType] = None, stream=None, **kvargs):
+    def to_yaml(self, data: ContainerType, path: Optional[PathType] = None, stream=None, **kvargs):
         """Convert the configs (or part of it), into a yaml document"""
 
-        data = self.to_dict(root, resolve=True)
+        data = self.to_dict(data, path, resolve=True)
         return yaml.dump(data, stream, **kvargs)

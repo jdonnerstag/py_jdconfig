@@ -6,8 +6,9 @@ Mixin to resolve preprocessed placeholders
 """
 
 import logging
-from typing import Any, Mapping, Optional
+from typing import Any
 
+from .deep_getter_base import GetterContext
 from .placeholders import Placeholder
 from .utils import ConfigException
 from .value_reader import ValueReader
@@ -31,13 +32,7 @@ class ResolverMixin:
 
         self.value_reader.registry[name] = type_
 
-    def resolve(
-        self,
-        value: Any,
-        data: Optional[Mapping] = None,
-        *,
-        _memo: list | None = None,
-    ) -> Any:
+    def resolve(self, value: Any, ctx: GetterContext) -> Any:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -45,10 +40,6 @@ class ResolverMixin:
         a Placeholder. resolve() lazily resolves the placeholders and joins
         the pieces together for the actuall yaml value.
         """
-
-        # Used to detected recursions in resolving placeholders
-        if _memo is None:
-            _memo = []
 
         logger.debug("resolve(%s)", value)
         key = value
@@ -63,15 +54,11 @@ class ResolverMixin:
 
         if isinstance(value, Placeholder):
             placeholder = value
-            if placeholder in _memo:
-                _memo.append(placeholder)
-                raise RecursionError(f"Config recursion detected: {_memo}")
-
-            _memo.append(placeholder)
-            value = placeholder.resolve(self, data, _memo=_memo)
+            ctx.add_memo(placeholder)
+            value = placeholder.resolve(self, ctx)
 
         if isinstance(value, list):
-            value = [self.resolve(x, data, _memo=_memo) for x in value]
+            value = [self.resolve(x, ctx) for x in value]
             value = "".join(value)
             return value
 

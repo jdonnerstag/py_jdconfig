@@ -25,10 +25,8 @@ class DefaultConfigGetter(
 ):
     """Default Deep Container Getter for Configs"""
 
-    def __init__(
-        self, data: Mapping | NonStrSequence, *, on_missing: Optional[Callable] = None
-    ) -> None:
-        DeepGetter.__init__(self, data, on_missing=on_missing)
+    def __init__(self, *, on_missing: Optional[Callable] = None) -> None:
+        DeepGetter.__init__(self, on_missing=on_missing)
         ConfigResolveMixin.__init__(self)
         ConfigSearchMixin.__init__(self)
         DeepExportMixin.__init__(self)
@@ -41,13 +39,13 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
     def __init__(self, obj: Mapping, getter: Optional[DeepGetter] = None) -> None:
         self.obj = obj
-        self.getter = self.new_getter(obj) if getter is None else getter
+        self.getter = self.new_getter() if getter is None else getter
 
         DeepUpdateMixin.__init__(self)
 
-    def new_getter(self, obj: Mapping) -> DeepGetter:
+    def new_getter(self) -> DeepGetter:
         """Create a new Getter. Subclasses may provide their own."""
-        return DefaultConfigGetter(obj, on_missing=self.on_missing)
+        return DefaultConfigGetter(on_missing=self.on_missing)
 
     # pylint: disable=arguments-renamed
     def get(
@@ -65,7 +63,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :return: The config value
         """
 
-        rtn = self.getter.get(path, default=default, _memo=_memo)
+        rtn = self.getter.get(self.obj, path, default=default, _memo=_memo)
         return rtn
 
     def delete(self, path: PathType, *, exception: bool = True) -> Any:
@@ -77,7 +75,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
         old_data = None
         try:
-            data = self.getter.get(path)
+            data = self.getter.get(self.obj, path)
 
             try:
                 old_data = data[key]
@@ -161,7 +159,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         for ctx in self.getter.walk_path(ctx, path):
             try:
                 last_parent = ctx.data
-                ctx.data = self.getter.cb_get_2_with_context(ctx)
+                ctx.data = self.getter.cb_get(ctx.data, ctx.key, ctx)
                 old_value = ctx.data
 
                 if (ctx.idx + 1) < len(ctx.path):

@@ -22,6 +22,7 @@ import logging
 from typing import Any, Callable, Iterator, Optional
 
 from .config_path import ConfigPath
+from .placeholders import Placeholder
 from .utils import DEFAULT, ConfigException, ContainerType, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -58,6 +59,9 @@ class GetterContext:
 
         self.on_missing: Callable = on_missing
 
+        # The root of the file
+        self.root = self.data
+
     @property
     def value(self) -> Any:
         """Given the current 'key', get the value from the underlying container"""
@@ -75,6 +79,15 @@ class GetterContext:
             replace = (replace,)
 
         return self.path[: self.idx] + replace + self.path[self.idx + count :]
+
+    def add_memo(self, placeholder: Placeholder) -> None:
+        """Identify recursions"""
+
+        if placeholder in self.memo:
+            self.memo.append(placeholder)
+            raise RecursionError(f"Config recursion detected: {self.memo}")
+
+        self.memo.append(placeholder)
 
 
 class DeepGetter:
@@ -101,7 +114,7 @@ class DeepGetter:
 
         return GetterContext(data, on_missing=on_missing, _memo=_memo)
 
-    def cb_get(self, data, key, path, **kvargs) -> Any:
+    def cb_get(self, data, key, ctx: GetterContext, **kvargs) -> Any:
         """Retrieve an element from its parent container.
 
         Subclasses may extend it, e.g. to resolve the value `{ref:a}`,
@@ -109,21 +122,10 @@ class DeepGetter:
 
         :param data: the parent container
         :param key: the key to access the element in the parent container
-        :param path: `path` to the parent element
+        :param ctx: the context, if needed
         :return: the value representing the element in the parent container
         """
         return data[key]
-
-    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
-        """Retrieve an element from its parent container.
-
-        Sometimes more flexibility is required. E.g. deep search pattern (e.g. `a..c`)
-        must be able to modify the context and modify the `path` or index (idx).
-
-        :param ctx: a mutable context
-        :return: the value representing the element in the parent container
-        """
-        return self.cb_get(ctx.data, ctx.key, ctx.cur_path())
 
     def on_missing_default(self, ctx: GetterContext, exc: Exception) -> Any:
         """Default behavior if an element along the path is missing.
@@ -154,7 +156,7 @@ class DeepGetter:
 
         try:
             for ctx in self.walk_path(ctx, path):
-                ctx.data = self.cb_get_2_with_context(ctx)
+                ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
         except (KeyError, IndexError) as exc:
             raise ConfigException(f"Config not found: '{ctx.cur_path()}'") from exc
 
@@ -181,7 +183,7 @@ class DeepGetter:
 
         for ctx in self.walk_path(ctx, path):
             try:
-                ctx.data = self.cb_get_2_with_context(ctx)
+                ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
             except (KeyError, IndexError, ConfigException) as exc:
                 if default is not DEFAULT:
                     return default

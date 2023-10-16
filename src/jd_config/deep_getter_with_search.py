@@ -6,6 +6,7 @@ Extended standard dict like getter to also support deep paths, and also
 search patterns, such as 'a..c', 'a.*.c'
 """
 
+from functools import partial
 import logging
 from typing import Any, Iterator, Mapping
 
@@ -23,15 +24,15 @@ class ConfigSearchMixin:
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def cb_get_2_with_context(self, ctx: GetterContext) -> Any:
-        if ctx.key == ConfigPath.PAT_ANY_KEY:
+    def cb_get(self, data, key, ctx: GetterContext) -> Any:
+        if key == ConfigPath.PAT_ANY_KEY:
             return self._on_any_key(ctx)
-        if ctx.key == ConfigPath.PAT_ANY_IDX:
+        if key == ConfigPath.PAT_ANY_IDX:
             return self._on_any_idx(ctx)
-        if ctx.key == ConfigPath.PAT_DEEP:
+        if key == ConfigPath.PAT_DEEP:
             return self._on_any_deep(ctx)
 
-        return super().cb_get_2_with_context(ctx)
+        return super().cb_get(data, key, ctx)
 
     def _on_any_key(self, ctx: GetterContext) -> Any:
         """Callback if 'a.*.c' was found"""
@@ -43,7 +44,7 @@ class ConfigSearchMixin:
         for key in ctx.data.keys():
             # Allow to resolve placeholder if necessary
             ctx.key = key
-            value = self.cb_get_2_with_context(ctx)
+            value = self.cb_get(ctx.data, ctx.key, ctx)
 
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
@@ -70,7 +71,7 @@ class ConfigSearchMixin:
         for key, value in enumerate(ctx.data):
             # Allow to resolve placeholder if necessary
             ctx.key = key
-            value = self.cb_get_2_with_context(ctx)
+            value = self.cb_get(ctx.data, ctx.key, ctx)
 
             if isinstance(value, Mapping) and isinstance(find_key, str):
                 if find_key in value:
@@ -91,7 +92,7 @@ class ConfigSearchMixin:
         """Callback if 'a..b' was found"""
 
         find_key = ctx.path[ctx.idx + 1]
-        for event in self.walk_tree(ctx.data, nodes_only=False):
+        for event in self.walk_tree(ctx, nodes_only=False):
             if event.path and event.path[-1] == find_key:
                 ctx.data = event.value
                 ctx.path = ctx.path_replace(event.path, 2)
@@ -101,9 +102,10 @@ class ConfigSearchMixin:
         raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
 
     def walk_tree(
-        self, obj: Mapping | NonStrSequence, *, nodes_only: bool = False
+        self, ctx: GetterContext, *, nodes_only: bool = False
     ) -> Iterator[WalkerEvent]:
         """Like walking a deep filesystem, walk a deep object structure"""
 
+        cb_get = partial(self.cb_get, ctx=ctx)
         walk = ObjectWalker.objwalk
-        yield from walk(obj, nodes_only=nodes_only, cb_get=self.cb_get)
+        yield from walk(ctx.data, nodes_only=nodes_only, cb_get=cb_get)

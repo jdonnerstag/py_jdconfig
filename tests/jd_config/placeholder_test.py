@@ -17,7 +17,7 @@ from jd_config import (
     Placeholder,
     RefPlaceholder,
 )
-from jd_config.deep_getter_base import DeepGetter
+from jd_config.deep_getter_base import DeepGetter, GetterContext
 from jd_config.resolver_mixin import ResolverMixin
 
 logger = logging.getLogger(__name__)
@@ -86,22 +86,27 @@ def test_resolve():
     }
 
     resolver = MyConfig()
+    ctx = GetterContext(cfg)
     ref = RefPlaceholder("a")
-    assert ref.resolve(resolver, cfg) == "aa"
+    assert ref.resolve(resolver, ctx) == "aa"
 
     ref = RefPlaceholder("b")
-    assert ref.resolve(resolver, cfg) == "aa"
+    ctx.memo.clear()
+    assert ref.resolve(resolver, ctx) == "aa"
 
     ref = RefPlaceholder("c")
-    assert ref.resolve(resolver, cfg) == "aa"
+    ctx.memo.clear()
+    assert ref.resolve(resolver, ctx) == "aa"
 
+    ref = RefPlaceholder("d")
+    ctx.memo.clear()
     with pytest.raises(ConfigException):
-        ref = RefPlaceholder("d")
-        ref.resolve(resolver, cfg)
+        ref.resolve(resolver, ctx)
 
+    ref = RefPlaceholder("xxx")
+    ctx.memo.clear()
     with pytest.raises(ConfigException):
-        ref = RefPlaceholder("xxx")
-        ref.resolve(resolver, cfg)
+        ref.resolve(resolver, ctx)
 
 
 def test_global_ref():
@@ -113,22 +118,27 @@ def test_global_ref():
     }
 
     resolver = MyConfig()
+    ctx = GetterContext(cfg)
     ref = GlobalRefPlaceholder("a")
-    assert ref.resolve(resolver, cfg) == "aa"
+    assert ref.resolve(resolver, ctx) == "aa"
 
     ref = GlobalRefPlaceholder("b")
-    assert ref.resolve(resolver, cfg) == "aa"
+    ctx.memo.clear()
+    assert ref.resolve(resolver, ctx) == "aa"
 
     ref = GlobalRefPlaceholder("c")
-    assert ref.resolve(resolver, cfg) == "aa"
+    ctx.memo.clear()
+    assert ref.resolve(resolver, ctx) == "aa"
 
+    ref = GlobalRefPlaceholder("d")
+    ctx.memo.clear()
     with pytest.raises(ConfigException):
-        ref = GlobalRefPlaceholder("d")
-        ref.resolve(resolver, cfg)
+        ref.resolve(resolver, ctx)
 
+    ref = GlobalRefPlaceholder("xxx")
+    ctx.memo.clear()
     with pytest.raises(ConfigException):
-        ref = GlobalRefPlaceholder("xxx")
-        ref.resolve(resolver, cfg)
+        ref.resolve(resolver, ctx)
 
 
 @dataclass
@@ -146,9 +156,10 @@ def test_bespoke_placeholder():
     }
 
     resolver = MyConfig()
+    ctx = GetterContext(cfg)
     resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     ref = RefPlaceholder("a")
-    assert ref.resolve(resolver, cfg) == "it's me"
+    assert ref.resolve(resolver, ctx) == "it's me"
 
 
 def test_mandatory_value():
@@ -158,13 +169,16 @@ def test_mandatory_value():
     }
 
     resolver = MyConfig()
+    ctx = GetterContext(cfg)
     ref = RefPlaceholder("a")
+    ctx.memo.clear()
     with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, cfg)
+        assert ref.resolve(resolver, ctx)
 
     ref = RefPlaceholder("b")
+    ctx.memo.clear()
     with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, cfg)
+        assert ref.resolve(resolver, ctx)
 
 
 def test_detect_recursion():
@@ -175,6 +189,7 @@ def test_detect_recursion():
     }
 
     resolver = MyConfig()
+    ctx = GetterContext(cfg)
     ref = RefPlaceholder("a")
     with pytest.raises(RecursionError):
-        assert ref.resolve(resolver, cfg)
+        assert ref.resolve(resolver, ctx)

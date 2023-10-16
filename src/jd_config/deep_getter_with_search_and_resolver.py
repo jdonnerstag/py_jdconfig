@@ -21,18 +21,21 @@ class ConfigResolveMixin(ResolverMixin):
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def cb_get(self, data, key, path, **kvargs) -> Any:
+    def cb_get(self, data, key, ctx, **kvargs) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """
-        value = super().cb_get(data, key, path)
+        if kvargs.get("clear_memo", False):
+            ctx.memo.clear()
 
-        if "skip_resolver" not in kvargs:
+        value = super().cb_get(data, key, ctx)
+
+        if not kvargs.get("skip_resolver", False):
             while isinstance(value, str) and value.find("{") != -1:
                 value = list(self.value_reader.parse(value))
-                value = self.resolve(value)
+                value = self.resolve(value, ctx)
 
         if value == "???":
-            raise ConfigException(f"Mandatory config value missing: '{path}'")
+            raise ConfigException(f"Mandatory config value missing: '{ctx.cur_path()}'")
 
         return value

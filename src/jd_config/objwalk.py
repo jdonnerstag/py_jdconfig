@@ -8,21 +8,21 @@ events when stepping into or out of a container, and for every leaf-node.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Iterator, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Iterator, Mapping, Optional, Tuple
 
-from .utils import ConfigException, NonStrSequence
+from .utils import ConfigException, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
 @dataclass
-class NodeEvent:
+class WalkerEvent:
     """An objwalk node event"""
 
     path: Tuple[str | int, ...]
     value: Any
-    container: Mapping | NonStrSequence
+    container: ContainerType
     skip: bool = False
 
     def is_sequence_node(self) -> bool:
@@ -35,12 +35,13 @@ class NodeEvent:
 
 
 @dataclass
-class NewMappingEvent:
-    """Entering a new mapping"""
+class NodeEvent(WalkerEvent):
+    """An objwalk node event"""
 
-    path: Tuple[str | int, ...]
-    value: Mapping
-    skip: bool = False
+
+@dataclass
+class NewMappingEvent(WalkerEvent):
+    """Entering a new mapping"""
 
     @classmethod
     def new(cls):
@@ -49,12 +50,8 @@ class NewMappingEvent:
 
 
 @dataclass
-class NewSequenceEvent:
+class NewSequenceEvent(WalkerEvent):
     """Entering a new Sequence"""
-
-    path: Tuple[str | int, ...]
-    value: Sequence
-    skip: bool = False
 
     @classmethod
     def new(cls):
@@ -63,15 +60,8 @@ class NewSequenceEvent:
 
 
 @dataclass
-class DropContainerEvent:
+class DropContainerEvent(WalkerEvent):
     """Step out of Mapping or Sequence"""
-
-    path: Tuple[str | int, ...]
-    value: Mapping | NonStrSequence
-    skip: bool = False
-
-
-WalkerEvent = NodeEvent | NewMappingEvent | NewSequenceEvent | DropContainerEvent
 
 
 class ObjectWalker:
@@ -81,11 +71,7 @@ class ObjectWalker:
 
     @classmethod
     def objwalk(
-        cls,
-        obj: Mapping | NonStrSequence,
-        *,
-        nodes_only: bool = False,
-        cb_get: Optional[callable] = None,
+        cls, obj: Mapping | NonStrSequence, *, nodes_only: bool = False, cb_get: Optional[Callable] = None
     ) -> Iterator[WalkerEvent]:
         """A generic function to walk any Mapping- and Sequence- like objects.
 
@@ -102,7 +88,7 @@ class ObjectWalker:
             return
 
         if not isinstance(obj, (Mapping, NonStrSequence)):
-            yield NodeEvent((), obj, None)
+            yield NodeEvent(path=(), value=obj, container=None)
             return
 
         path_ = ()  # Empty tuple
@@ -113,23 +99,21 @@ class ObjectWalker:
             cur = iter_stack[-1]
             try:
                 key = next(cur)
-
-                # get and resolve placeholders if needed.
                 value = iter_obj[-1]
-                value = cb_get(value, key, path_) if callable(cb_get) else value[key]
+                value = value[key] if cb_get is None else cb_get(value, key)
 
                 event = None
                 if isinstance(value, Mapping):
                     path_ = path_ + (key,)
                     if not nodes_only:
-                        event = NewMappingEvent(path_, value)
+                        event = NewMappingEvent(path_, value, iter_obj[-1])
                         yield event
                     iter_obj.append(value)
                     iter_stack.append(cls._container_iter(value))
                 elif isinstance(value, NonStrSequence):
                     path_ = path_ + (key,)
                     if not nodes_only:
-                        event = NewSequenceEvent(path_, value)
+                        event = NewSequenceEvent(path_, value, iter_obj[-1])
                         yield event
                     iter_obj.append(value)
                     iter_stack.append(cls._container_iter(value))
@@ -143,7 +127,7 @@ class ObjectWalker:
             except StopIteration:
                 value = iter_obj.pop()
                 if not nodes_only and iter_obj:
-                    yield DropContainerEvent(path_, value)
+                    yield DropContainerEvent(path_, value, iter_obj[-1])
 
                 iter_stack.pop()
                 path_ = path_[:-1]
