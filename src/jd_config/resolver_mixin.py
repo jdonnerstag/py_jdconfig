@@ -6,7 +6,7 @@ Mixin to resolve preprocessed placeholders
 """
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from .deep_getter_base import GetterContext
 from .placeholders import Placeholder
@@ -23,9 +23,9 @@ class ResolverMixin:
     Dependencies: None
     """
 
-    def __init__(self) -> None:
+    def __init__(self, value_reader: Optional[ValueReader] = None) -> None:
         # Read string into Placeholders ...
-        self.value_reader = ValueReader()
+        self.value_reader = ValueReader() if value_reader is None else value_reader
 
     def register_placeholder_handler(self, name: str, type_: type) -> None:
         """Register (add or replace) a placeholder handler"""

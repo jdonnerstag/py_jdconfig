@@ -160,6 +160,6 @@ def test_deep_update():
 def test_lazy_resolve():
     data = DeepDict(deepcopy(DATA))
     data["c"]["c2"]["c22"] = "{ref:a}"
-    assert data["c"]["c2"]["c22"] == "aa"
+    assert data["c"]["c2"]["c22"] == "aa"  # pylint: disable=unsubscriptable-object
     assert data.get("c.c2.c22", resolve=True) == "aa"
     assert data.get("c.c2.c22", resolve=False) == "{ref:a}"

@@ -8,8 +8,10 @@ Main config package to load and access config values.
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Mapping, Optional, Sequence, Union
+from typing import Any, Mapping, Optional
 
+from .utils import DEFAULT, ContainerType, PathType
+from .deep_dict import DeepDict
 from .config_file_loader import ConfigFileLoader
 from .config_ini_mixin import ConfigIniMixin
 
@@ -88,26 +90,13 @@ class JDConfig(ConfigIniMixin):
 
         # Make the yaml config data accessible via JDConfig
         data = self.config_file_loader.load(fname, config_dir, env)
+        if isinstance(data, ContainerType):
+            data = DeepDict(data)
+
         if self.data is None:
             self.data = data
+
         return data
 
-    def on_missing_handler(
-        self,
-        data: Mapping | Sequence,
-        key: str | int,
-        path: tuple,
-        create_missing: Union[callable, bool, Mapping],
-    ) -> Mapping | Sequence:
-        """A handler that will be invoked if a path element is missing and
-        'create_missing has valid configuration.
-        """
-
-        if key in data:
-            value = data[key]
-            if isinstance(value, str):
-                value = self.resolve(value, self.data)
-                return value
-
-        # From DeepAccessMixin. Not easy to know ?!? Need something simple / more obvious
-        return self._cfg_getter.on_missing_handler(data, key, path, create_missing)
+    def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
+        return self.data.get(path, default=default, resolve=resolve)

@@ -8,12 +8,12 @@ import logging
 from typing import Any, Callable, Iterator, Mapping, Optional, Union
 
 from .deep_export_mixin import DeepExportMixin
-from .deep_getter_with_search import ConfigSearchMixin
-
 from .deep_getter_base import DeepGetter, GetterContext
+from .deep_getter_with_search import ConfigSearchMixin
 from .deep_getter_with_search_and_resolver import ConfigResolveMixin
 from .deep_update import DeepUpdateMixin
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
+from .value_reader import ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -25,9 +25,14 @@ class DefaultConfigGetter(
 ):
     """Default Deep Container Getter for Configs"""
 
-    def __init__(self, *, on_missing: Optional[Callable] = None) -> None:
+    def __init__(
+        self,
+        *,
+        value_reader: Optional[ValueReader] = None,
+        on_missing: Optional[Callable] = None,
+    ) -> None:
         DeepGetter.__init__(self, on_missing=on_missing)
-        ConfigResolveMixin.__init__(self)
+        ConfigResolveMixin.__init__(self, value_reader)
         ConfigSearchMixin.__init__(self)
         DeepExportMixin.__init__(self)
 
@@ -44,9 +49,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
         path: Optional[PathType] = None,
         getter: Optional[DeepGetter] = None,
     ) -> None:
+        self.getter = self.new_getter() if getter is None else getter
         self.obj = obj
         self.root = obj if root is None else root
-        self.getter = self.new_getter() if getter is None else getter
         self.path = () if path is None else self.getter.normalize_path(path)
 
         DeepUpdateMixin.__init__(self)
@@ -56,9 +61,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         return DefaultConfigGetter(on_missing=self.on_missing)
 
     # pylint: disable=arguments-renamed
-    def get(
-        self, path: PathType, default: Any = DEFAULT, resolve: bool = True
-    ) -> Mapping | NonStrSequence | Any:
+    def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
         """Similar to dict.get(), but with deep path support.
 
         Example paths: "a.b.c", "a[1].b", ("a[1]", "b", "c"),

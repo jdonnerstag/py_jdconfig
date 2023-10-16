@@ -7,10 +7,11 @@ search patterns, such as 'a..c', 'a.*.c'
 """
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from .resolver_mixin import ResolverMixin
 from .utils import ConfigException
+from .value_reader import ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -20,6 +21,9 @@ class ConfigResolveMixin(ResolverMixin):
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """
+
+    def __init__(self, value_reader: Optional[ValueReader] = None) -> None:
+        ResolverMixin.__init__(self, value_reader)
 
     def cb_get(self, data, key, ctx) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
