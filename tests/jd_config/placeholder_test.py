@@ -91,20 +91,20 @@ def test_resolve():
     assert ref.resolve(resolver, ctx) == "aa"
 
     ref = RefPlaceholder("b")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     assert ref.resolve(resolver, ctx) == "aa"
 
     ref = RefPlaceholder("c")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     assert ref.resolve(resolver, ctx) == "aa"
 
     ref = RefPlaceholder("d")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     with pytest.raises(ConfigException):
         ref.resolve(resolver, ctx)
 
     ref = RefPlaceholder("xxx")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     with pytest.raises(ConfigException):
         ref.resolve(resolver, ctx)
 
@@ -123,20 +123,20 @@ def test_global_ref():
     assert ref.resolve(resolver, ctx) == "aa"
 
     ref = GlobalRefPlaceholder("b")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     assert ref.resolve(resolver, ctx) == "aa"
 
     ref = GlobalRefPlaceholder("c")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     assert ref.resolve(resolver, ctx) == "aa"
 
     ref = GlobalRefPlaceholder("d")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     with pytest.raises(ConfigException):
         ref.resolve(resolver, ctx)
 
     ref = GlobalRefPlaceholder("xxx")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     with pytest.raises(ConfigException):
         ref.resolve(resolver, ctx)
 
@@ -171,12 +171,11 @@ def test_mandatory_value():
     resolver = MyConfig()
     ctx = GetterContext(cfg)
     ref = RefPlaceholder("a")
-    ctx.memo.clear()
     with pytest.raises(ConfigException):
         assert ref.resolve(resolver, ctx)
 
     ref = RefPlaceholder("b")
-    ctx.memo.clear()
+    ctx = GetterContext(cfg)
     with pytest.raises(ConfigException):
         assert ref.resolve(resolver, ctx)
 

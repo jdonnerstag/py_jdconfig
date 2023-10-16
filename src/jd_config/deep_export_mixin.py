@@ -44,15 +44,18 @@ class DeepExportMixin:
         dict from it.
         """
 
-        ctx = self.new_context(data)
-        ctx.args["skip_resolver"] = not resolve
-        ctx.args["clear_memo"] = True
-        cb_get = partial(self.cb_get, ctx=ctx)
-        root = self.get(data, path)
+        root = data
+        data = self.get(data, path)
+
+        def cb_get(data, key):
+            ctx = self.new_context(data, root=root)
+            ctx.args["skip_resolver"] = not resolve
+            return self.cb_get(data, key, ctx)
+
         cur: Mapping | Sequence = {}
         stack = [cur]
 
-        for event in ObjectWalker.objwalk(root, nodes_only=False, cb_get=cb_get):
+        for event in ObjectWalker.objwalk(data, nodes_only=False, cb_get=cb_get):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 new = event.new()
                 stack.append(new)

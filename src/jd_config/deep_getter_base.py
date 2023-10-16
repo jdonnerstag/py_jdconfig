@@ -18,6 +18,7 @@ Either the base class or a subclass should support:
   replace an existing int or string value, with a dict or list.
 """
 
+from dataclasses import dataclass
 import logging
 from typing import Any, Callable, Iterator, Optional
 
@@ -29,43 +30,40 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-GetterPlugin = Callable[["GetterContext", Any, int], Any]
-
-
+# pylint: disable=too-many-instance-attributes
+@dataclass
 class GetterContext:
     """The current context while walking a deep structure"""
 
-    def __init__(
-        self,
-        data: ContainerType,
-        root: Optional[ContainerType] = None,
-        on_missing: Optional[Callable] = None,
-        _memo: Optional[list] = None,
-        args: Optional[dict] = None,
-    ) -> None:
-        # Current parent container
-        self.data = data
+    # Current parent container
+    data: ContainerType
 
-        # Current key to retrieve the element from the parent
-        # Note that 'key' may not be 'path[idx]'
-        self.key: str | int | None = None
+    # Current key to retrieve the element from the parent
+    # Note that 'key' may not be 'path[idx]'
+    key: str | int | None = None
 
-        # Normalized path as provided by the user
-        self.path: tuple[str | int] = ()
+    # Normalized full path as provided by the user
+    path: tuple[str | int] = ()
 
-        # While walking, the current index within the path
-        self.idx: int = 0
+    # While walking, the current index within the path
+    idx: int = 0
 
-        # internal: detect recursions
-        self.memo: list = [] if _memo is None else _memo
+    on_missing: Optional[Callable] = None
 
-        # TODO still used?
-        self.on_missing: Callable = on_missing
+    # The root object of the yaml or json file, required for resolving
+    # placeholders
+    root: Optional[ContainerType] = None
 
-        # The root of the file
-        self.root = self.data if root is None else root
+    # Arbitrary attribute which extensions may require, e.g. the
+    # root object of the yaml or json file, etc..
+    args: Optional[dict] = None
 
-        self.args = {} if args is None else args
+    # internal: detect recursions
+    memo: Optional[list] = None
+
+    def __post_init__(self) -> None:
+        if self.root is None:
+            self.root = self.data
 
     @property
     def value(self) -> Any:
@@ -88,6 +86,9 @@ class GetterContext:
     def add_memo(self, placeholder: Placeholder) -> None:
         """Identify recursions"""
 
+        if self.memo is None:
+            self.memo = []
+
         if placeholder in self.memo:
             self.memo.append(placeholder)
             raise RecursionError(f"Config recursion detected: {self.memo}")
@@ -99,9 +100,9 @@ class DeepGetter:
     """Getter for deep container structures (Mapping and NonStrSequence)"""
 
     def __init__(self, *, on_missing: Optional[Callable] = None) -> None:
-        self.on_missing = (
-            on_missing if callable(on_missing) else self.on_missing_default
-        )
+        self.on_missing = self.on_missing_default
+        if callable(on_missing):
+            self.on_missing = on_missing
 
     def new_context(
         self,
@@ -120,7 +121,7 @@ class DeepGetter:
             on_missing = self.on_missing
 
         return GetterContext(
-            data, root=root, on_missing=on_missing, _memo=_memo, args=kvargs
+            data, root=root, on_missing=on_missing, memo=_memo, args=kvargs
         )
 
     def cb_get(self, data, key, ctx: GetterContext, **kvargs) -> Any:
@@ -178,8 +179,8 @@ class DeepGetter:
         default: Any = DEFAULT,
         *,
         on_missing: Optional[Callable] = None,
-        _memo: list = None,
         ctx: Optional[GetterContext] = None,
+        _memo: Optional[list] = None,
     ) -> Any:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
@@ -193,11 +194,10 @@ class DeepGetter:
             ctx = self.new_context(data, _memo=_memo)
         else:
             ctx.data = data
-            if _memo is None:
-                ctx.memo = []
-            else:
+            if _memo is not None:
                 ctx.memo = _memo
 
+        # pylint: disable=redefined-argument-from-local
         for ctx in self.walk_path(ctx, path):
             try:
                 ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
@@ -215,6 +215,7 @@ class DeepGetter:
                 if not isinstance(ctx.data, ContainerType):
                     return ctx.data
 
+        # pylint: disable=undefined-loop-variable
         return ctx.data
 
     def walk_path(self, ctx: GetterContext, path: PathType) -> Iterator[GetterContext]:

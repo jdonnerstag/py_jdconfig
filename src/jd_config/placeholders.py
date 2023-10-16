@@ -10,6 +10,7 @@ Placeholders can only occur in yaml values. They are not allowed in keys.
 And it must be a yaml *string* value, surrounded by quotes.
 """
 
+import dataclasses
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -72,8 +73,10 @@ class RefPlaceholder(Placeholder):
         assert self.path
 
     def resolve(self, getter, ctx: "GetterContext"):
+        data = ctx.root or ctx.data
+        new_ctx = dataclasses.replace(ctx)
         try:
-            obj = getter.get(ctx.root, self.path, _memo=ctx.memo)
+            obj = getter.get(data, self.path, ctx=new_ctx)
             return obj
         except (
             KeyError,
