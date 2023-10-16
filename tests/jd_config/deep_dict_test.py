@@ -163,5 +163,3 @@ def test_lazy_resolve():
     assert data["c"]["c2"]["c22"] == "aa"
     assert data.get("c.c2.c22", resolve=True) == "aa"
     assert data.get("c.c2.c22", resolve=False) == "{ref:a}"
-
-    assert data.get("c.c2.c22", on_missing=True) == "{ref:a}"

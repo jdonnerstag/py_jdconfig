@@ -45,7 +45,9 @@ class DeepExportMixin:
         """
 
         ctx = self.new_context(data)
-        cb_get = partial(self.cb_get, ctx=ctx, skip_resolver=not resolve, clear_memo=True)
+        ctx.args["skip_resolver"] = not resolve
+        ctx.args["clear_memo"] = True
+        cb_get = partial(self.cb_get, ctx=ctx)
         root = self.get(data, path)
         cur: Mapping | Sequence = {}
         stack = [cur]

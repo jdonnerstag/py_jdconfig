@@ -21,16 +21,16 @@ class ConfigResolveMixin(ResolverMixin):
     search patterns, such as 'a..c', 'a.*.c'
     """
 
-    def cb_get(self, data, key, ctx, **kvargs) -> Any:
+    def cb_get(self, data, key, ctx) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """
-        if kvargs.get("clear_memo", False):
+        if ctx.args.get("clear_memo", False):
             ctx.memo.clear()
 
         value = super().cb_get(data, key, ctx)
 
-        if not kvargs.get("skip_resolver", False):
+        if not ctx.args.get("skip_resolver", False):
             while isinstance(value, str) and value.find("{") != -1:
                 value = list(self.value_reader.parse(value))
                 value = self.resolve(value, ctx)

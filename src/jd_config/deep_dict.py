@@ -57,11 +57,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
     # pylint: disable=arguments-renamed
     def get(
-        self,
-        path: PathType,
-        default: Any = DEFAULT,
-        resolve: bool = True,
-        on_missing: Optional[Callable] = None,
+        self, path: PathType, default: Any = DEFAULT, resolve: bool = True
     ) -> Mapping | NonStrSequence | Any:
         """Similar to dict.get(), but with deep path support.
 
@@ -75,10 +71,12 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :return: The config value
         """
 
-        path = self.getter.normalize_path(path)
-        rtn = self.getter.get(self.obj, path, default=default, root=self.root)
+        getter = self.getter
+        ctx = getter.new_context(self.obj, root=self.root, skip_resolver=not resolve)
+        path = getter.normalize_path(path)
+        rtn = getter.get(self.obj, path, default=default, ctx=ctx)
         if isinstance(rtn, ContainerType):
-            rtn = DeepDict(rtn, self.root, self.path + path, self.getter)
+            rtn = DeepDict(rtn, self.root, self.path + path, getter)
 
         return rtn
 

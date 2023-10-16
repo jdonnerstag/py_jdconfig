@@ -41,6 +41,7 @@ class GetterContext:
         root: Optional[ContainerType] = None,
         on_missing: Optional[Callable] = None,
         _memo: Optional[list] = None,
+        args: Optional[dict] = None,
     ) -> None:
         # Current parent container
         self.data = data
@@ -63,6 +64,8 @@ class GetterContext:
 
         # The root of the file
         self.root = self.data if root is None else root
+
+        self.args = {} if args is None else args
 
     @property
     def value(self) -> Any:
@@ -105,8 +108,9 @@ class DeepGetter:
         data: ContainerType,
         *,
         on_missing: Optional[Callable] = None,
-        _memo: list = None,
-        root: Optional[ContainerType] = None
+        _memo: Optional[list] = None,
+        root: Optional[ContainerType] = None,
+        **kvargs,
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
         `on_missing` and `getter` overrides
@@ -115,7 +119,9 @@ class DeepGetter:
         if not callable(on_missing):
             on_missing = self.on_missing
 
-        return GetterContext(data, root=root, on_missing=on_missing, _memo=_memo)
+        return GetterContext(
+            data, root=root, on_missing=on_missing, _memo=_memo, args=kvargs
+        )
 
     def cb_get(self, data, key, ctx: GetterContext, **kvargs) -> Any:
         """Retrieve an element from its parent container.
@@ -173,7 +179,7 @@ class DeepGetter:
         *,
         on_missing: Optional[Callable] = None,
         _memo: list = None,
-        root: Optional[ContainerType] = None
+        ctx: Optional[GetterContext] = None,
     ) -> Any:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
@@ -183,7 +189,14 @@ class DeepGetter:
         :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
         """
 
-        ctx = self.new_context(data, root=root, _memo=_memo)
+        if ctx is None:
+            ctx = self.new_context(data, _memo=_memo)
+        else:
+            ctx.data = data
+            if _memo is None:
+                ctx.memo = []
+            else:
+                ctx.memo = _memo
 
         for ctx in self.walk_path(ctx, path):
             try:
