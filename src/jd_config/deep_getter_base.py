@@ -38,6 +38,7 @@ class GetterContext:
     def __init__(
         self,
         data: ContainerType,
+        root: Optional[ContainerType] = None,
         on_missing: Optional[Callable] = None,
         _memo: Optional[list] = None,
     ) -> None:
@@ -57,10 +58,11 @@ class GetterContext:
         # internal: detect recursions
         self.memo: list = [] if _memo is None else _memo
 
+        # TODO still used?
         self.on_missing: Callable = on_missing
 
         # The root of the file
-        self.root = self.data
+        self.root = self.data if root is None else root
 
     @property
     def value(self) -> Any:
@@ -104,6 +106,7 @@ class DeepGetter:
         *,
         on_missing: Optional[Callable] = None,
         _memo: list = None,
+        root: Optional[ContainerType] = None
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
         `on_missing` and `getter` overrides
@@ -112,7 +115,7 @@ class DeepGetter:
         if not callable(on_missing):
             on_missing = self.on_missing
 
-        return GetterContext(data, on_missing=on_missing, _memo=_memo)
+        return GetterContext(data, root=root, on_missing=on_missing, _memo=_memo)
 
     def cb_get(self, data, key, ctx: GetterContext, **kvargs) -> Any:
         """Retrieve an element from its parent container.
@@ -170,6 +173,7 @@ class DeepGetter:
         *,
         on_missing: Optional[Callable] = None,
         _memo: list = None,
+        root: Optional[ContainerType] = None
     ) -> Any:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
@@ -179,7 +183,7 @@ class DeepGetter:
         :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
         """
 
-        ctx = self.new_context(data, _memo=_memo)
+        ctx = self.new_context(data, root=root, _memo=_memo)
 
         for ctx in self.walk_path(ctx, path):
             try:

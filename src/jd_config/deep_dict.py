@@ -13,7 +13,7 @@ from .deep_getter_with_search import ConfigSearchMixin
 from .deep_getter_base import DeepGetter, GetterContext
 from .deep_getter_with_search_and_resolver import ConfigResolveMixin
 from .deep_update import DeepUpdateMixin
-from .utils import DEFAULT, ConfigException, NonStrSequence, PathType
+from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -37,9 +37,17 @@ class DeepDict(Mapping, DeepUpdateMixin):
     Mapping- and Sequence-like structures.
     """
 
-    def __init__(self, obj: Mapping, getter: Optional[DeepGetter] = None) -> None:
+    def __init__(
+        self,
+        obj: Mapping,
+        root: Optional[Mapping] = None,
+        path: Optional[PathType] = None,
+        getter: Optional[DeepGetter] = None,
+    ) -> None:
         self.obj = obj
+        self.root = obj if root is None else root
         self.getter = self.new_getter() if getter is None else getter
+        self.path = () if path is None else self.getter.normalize_path(path)
 
         DeepUpdateMixin.__init__(self)
 
@@ -49,8 +57,12 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
     # pylint: disable=arguments-renamed
     def get(
-        self, path: PathType, default: Any = DEFAULT, *, _memo: Optional[list] = None
-    ) -> Any:
+        self,
+        path: PathType,
+        default: Any = DEFAULT,
+        resolve: bool = True,
+        on_missing: Optional[Callable] = None,
+    ) -> Mapping | NonStrSequence | Any:
         """Similar to dict.get(), but with deep path support.
 
         Example paths: "a.b.c", "a[1].b", ("a[1]", "b", "c"),
@@ -63,7 +75,11 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :return: The config value
         """
 
-        rtn = self.getter.get(self.obj, path, default=default, _memo=_memo)
+        path = self.getter.normalize_path(path)
+        rtn = self.getter.get(self.obj, path, default=default, root=self.root)
+        if isinstance(rtn, ContainerType):
+            rtn = DeepDict(rtn, self.root, self.path + path, self.getter)
+
         return rtn
 
     def delete(self, path: PathType, *, exception: bool = True) -> Any:
@@ -236,3 +252,6 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
     def __iter__(self) -> Iterator:
         return self.obj.__iter__()
+
+    def __eq__(self, other: Mapping) -> bool:
+        return self.obj == other
