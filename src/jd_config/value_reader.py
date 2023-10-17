@@ -31,13 +31,15 @@ logger = logging.getLogger(__parent__name__)
 
 ValueType = Union[int, float, bool, str, Placeholder]
 
+RegistryType = dict[str, Placeholder]
+
 
 class ValueReader(StringConverterMixin):
     """Maintain a registry of supported placeholders and parse a yaml value
     into its constituent parts
     """
 
-    def __init__(self, registry: Optional[dict[str, Placeholder]] = None) -> None:
+    def __init__(self, registry: Optional[RegistryType] = None) -> None:
         self.registry = registry
 
         if not registry:
@@ -49,7 +51,9 @@ class ValueReader(StringConverterMixin):
                 "timestamp": TimestampPlaceholder,
             }
 
-    def parse(self, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
+    def parse(
+        self, strval: str, *, sep: str = ",", registry: Optional[RegistryType] = None
+    ) -> Iterator[ValueType]:
         """Parse a yaml value and yield the various parts.
 
         Notes:
@@ -70,13 +74,15 @@ class ValueReader(StringConverterMixin):
             elif len(text) > 0 and text[0] in ["'", '"']:
                 yield value
             elif text.startswith("{"):
-                placeholder = self.parse_placeholder(text, sep)
+                placeholder = self.parse_placeholder(text, sep, registry)
                 yield placeholder
             else:
                 value = self.convert(text)
                 yield value
 
-    def parse_placeholder(self, strval: str, sep: str) -> Placeholder:
+    def parse_placeholder(
+        self, strval: str, sep: str, registry: Optional[RegistryType] = None
+    ) -> Placeholder:
         """Parse {<name>: <arg-1>, ...} into registered Placeholder objects"""
 
         strval = strval[1:-1]
@@ -90,7 +96,10 @@ class ValueReader(StringConverterMixin):
         if not name:
             raise ConfigException(f"Missing placeholder name in '{strval}'")
 
-        if name not in self.registry:
+        if registry is None:
+            registry = self.registry
+
+        if name not in registry:
             raise ConfigException(f"Unknown placeholder name: '{name}' in '{strval}'")
 
         args = []
@@ -112,7 +121,7 @@ class ValueReader(StringConverterMixin):
             else:
                 args[-1] += text
 
-        return self.registry[name](*args)
+        return registry[name](*args)
 
     @classmethod
     def tokenize(cls, strval: str, sep: str = ",") -> Iterator[str]:

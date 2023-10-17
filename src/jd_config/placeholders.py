@@ -54,9 +54,9 @@ class ImportPlaceholder(Placeholder):
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
     def resolve(self, getter, ctx: "GetterContext"):
-        # TODO It is not possible to recursively call get()
-        assert hasattr(getter, "resolve")
-        file = getter.resolve(self.file, ctx)
+        if hasattr(getter, "resolve") and callable(getter.resolve):
+            file = getter.resolve(self.file, ctx)
+
         rtn = getter.load(file)
         return rtn
 

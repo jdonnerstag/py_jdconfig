@@ -4,6 +4,7 @@
 # pylint: disable=C
 # pylint: disable=protected-access
 
+from dataclasses import dataclass
 import logging
 from copy import deepcopy
 from typing import List, Mapping
@@ -12,6 +13,7 @@ import pytest
 
 from jd_config import ConfigException, DeepDict
 from jd_config.deep_getter_base import GetterContext
+from jd_config.placeholders import Placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -163,3 +165,22 @@ def test_lazy_resolve():
     assert data["c"]["c2"]["c22"] == "aa"  # pylint: disable=unsubscriptable-object
     assert data.get("c.c2.c22", resolve=True) == "aa"
     assert data.get("c.c2.c22", resolve=False) == "{ref:a}"
+
+
+@dataclass
+class MyBespokePlaceholder(Placeholder):
+    # This is also a test for a placeholder that does not take any parameters
+
+    def resolve(self, *_, **__):
+        return "it's me"
+
+
+def test_bespoke_placeholder():
+    cfg = {
+        "a": "{ref:b}",
+        "b": "{bespoke:}",
+    }
+
+    data = DeepDict(cfg)
+    data.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    assert data.get("a") == "it's me"

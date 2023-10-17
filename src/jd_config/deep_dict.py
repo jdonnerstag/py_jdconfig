@@ -60,6 +60,11 @@ class DeepDict(Mapping, DeepUpdateMixin):
         """Create a new Getter. Subclasses may provide their own."""
         return DefaultConfigGetter(on_missing=self.on_missing)
 
+    def register_placeholder_handler(self, name: str, type_: type) -> None:
+        """Register (add or replace) a placeholder handler"""
+
+        self.getter.value_reader.registry[name] = type_
+
     # pylint: disable=arguments-renamed
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
         """Similar to dict.get(), but with deep path support.
@@ -79,7 +84,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         path = getter.normalize_path(path)
         rtn = getter.get(self.obj, path, default=default, ctx=ctx)
         if isinstance(rtn, ContainerType):
-            rtn = DeepDict(rtn, self.root, self.path + path, getter)
+            rtn = DeepDict(rtn, self.root, self.path + path, self.getter)
 
         return rtn
 
@@ -256,3 +261,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
     def __eq__(self, other: Mapping) -> bool:
         return self.obj == other
+
+    def __repr__(self) -> str:
+        return self.obj.__repr__()
+
+    def __str__(self) -> str:
+        return self.obj.__str__()

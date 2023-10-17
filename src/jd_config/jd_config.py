@@ -10,8 +10,9 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
+from .value_reader import RegistryType, ValueReader
 from .utils import DEFAULT, ContainerType, PathType
-from .deep_dict import DeepDict
+from .deep_dict import DeepDict, DefaultConfigGetter
 from .config_file_loader import ConfigFileLoader
 from .config_ini_mixin import ConfigIniMixin
 
@@ -45,10 +46,6 @@ class JDConfig(ConfigIniMixin):
 
         :param ini_file: Path to JDConfig config file. Default: 'config.ini'
         """
-
-        # The yaml config data after loading them
-        self.data = None
-
         ConfigIniMixin.__init__(self, ini_file=ini_file)
 
         # Why this approach and not a Mixin/Base Class. ConfigFileLoader
@@ -56,6 +53,11 @@ class JDConfig(ConfigIniMixin):
         # which I consider private, but python has not means to mark them
         # private. This is a more explicit approach.
         self.config_file_loader = ConfigFileLoader()
+
+        self.value_reader = ValueReader()
+        self.getter = DefaultConfigGetter(value_reader=self.value_reader)
+
+        self.data = None
 
     def load(
         self,
@@ -91,12 +93,15 @@ class JDConfig(ConfigIniMixin):
         # Make the yaml config data accessible via JDConfig
         data = self.config_file_loader.load(fname, config_dir, env)
         if isinstance(data, ContainerType):
-            data = DeepDict(data)
+            data = DeepDict(data, getter=self.getter)
 
         if self.data is None:
             self.data = data
 
         return data
+
+    def placeholder_registry(self) -> RegistryType:
+        return self.value_reader.registry
 
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
         return self.data.get(path, default=default, resolve=resolve)

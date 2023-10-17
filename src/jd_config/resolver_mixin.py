@@ -48,7 +48,8 @@ class ResolverMixin:
             value = value[0]
 
         if isinstance(value, str) and value.find("{") != -1:
-            value = list(self.value_reader.parse(value))
+            registry = ctx.args.get("placeholder_registry", self.value_reader.registry)
+            value = list(self.value_reader.parse(value, registry=registry))
             if len(value) == 1:
                 value = value[0]
 
