@@ -5,10 +5,13 @@
 Main config package to load and access config values.
 """
 
+from functools import partial
 import logging
 from io import StringIO
 from pathlib import Path
 from typing import Any, Mapping, Optional
+
+from jd_config.deep_getter_base import GetterContext
 
 from .value_reader import RegistryType, ValueReader
 from .utils import DEFAULT, ContainerType, PathType
@@ -57,7 +60,23 @@ class JDConfig(ConfigIniMixin):
         self.value_reader = ValueReader()
         self.getter = DefaultConfigGetter(value_reader=self.value_reader)
 
+        # Make sure the register the 'file loader' with the ImportPlaceholder
+        orig_import_placeholder = self.value_reader.registry["import"]
+        self.value_reader.registry["import"] = partial(
+            orig_import_placeholder, loader=self
+        )
+
+        # Make sure the register the object with the root config
+        orig_global_placeholder = self.value_reader.registry["global"]
+        self.value_reader.registry["global"] = partial(
+            orig_global_placeholder, root_cfg=self.config
+        )
+
         self.data = None
+
+    def config(self) -> ContainerType:
+        """Get the current config"""
+        return self.data
 
     def load(
         self,
@@ -105,3 +124,10 @@ class JDConfig(ConfigIniMixin):
 
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
         return self.data.get(path, default=default, resolve=resolve)
+
+    def import_placeholder_resolve(self, getter, ctx: GetterContext):
+        if hasattr(getter, "resolve") and callable(getter.resolve):
+            file = getter.resolve(self.file, ctx)
+
+        rtn = getter.load(file)
+        return rtn

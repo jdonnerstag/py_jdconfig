@@ -17,9 +17,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
-from .utils import ConfigException
+from .utils import ConfigException, ContainerType
 
 if TYPE_CHECKING:
     from .deep_getter_base import GetterContext
@@ -41,11 +41,16 @@ class Placeholder(ABC):
         """Resolve the placeholder"""
 
 
+LoaderType = Callable[[str], Mapping]
+
+
 @dataclass
 class ImportPlaceholder(Placeholder):
     """Import Placeholder: '{import: <file>[, <replace=False>]}'"""
 
     file: str | list
+    loader: Optional[LoaderType] = None
+    # TODO Add an optional cache flag
 
     def __post_init__(self):
         assert self.file
@@ -56,8 +61,14 @@ class ImportPlaceholder(Placeholder):
     def resolve(self, getter, ctx: "GetterContext"):
         if hasattr(getter, "resolve") and callable(getter.resolve):
             file = getter.resolve(self.file, ctx)
+        else:
+            logger.warning("ImportPlaceholder: No resolver configured")
 
-        rtn = getter.load(file)
+        assert (
+            self.loader is not None
+        ), "ImportPlaceholder: Bug. No file 'loader' configured"
+
+        rtn = self.loader.load(file)
         return rtn
 
 
@@ -94,12 +105,28 @@ class RefPlaceholder(Placeholder):
             ) from exc
 
 
+ConfigFn = Callable[[], ContainerType]
+
+
 @dataclass
 class GlobalRefPlaceholder(RefPlaceholder):
-    """Reference Placeholder: '{global: <path>[, <default>]}'"""
+    """Reference Placeholder: '{global: <path>[, <default>]}'
 
-    # TODO Not yet implemented. ref and global are identical, except
-    # that the map they resolve against is different.
+    ref and global are identical, except that the map they resolve
+    against is different.
+    """
+
+    # The order of the arguments is: all the attributes from the parent(s)
+    # class(es) first then those of the child class.
+    root_cfg: Optional[ConfigFn] = None
+
+    def resolve(self, getter, ctx: "GetterContext"):
+        if self.root_cfg is not None:
+            ctx.root = self.root_cfg()
+        else:
+            logger.warning("GlobalRefPlaceholder: Bug. No global config object defined")
+
+        return super().resolve(getter, ctx)
 
 
 @dataclass
