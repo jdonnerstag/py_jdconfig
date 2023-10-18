@@ -56,7 +56,7 @@ class GetterContext:
     root: Optional[ContainerType] = None
 
     file_imports: Optional[list[Path]] = None
-    
+
     # I'm not a fan of dynamically adding attributes to a class.
     # Arbitrary attribute which extensions may require.
     args: Optional[dict] = None

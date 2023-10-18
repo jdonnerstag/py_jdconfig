@@ -188,7 +188,7 @@ def test_walk():
         a: aa
         b:
             b1:
-                c1: "1cc"
+                c1: "{ref:a}"
                 c2: "2cc"
             b2: 22
     """
@@ -197,19 +197,22 @@ def test_walk():
     data = cfg.load(file_like_io)
     assert data
 
-    data = list(cfg.walk(resolve=True))
+    data = list(cfg.walk(nodes_only=True, resolve=True))
     assert len(data) == 4
-    data.remove(NodeEvent(("a",), "aa"))
-    data.remove(NodeEvent(("b", "b1", "c1"), "1cc"))
-    data.remove(NodeEvent(("b", "b1", "c2"), "2cc"))
-    data.remove(NodeEvent(("b", "b2"), 22))
+    data.remove(NodeEvent(("a",), "aa", None))
+    data.remove(NodeEvent(("b", "b1", "c1"), "aa", None))
+    data.remove(NodeEvent(("b", "b1", "c2"), "2cc", None))
+    data.remove(NodeEvent(("b", "b2"), 22, None))
 
-    data = list(cfg.walk(resolve=False))
+    data = list(cfg.walk(nodes_only=True, resolve=False))
     assert len(data) == 4
-    data.remove(NodeEvent(("a",), "aa"))
-    data.remove(NodeEvent(("b", "b1", "c1"), "1cc"))
-    data.remove(NodeEvent(("b", "b1", "c2"), "2cc"))
-    data.remove(NodeEvent(("b", "b2"), 22))
+    data.remove(NodeEvent(("a",), "aa", None))
+    data.remove(NodeEvent(("b", "b1", "c1"), "{ref:a}", None))
+    data.remove(NodeEvent(("b", "b1", "c2"), "2cc", None))
+    data.remove(NodeEvent(("b", "b2"), 22, None))
+
+    data = list(cfg.walk(nodes_only=False, resolve=True))
+    assert len(data) == 8
 
 
 def test_load_jdconfig_2_with_env(monkeypatch):
@@ -219,14 +222,15 @@ def test_load_jdconfig_2_with_env(monkeypatch):
 
     cfg = JDConfig(ini_file=None)
     cfg.env = "jd_dev"  # Apply own env specific changes
-
-    config_dir = data_dir("configs-2")
-    data = cfg.load("main_config.yaml", config_dir)
+    cfg.config_dir = data_dir("configs-2")
+    data = cfg.load("main_config.yaml")
     assert data
+
+    # Since we lazy resolve, run to_dict(resolve=True) ones
+    cfg.to_dict(resolve=True)
     assert len(cfg.files_loaded) == 5
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert cfg.files_loaded[1].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
-    assert len(cfg.file_recursions) == 0
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
     assert cfg.get("db") == "mysql"

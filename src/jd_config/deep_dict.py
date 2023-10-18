@@ -19,9 +19,20 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
+class DeepDictMixin:
+    """..."""
+
+    def cb_get(self, data, key, ctx: GetterContext) -> Any:
+        """Avoid recursive resolving ..."""
+        if isinstance(data, DeepDict):
+            data = data.obj
+
+        return super().cb_get(data, key, ctx)
+
+
 # Note: the order of the subclasses is relevant !!!
 class DefaultConfigGetter(
-    DeepExportMixin, ConfigSearchMixin, ConfigResolveMixin, DeepGetter
+    DeepExportMixin, ConfigSearchMixin, ConfigResolveMixin, DeepDictMixin, DeepGetter
 ):
     """Default Deep Container Getter for Configs"""
 
@@ -32,6 +43,7 @@ class DefaultConfigGetter(
         on_missing: Optional[Callable] = None,
     ) -> None:
         DeepGetter.__init__(self, on_missing=on_missing)
+        DeepDictMixin.__init__(self)
         ConfigResolveMixin.__init__(self, value_reader)
         ConfigSearchMixin.__init__(self)
         DeepExportMixin.__init__(self)

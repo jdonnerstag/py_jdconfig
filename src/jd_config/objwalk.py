@@ -16,7 +16,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-@dataclass
+@dataclass(eq=False)
 class WalkerEvent:
     """An objwalk node event"""
 
@@ -33,13 +33,19 @@ class WalkerEvent:
         """True, if node belongs to a Mapping"""
         return not self.is_sequence_node()
 
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, WalkerEvent):
+            return False
 
-@dataclass
+        return self.path == value.path and self.value == value.value
+
+
+@dataclass(eq=False)
 class NodeEvent(WalkerEvent):
     """An objwalk node event"""
 
 
-@dataclass
+@dataclass(eq=False)
 class NewMappingEvent(WalkerEvent):
     """Entering a new mapping"""
 
@@ -49,7 +55,7 @@ class NewMappingEvent(WalkerEvent):
         return {}
 
 
-@dataclass
+@dataclass(eq=False)
 class NewSequenceEvent(WalkerEvent):
     """Entering a new Sequence"""
 
@@ -59,7 +65,7 @@ class NewSequenceEvent(WalkerEvent):
         return []
 
 
-@dataclass
+@dataclass(eq=False)
 class DropContainerEvent(WalkerEvent):
     """Step out of Mapping or Sequence"""
 
@@ -71,7 +77,11 @@ class ObjectWalker:
 
     @classmethod
     def objwalk(
-        cls, obj: Mapping | NonStrSequence, *, nodes_only: bool = False, cb_get: Optional[Callable] = None
+        cls,
+        obj: Mapping | NonStrSequence,
+        *,
+        nodes_only: bool = False,
+        cb_get: Optional[Callable] = None,
     ) -> Iterator[WalkerEvent]:
         """A generic function to walk any Mapping- and Sequence- like objects.
 

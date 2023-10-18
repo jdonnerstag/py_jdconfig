@@ -5,19 +5,19 @@
 Main config package to load and access config values.
 """
 
-from functools import partial
 import logging
+from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Iterator, Mapping, Optional
 
-from jd_config.deep_getter_base import GetterContext
-
-from .value_reader import RegistryType, ValueReader
-from .utils import DEFAULT, ContainerType, PathType
-from .deep_dict import DeepDict, DefaultConfigGetter
 from .config_file_loader import ConfigFileLoader
 from .config_ini_mixin import ConfigIniMixin
+from .deep_dict import DeepDict, DefaultConfigGetter
+from .deep_getter_base import GetterContext
+from .objwalk import WalkerEvent
+from .utils import DEFAULT, ContainerType, PathType
+from .value_reader import RegistryType, ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -120,11 +120,42 @@ class JDConfig(ConfigIniMixin):
 
     @property
     def placeholder_registry(self) -> RegistryType:
+        """The registry of supported Placeholder handlers"""
         return self.value_reader.registry
 
     @property
     def files_loaded(self) -> list[Path]:
+        """The list of files loaded so far"""
         return self.config_file_loader.files_loaded
 
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
+        """Get a config value (or noder)"""
         return self.data.get(path, default=default, resolve=resolve)
+
+    def walk(
+        self,
+        path: PathType = (),
+        *,
+        nodes_only: bool = False,
+        resolve: bool = True,
+        ctx: Optional[GetterContext] = None
+    ) -> Iterator[WalkerEvent]:
+        """Walk a subtree, with lazily resolving node values"""
+
+        path = self.getter.normalize_path(path)
+        root = self.get(path, resolve=True)
+        ctx = self.getter.new_context(data=root, skip_resolver=not resolve)
+
+        yield from self.getter.walk_tree(ctx, nodes_only=nodes_only)
+
+    def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
+        """Walk the config items with an optional starting point, and create a
+        dict from it.
+        """
+
+        return self.getter.to_dict(self.data, path, resolve=resolve)
+
+    def to_yaml(self, path: Optional[PathType] = None, stream=None, **kvargs):
+        """Convert the configs (or part of it), into a yaml document"""
+
+        return self.getter.to_yaml(self.data, path, stream=stream, **kvargs)
