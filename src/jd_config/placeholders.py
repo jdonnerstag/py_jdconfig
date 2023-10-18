@@ -69,6 +69,13 @@ class ImportPlaceholder(Placeholder):
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
         rtn = self.loader.load(file)
+
+        # Update the default root object to resolve against.
+        # Default for {ref:} is 'within the file'
+        # Use {global:} to reference the absolut root.
+        ctx.root = rtn
+        ctx.memo = None
+
         return rtn
 
 
@@ -121,12 +128,19 @@ class GlobalRefPlaceholder(RefPlaceholder):
     root_cfg: Optional[ConfigFn] = None
 
     def resolve(self, getter, ctx: "GetterContext"):
-        if self.root_cfg is not None:
-            ctx.root = self.root_cfg()
-        else:
-            logger.warning("GlobalRefPlaceholder: Bug. No global config object defined")
+        # Temporarily change the 'root' to resolve against
+        orig_root = ctx.root
+        try:
+            if self.root_cfg is not None:
+                ctx.root = self.root_cfg()
+            else:
+                logger.warning(
+                    "GlobalRefPlaceholder: Bug. No global config object defined"
+                )
 
-        return super().resolve(getter, ctx)
+            return super().resolve(getter, ctx)
+        finally:
+            ctx.root = orig_root
 
 
 @dataclass

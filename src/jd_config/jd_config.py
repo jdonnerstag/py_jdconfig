@@ -111,11 +111,9 @@ class JDConfig(ConfigIniMixin):
 
         # Make the yaml config data accessible via JDConfig
         data = self.config_file_loader.load(fname, config_dir, env)
-        if isinstance(data, ContainerType):
-            data = DeepDict(data, getter=self.getter)
 
-        if self.data is None:
-            self.data = data
+        if self.data is None and isinstance(data, ContainerType):
+            self.data = DeepDict(data, getter=self.getter)
 
         return data
 
@@ -124,10 +122,3 @@ class JDConfig(ConfigIniMixin):
 
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
         return self.data.get(path, default=default, resolve=resolve)
-
-    def import_placeholder_resolve(self, getter, ctx: GetterContext):
-        if hasattr(getter, "resolve") and callable(getter.resolve):
-            file = getter.resolve(self.file, ctx)
-
-        rtn = getter.load(file)
-        return rtn
