@@ -30,6 +30,9 @@
 - Make sure that {env:} results are not resolved any further. Else risky configs might be
   injected.
 - {global:} is only a stub so far, but not yet implemented
+- Add {delete:} to allow env files to remove a node
+- Allow to use any *.ini file, since we just use the [config] section
+- How should the config.ini look like, and the plugin config, to retrieve a config from remote.
 
 Done:
 

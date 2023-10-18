@@ -18,24 +18,24 @@ Please see the readme.md file for details. In summary:
    or CLI args.
 """
 
-from .config_file_loader import ConfigFileLoader
 from .config_getter import ConfigGetter
 from .config_ini_mixin import ConfigIniMixin
 from .config_path import ConfigPath
+from .config_resolver_mixin import ConfigResolveMixin
+from .config_search_mixin import ConfigSearchMixin
 from .deep_access_mixin import DeepAccessMixin
 from .deep_dict import DeepDict
 from .deep_export_mixin import DeepExportMixin
-from .deep_getter_with_search import ConfigSearchMixin
-from .deep_getter_with_search_and_resolver import ConfigResolveMixin
 from .deep_update import DeepUpdateMixin
+from .file_loader import ConfigFileLoader
 from .jd_config import JDConfig
 from .objwalk import (
     DropContainerEvent,
     NewMappingEvent,
     NewSequenceEvent,
     NodeEvent,
-    ObjectWalker,
     WalkerEvent,
+    objwalk,
 )
 from .placeholders import (
     EnvPlaceholder,

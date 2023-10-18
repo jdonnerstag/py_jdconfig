@@ -12,7 +12,7 @@ from typing import Any, Iterator, Mapping
 
 from .config_path import ConfigPath
 from .deep_getter_base import GetterContext
-from .objwalk import ObjectWalker, WalkerEvent
+from .objwalk import objwalk, WalkerEvent
 from .utils import ConfigException, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -107,5 +107,4 @@ class ConfigSearchMixin:
         """Like walking a deep filesystem, walk a deep object structure"""
 
         cb_get = partial(self.cb_get, ctx=ctx)
-        walk = ObjectWalker.objwalk
-        yield from walk(ctx.data, nodes_only=nodes_only, cb_get=cb_get)
+        yield from objwalk(ctx.data, nodes_only=nodes_only, cb_get=cb_get)

@@ -18,8 +18,8 @@ Either the base class or a subclass should support:
   replace an existing int or string value, with a dict or list.
 """
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 

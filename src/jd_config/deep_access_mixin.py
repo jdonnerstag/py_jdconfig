@@ -9,7 +9,7 @@ import logging
 from typing import Any, Iterator, Optional
 
 from .config_getter import ConfigGetter
-from .objwalk import NodeEvent, ObjectWalker
+from .objwalk import NodeEvent, objwalk
 from .utils import DEFAULT, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -81,7 +81,7 @@ class DeepAccessMixin:
         if root:
             obj = self.get(root)
 
-        for event in ObjectWalker.objwalk(obj, nodes_only=True):
+        for event in objwalk(obj, nodes_only=True):
             if resolve:
                 event.value = self.resolve(event.value, self.data)
 

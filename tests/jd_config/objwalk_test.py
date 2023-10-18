@@ -6,7 +6,7 @@
 import logging
 from copy import deepcopy
 
-from jd_config import DropContainerEvent, ObjectWalker
+from jd_config import DropContainerEvent, objwalk
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ DATA = dict(
 
 
 def test_objwalk():
-    data = list(x.path for x in ObjectWalker.objwalk(DATA, nodes_only=True))
+    data = list(x.path for x in objwalk(DATA, nodes_only=True))
     assert len(data) == 14
 
     data.remove(("a",))
@@ -51,7 +51,7 @@ def test_skip():
     data = deepcopy(DATA)
 
     def func_inner(path, data=data):
-        for event in ObjectWalker.objwalk(data, nodes_only=False):
+        for event in objwalk(data, nodes_only=False):
             if not path or event.path == path:
                 event.skip = True
             if not isinstance(event, DropContainerEvent):

@@ -6,11 +6,10 @@
 import logging
 import os
 import re
-from typing import Mapping
 
 from jd_config import DeepExportMixin
 from jd_config.deep_getter_base import DeepGetter
-from jd_config.deep_getter_with_search_and_resolver import ConfigResolveMixin
+from jd_config.config_resolver_mixin import ConfigResolveMixin
 
 logger = logging.getLogger(__name__)
 

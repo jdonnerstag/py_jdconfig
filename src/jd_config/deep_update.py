@@ -7,7 +7,7 @@
 import logging
 from typing import TYPE_CHECKING, Mapping, Optional
 
-from .objwalk import ObjectWalker
+from .objwalk import objwalk
 
 if TYPE_CHECKING:
     from jd_config.deep_dict import DeepDict
@@ -32,7 +32,7 @@ class DeepUpdateMixin:
         if not updates:
             return self.obj
 
-        for event in ObjectWalker.objwalk(updates, nodes_only=True):
+        for event in objwalk(updates, nodes_only=True):
             self.set(event.path, event.value, create_missing=True, replace_path=True)
 
         return self

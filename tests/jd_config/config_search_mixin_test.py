@@ -4,13 +4,12 @@
 # pylint: disable=C
 
 import logging
-from typing import Mapping
 
 import pytest
 
-from jd_config import ConfigException, NonStrSequence
+from jd_config import ConfigException
+from jd_config.config_search_mixin import ConfigSearchMixin
 from jd_config.deep_getter_base import DeepGetter
-from jd_config.deep_getter_with_search import ConfigSearchMixin
 
 logger = logging.getLogger(__name__)
 

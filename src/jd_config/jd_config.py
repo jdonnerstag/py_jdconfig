@@ -11,10 +11,10 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Optional
 
-from .config_file_loader import ConfigFileLoader
 from .config_ini_mixin import ConfigIniMixin
 from .deep_dict import DeepDict, DefaultConfigGetter
 from .deep_getter_base import GetterContext
+from .file_loader import ConfigFileLoader
 from .objwalk import WalkerEvent
 from .utils import DEFAULT, ContainerType, PathType
 from .value_reader import RegistryType, ValueReader

@@ -7,10 +7,10 @@
 import logging
 from typing import Any, Callable, Iterator, Mapping, Optional, Union
 
+from .config_resolver_mixin import ConfigResolveMixin
+from .config_search_mixin import ConfigSearchMixin
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter_base import DeepGetter, GetterContext
-from .deep_getter_with_search import ConfigSearchMixin
-from .deep_getter_with_search_and_resolver import ConfigResolveMixin
 from .deep_update import DeepUpdateMixin
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
 from .value_reader import ValueReader

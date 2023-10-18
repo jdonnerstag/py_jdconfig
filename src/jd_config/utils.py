@@ -22,7 +22,7 @@ class NonStrSequence(ABC):
 
     @classmethod
     def __subclasshook__(cls, C: type):  # pylint: disable=invalid-name
-        if C is str:
+        if (C is str) or (C is bytes):
             return NotImplemented
 
         return issubclass(C, Sequence)

@@ -6,7 +6,6 @@ Mixin to export deep config data
 """
 
 import logging
-from functools import partial
 from typing import Any, Mapping, Optional, Sequence
 
 import yaml
@@ -16,7 +15,7 @@ from .objwalk import (
     NewMappingEvent,
     NewSequenceEvent,
     NodeEvent,
-    ObjectWalker,
+    objwalk,
 )
 from .utils import ContainerType, PathType
 
@@ -55,7 +54,7 @@ class DeepExportMixin:
         cur: Mapping | Sequence = {}
         stack = [cur]
 
-        for event in ObjectWalker.objwalk(data, nodes_only=False, cb_get=cb_get):
+        for event in objwalk(data, nodes_only=False, cb_get=cb_get):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 new = event.new()
                 stack.append(new)
@@ -79,7 +78,13 @@ class DeepExportMixin:
         elif isinstance(obj, Sequence):
             obj.append(value)
 
-    def to_yaml(self, data: ContainerType, path: Optional[PathType] = None, stream=None, **kvargs):
+    def to_yaml(
+        self,
+        data: ContainerType,
+        path: Optional[PathType] = None,
+        stream=None,
+        **kvargs
+    ):
         """Convert the configs (or part of it), into a yaml document"""
 
         data = self.to_dict(data, path, resolve=True)

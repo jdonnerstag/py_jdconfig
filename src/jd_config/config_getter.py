@@ -15,7 +15,7 @@ from .objwalk import (
     NewMappingEvent,
     NewSequenceEvent,
     NodeEvent,
-    ObjectWalker,
+    objwalk,
 )
 from .string_converter_mixin import StringConverterMixin
 from .utils import DEFAULT, ConfigException, NonStrSequence, PathType
@@ -384,7 +384,7 @@ class ConfigGetter(StringConverterMixin):
 
         stack = [obj]
         any_elem = False
-        gen = ObjectWalker.objwalk(updates, nodes_only=False)
+        gen = objwalk(updates, nodes_only=False)
         for event in gen:
             cur = stack[-1]
 
@@ -456,7 +456,7 @@ class ConfigGetter(StringConverterMixin):
         if not keys:
             return []
 
-        for event in ObjectWalker.objwalk(data, nodes_only=True):
+        for event in objwalk(data, nodes_only=True):
             if ConfigPath.match_path(event.path, keys):
                 return event.path
 
