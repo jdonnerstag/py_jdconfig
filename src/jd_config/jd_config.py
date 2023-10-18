@@ -114,11 +114,17 @@ class JDConfig(ConfigIniMixin):
 
         if self.data is None and isinstance(data, ContainerType):
             self.data = DeepDict(data, getter=self.getter)
+            return self.data
 
         return data
 
+    @property
     def placeholder_registry(self) -> RegistryType:
         return self.value_reader.registry
+
+    @property
+    def files_loaded(self) -> list[Path]:
+        return self.config_file_loader.files_loaded
 
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
         return self.data.get(path, default=default, resolve=resolve)

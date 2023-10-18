@@ -144,7 +144,7 @@ class MyBespokePlaceholder(Placeholder):
 
 def test_add_placeholder():
     cfg = JDConfig(ini_file=None)
-    cfg.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    cfg.placeholder_registry["bespoke"] = MyBespokePlaceholder
 
     DATA = """
         a: aa
@@ -166,12 +166,19 @@ def test_load_jdconfig_3():
     # config-3 has a file recursion
 
     cfg = JDConfig(ini_file=None)
-    config_dir = data_dir("configs-3")
+    cfg.config_dir = data_dir("configs-3")
+
+    # Since we lazy resolve, loading the main file will not raise an exception
+    cfg.load("config.yaml")
+
+    assert cfg.get("1a") == "a"
+    assert cfg.get("1b.2a") == "aa"
+    assert cfg.get("1b.2b.3a") == "aaa"
+    assert cfg.get("1b.2b.3b.1a") == "a"
 
     with pytest.raises(ConfigException):
-        cfg.load("config.yaml", config_dir)
-
-    assert len(cfg.file_recursions) > 0
+        # Recursive file imports
+        cfg.get("1b.2b.3b.1b")
 
 
 def test_walk():

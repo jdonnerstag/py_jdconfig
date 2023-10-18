@@ -20,6 +20,7 @@ Either the base class or a subclass should support:
 
 from dataclasses import dataclass
 import logging
+from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 
 from .config_path import ConfigPath
@@ -54,8 +55,10 @@ class GetterContext:
     # placeholders
     root: Optional[ContainerType] = None
 
-    # Arbitrary attribute which extensions may require, e.g. the
-    # root object of the yaml or json file, etc..
+    file_imports: Optional[list[Path]] = None
+    
+    # I'm not a fan of dynamically adding attributes to a class.
+    # Arbitrary attribute which extensions may require.
     args: Optional[dict] = None
 
     # internal: detect recursions

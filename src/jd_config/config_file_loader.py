@@ -25,6 +25,9 @@ class ConfigFileLoader:
     - self.resolve(): a method to lazily resolve placeholders
     """
 
+    def __init__(self) -> None:
+        self.files_loaded = []
+
     def make_filename(
         self, fname: Path, config_dir: Path, env: Optional[str] = None
     ) -> tuple[Path, Path]:
@@ -76,6 +79,9 @@ class ConfigFileLoader:
         """
         if isinstance(fname, Path):
             fname = fname.resolve(fname)
+            self.files_loaded.append(fname)
+        else:
+            self.files_loaded.append("<data>")
 
         if isinstance(fname, Path):
             # self.file_recursions nicely shows the circle of imports
