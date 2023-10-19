@@ -9,7 +9,7 @@ import re
 
 from jd_config import DeepExportMixin
 from jd_config.deep_getter_base import DeepGetter
-from jd_config.config_resolver_mixin import ConfigResolveMixin
+from jd_config.resolver_mixin import ResolverMixin
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,10 @@ def data_dir(*args):
     return os.path.join(os.path.dirname(__file__), "data", *args)
 
 
-class MyMixinTestClass(DeepExportMixin, ConfigResolveMixin, DeepGetter):
+class MyMixinTestClass(DeepExportMixin, ResolverMixin, DeepGetter):
     def __init__(self) -> None:
         DeepGetter.__init__(self)
-        ConfigResolveMixin.__init__(self)
+        ResolverMixin.__init__(self)
         DeepExportMixin.__init__(self)
 
 

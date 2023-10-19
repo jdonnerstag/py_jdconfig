@@ -10,15 +10,14 @@ import pytest
 
 from jd_config import (
     ConfigException,
-    ConfigResolveMixin,
     EnvPlaceholder,
     GlobalRefPlaceholder,
     ImportPlaceholder,
     Placeholder,
     RefPlaceholder,
+    ResolverMixin,
 )
 from jd_config.deep_getter_base import DeepGetter, GetterContext
-from jd_config.resolver_mixin import ResolverMixin
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +25,10 @@ logger = logging.getLogger(__name__)
 # show logs: pytest --log-cli-level=DEBUG
 
 
-class MyConfig(ConfigResolveMixin, DeepGetter):
+class MyConfig(ResolverMixin, DeepGetter):
     def __init__(self) -> None:
         DeepGetter.__init__(self)
-        ConfigResolveMixin.__init__(self)
+        ResolverMixin.__init__(self)
 
 
 def test_ImportPlaceholder():

@@ -2,7 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 """
-Mixin to resolve preprocessed placeholders
+Extended standard dict like getter to also support deep paths, and also
+search patterns, such as 'a..c', 'a.*.c'
 """
 
 import logging
@@ -18,9 +19,8 @@ logger = logging.getLogger(__parent__name__)
 
 
 class ResolverMixin:
-    """Mixin to resolve preprocessed placeholders
-
-    Dependencies: None
+    """Extended standard dict like getter to also support deep paths, and also
+    search patterns, such as 'a..c', 'a.*.c'
     """
 
     def __init__(self, value_reader: Optional[ValueReader] = None) -> None:
@@ -31,6 +31,22 @@ class ResolverMixin:
         """Register (add or replace) a placeholder handler"""
 
         self.value_reader.registry[name] = type_
+
+    def cb_get(self, data, key, ctx) -> Any:
+        """Retrieve the element. Subclasses may expand it, e.g. to resolve
+        placeholders
+        """
+        value = super().cb_get(data, key, ctx)
+
+        if not ctx.args or not ctx.args.get("skip_resolver", False):
+            while isinstance(value, str) and value.find("{") != -1:
+                value = list(self.value_reader.parse(value))
+                value = self.resolve(value, ctx)
+
+        if value == "???":
+            raise ConfigException(f"Mandatory config value missing: '{ctx.cur_path()}'")
+
+        return value
 
     def resolve(self, value: Any, ctx: GetterContext) -> Any:
         """Lazily resolve Placeholders

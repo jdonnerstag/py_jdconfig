@@ -21,7 +21,6 @@ Please see the readme.md file for details. In summary:
 from .config_getter import ConfigGetter
 from .config_ini_mixin import ConfigIniMixin
 from .config_path import ConfigPath
-from .config_resolver_mixin import ConfigResolveMixin
 from .config_search_mixin import ConfigSearchMixin
 from .deep_access_mixin import DeepAccessMixin
 from .deep_dict import DeepDict
@@ -46,6 +45,7 @@ from .placeholders import (
     RefPlaceholder,
     TimestampPlaceholder,
 )
+from .resolver_mixin import ResolverMixin
 from .string_converter_mixin import StringConverterMixin
 from .utils import ConfigException, NonStrSequence, PathType
 from .value_reader import ValueReader, ValueType

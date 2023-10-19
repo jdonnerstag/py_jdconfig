@@ -48,7 +48,7 @@ LoaderType = Callable[[str], Mapping]
 class ImportPlaceholder(Placeholder):
     """Import Placeholder: '{import: <file>[, <replace=False>]}'"""
 
-    file: str | list
+    file: str
     loader: Optional[LoaderType] = None
     # TODO Add an optional cache flag
 

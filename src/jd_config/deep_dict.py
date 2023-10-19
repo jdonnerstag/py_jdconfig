@@ -7,7 +7,7 @@
 import logging
 from typing import Any, Callable, Iterator, Mapping, Optional, Union
 
-from .config_resolver_mixin import ConfigResolveMixin
+from .resolver_mixin import ResolverMixin
 from .config_search_mixin import ConfigSearchMixin
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter_base import DeepGetter, GetterContext
@@ -32,7 +32,7 @@ class DeepDictMixin:
 
 # Note: the order of the subclasses is relevant !!!
 class DefaultConfigGetter(
-    DeepExportMixin, ConfigSearchMixin, ConfigResolveMixin, DeepDictMixin, DeepGetter
+    DeepExportMixin, ConfigSearchMixin, ResolverMixin, DeepDictMixin, DeepGetter
 ):
     """Default Deep Container Getter for Configs"""
 
@@ -44,7 +44,7 @@ class DefaultConfigGetter(
     ) -> None:
         DeepGetter.__init__(self, on_missing=on_missing)
         DeepDictMixin.__init__(self)
-        ConfigResolveMixin.__init__(self, value_reader)
+        ResolverMixin.__init__(self, value_reader)
         ConfigSearchMixin.__init__(self)
         DeepExportMixin.__init__(self)
 
