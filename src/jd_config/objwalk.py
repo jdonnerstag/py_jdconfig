@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Mapping, Optional, Tuple
 
-from .utils import ConfigException, ContainerType, NonStrSequence
+from .utils import ConfigException, ContainerType, NonStrSequence, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -76,17 +76,25 @@ def objwalk(
     obj: Mapping | NonStrSequence,
     *,
     nodes_only: bool = False,
-    cb_get: Optional[Callable] = None,
+    cb_get: Optional[Callable[[ContainerType, str | int, PathType], Any]] = None,
 ) -> Iterator[WalkerEvent]:
     """A generic function to walk any Mapping- and Sequence- like objects.
 
     Once loaded into memory, Yaml and Json files, are often implemented with
     nested dict- and list-like object structures.
 
-    'objwalk' walks the structure depth first. Only leaf-nodes are yielded.
+    'objwalk' walks the structure depth first.
+
+    It has one important feature (required for configs): Imagine an entry such as 'a: "{ref:b}"',
+    and 'b: {c: 99}'. "{ref:b}" is a reference to "b", and "b" is a map. Hence "a" is not a
+    leaf-node and neither a string value. The 'cb_get' argument is an optional function to 'get'
+    the item from a container and possibly post-process it: parse and interprete "{ref:b}" and
+    replace the return value with "b".
 
     :param obj: The root container to start walking.
-    :return: 'objwalk' is a generator function, yielding the elements path and obj.
+    :param nodes_only: If True, only the leaf node events are yielded
+    :param cb_get: An optional function to 'get' the item from a container.
+    :return: 'objwalk' is a generator function, yielding events with information about path and obj.
     """
 
     if not obj:
@@ -95,6 +103,8 @@ def objwalk(
     if not isinstance(obj, (Mapping, NonStrSequence)):
         yield NodeEvent(path=(), value=obj, container=None)
         return
+
+    creator_map = {Mapping: NewMappingEvent, NonStrSequence: NewSequenceEvent}
 
     path_ = ()  # Empty tuple
     iter_obj = [obj]
@@ -105,23 +115,20 @@ def objwalk(
         try:
             key = next(cur)
             value = iter_obj[-1]
-            value = value[key] if cb_get is None else cb_get(value, key)
+            value = value[key] if cb_get is None else cb_get(value, key, path_)
 
             event = None
-            if isinstance(value, Mapping):
+            for type_, event_type in creator_map.items():
+                if not isinstance(value, type_):
+                    continue
+
                 path_ = path_ + (key,)
                 if not nodes_only:
-                    event = NewMappingEvent(path_, value, iter_obj[-1])
+                    event = event_type(path_, value, iter_obj[-1])
                     yield event
                 iter_obj.append(value)
                 iter_stack.append(_container_iter(value))
-            elif isinstance(value, NonStrSequence):
-                path_ = path_ + (key,)
-                if not nodes_only:
-                    event = NewSequenceEvent(path_, value, iter_obj[-1])
-                    yield event
-                iter_obj.append(value)
-                iter_stack.append(_container_iter(value))
+                break
             else:
                 event = NodeEvent(path_ + (key,), value, iter_obj[-1])
                 yield event

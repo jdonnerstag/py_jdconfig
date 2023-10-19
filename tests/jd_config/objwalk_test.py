@@ -5,8 +5,10 @@
 
 import logging
 from copy import deepcopy
+from typing import Any
 
 from jd_config import DropContainerEvent, objwalk
+from jd_config.utils import ContainerType, PathType
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,9 @@ def test_objwalk():
 
     assert len(data) == 0
 
+    data = list(x.path for x in objwalk(DATA, nodes_only=False))
+    assert len(data) == 22
+
 
 def test_skip():
     data = deepcopy(DATA)
@@ -79,21 +84,11 @@ def test_skip():
     assert len(rtn) == 3
     assert rtn == [("a",), ("b",), ("c",)]
 
-    rtn = func(
-        (
-            "c",
-            "c1",
-        )
-    )
+    rtn = func(("c", "c1"))
     assert len(rtn) == 4
     assert rtn == [("a",), ("b",), ("c",), ("c", "c1")]
 
-    rtn = func(
-        (
-            "c",
-            "c3",
-        )
-    )
+    rtn = func(("c", "c3"))
     assert len(rtn) == 12
 
     rtn = func(("c", "c3", 2))
@@ -101,3 +96,38 @@ def test_skip():
 
     rtn = func(("c", "c3", 4, "c32"))
     assert len(rtn) == 18
+
+
+def test_cb_get():
+    data = deepcopy(DATA)
+
+    def cb_get(data: ContainerType, key: str | int, path: PathType) -> Any:
+        if path == ("c",) and key == "c1":
+            # You can return whatever you want. It doesn't have to be a value,
+            # or of the same type as the value.
+            # And the parent container will not be modified. It remains as is.
+            return {"x": "xx", "y": "yy"}
+
+        return data[key]
+
+    data = list(x.path for x in objwalk(DATA, nodes_only=True, cb_get=cb_get))
+    assert len(data) == 15
+
+    data.remove(("a",))
+    data.remove(("b",))
+    data.remove(("c", "c1", "x"))
+    data.remove(("c", "c1", "y"))
+    data.remove(("c", "c2", "c22"))
+    data.remove(("c", "c2", "c23"))
+    data.remove(("c", "c2", "c24"))
+    data.remove(("c", "c2", "c25"))
+    data.remove(("c", "c2", "c26"))
+    data.remove(("c", "c2", "c27"))
+
+    data.remove(("c", "c3", 0))  # List elements are integer (not string)
+    data.remove(("c", "c3", 1))  # List element
+    data.remove(("c", "c3", 2))  # List element
+    data.remove(("c", "c3", 3))  # List element
+    data.remove(("c", "c3", 4, "c32"))
+
+    assert len(data) == 0

@@ -46,7 +46,7 @@ class DeepExportMixin:
         root = data
         data = self.get(data, path)
 
-        def cb_get(data, key):
+        def cb_get(data, key, _path):
             ctx = self.new_context(data, root=root)
             ctx.args["skip_resolver"] = not resolve
             return self.cb_get(data, key, ctx)

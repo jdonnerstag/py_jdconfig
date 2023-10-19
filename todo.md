@@ -33,6 +33,8 @@
 - Add {delete:} to allow env files to remove a node
 - Allow to use any *.ini file, since we just use the [config] section
 - How should the config.ini look like, and the plugin config, to retrieve a config from remote.
+- may be add some stats feature: number of config values; list imported files; number of {ref:},
+  max depth; list of envs referenced; 
 
 Done:
 

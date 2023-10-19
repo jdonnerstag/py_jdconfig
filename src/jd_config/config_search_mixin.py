@@ -106,5 +106,7 @@ class ConfigSearchMixin:
     ) -> Iterator[WalkerEvent]:
         """Like walking a deep filesystem, walk a deep object structure"""
 
-        cb_get = partial(self.cb_get, ctx=ctx)
+        def cb_get(data, key, _path):
+            return self.cb_get(data, key, ctx=ctx)
+
         yield from objwalk(ctx.data, nodes_only=nodes_only, cb_get=cb_get)
