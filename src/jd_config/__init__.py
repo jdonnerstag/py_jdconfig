@@ -18,7 +18,6 @@ Please see the readme.md file for details. In summary:
    or CLI args.
 """
 
-from .config_getter import ConfigGetter
 from .config_ini_mixin import ConfigIniMixin
 from .config_path import ConfigPath
 from .deep_search_mixin import DeepSearchMixin

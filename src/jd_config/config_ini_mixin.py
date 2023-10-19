@@ -16,16 +16,15 @@ logger = logging.getLogger(__parent__name__)
 class EnvInterpolation(configparser.BasicInterpolation):
     """Interpolation which expands environment variables in values."""
 
+    # pylint: disable=:too-many-arguments
     def before_get(self, parser, section, option, value, defaults):
         value = super().before_get(parser, section, option, value, defaults)
         return os.path.expandvars(value)
 
 
+# pylint: disable=too-few-public-methods
 class ConfigIniMixin:
-    """A mixin to load the Config specific configurations.
-
-    Dependencies: None
-    """
+    """A mixin to load the Config specific configurations."""
 
     def __init__(self, *, ini_file: str = "config.ini") -> None:
         """Initialize.

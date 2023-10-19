@@ -41,22 +41,8 @@ class DeepSearchMixin:
 
         find_key = ctx.path[ctx.idx + 1]
         for key in ctx.data.keys():
-            # Allow to resolve placeholder if necessary
-            ctx.key = key
-            value = self.cb_get(ctx.data, ctx.key, ctx)
-
-            if isinstance(value, Mapping) and isinstance(find_key, str):
-                if find_key in value:
-                    ctx.data = value[find_key]
-                    ctx.path = ctx.path_replace(key)
-                    ctx.idx += 1
-                    return ctx.data
-            elif isinstance(value, NonStrSequence) and isinstance(find_key, int):
-                if 0 <= find_key < len(value):
-                    ctx.data = value[find_key]
-                    ctx.path = ctx.path_replace(key)
-                    ctx.idx += 1
-                    return ctx.data
+            if self._for_each_key(ctx, key, find_key):
+                return ctx.data
 
         raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
 
@@ -67,25 +53,31 @@ class DeepSearchMixin:
             raise ConfigException(f"Expected a Sequence: '{ctx.cur_path()}'")
 
         find_key = ctx.path[ctx.idx + 1]
-        for key, value in enumerate(ctx.data):
-            # Allow to resolve placeholder if necessary
-            ctx.key = key
-            value = self.cb_get(ctx.data, ctx.key, ctx)
-
-            if isinstance(value, Mapping) and isinstance(find_key, str):
-                if find_key in value:
-                    ctx.data = value[find_key]
-                    ctx.path = ctx.path_replace(key)
-                    ctx.idx += 1
-                    return ctx.data
-            elif isinstance(value, NonStrSequence) and isinstance(find_key, int):
-                if 0 <= find_key < len(value):
-                    ctx.data = value[find_key]
-                    ctx.path = ctx.path_replace(key)
-                    ctx.idx += 1
-                    return ctx.data
+        for key, _ in enumerate(ctx.data):
+            if self._for_each_key(ctx, key, find_key):
+                return ctx.data
 
         raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
+
+    def _for_each_key(self, ctx: GetterContext, key: str | int, find_key) -> bool:
+        # Allow to resolve placeholder if necessary
+        ctx.key = key
+        value = self.cb_get(ctx.data, ctx.key, ctx)
+
+        if isinstance(value, Mapping) and isinstance(find_key, str):
+            if find_key in value:
+                ctx.data = value[find_key]
+                ctx.path = ctx.path_replace(key)
+                ctx.idx += 1
+                return True
+        elif isinstance(value, NonStrSequence) and isinstance(find_key, int):
+            if 0 <= find_key < len(value):
+                ctx.data = value[find_key]
+                ctx.path = ctx.path_replace(key)
+                ctx.idx += 1
+                return True
+
+        return False
 
     def _on_any_deep(self, ctx: GetterContext) -> GetterContext:
         """Callback if 'a..b' was found"""

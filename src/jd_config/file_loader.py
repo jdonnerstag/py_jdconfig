@@ -12,7 +12,7 @@ from typing import Mapping, Optional
 
 import yaml
 
-from .config_getter import ConfigGetter
+from .deep_dict import DeepDict
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -62,7 +62,8 @@ class ConfigFileLoader:
                 pass  # This is perfectly ok. The file may not exist.
 
         if data_2:
-            data_1 = ConfigGetter().deep_update(data_1, data_2)
+            # Inplace update of data_1
+            DeepDict(data_1).deep_update(data_2)
 
         return data_1
 
