@@ -21,7 +21,7 @@ Either the base class or a subclass should support:
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterator, Optional, Protocol
+from typing import Any, Callable, Iterator, Optional
 
 from .config_path import ConfigPath
 from .placeholders import Placeholder
@@ -29,6 +29,9 @@ from .utils import DEFAULT, ConfigException, ContainerType, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+OnMissing = Callable[["GetterContext", Exception], Any]
 
 
 # pylint: disable=too-many-instance-attributes
@@ -49,7 +52,7 @@ class GetterContext:
     # While walking, the current index within the path
     idx: int = 0
 
-    on_missing: Optional[Callable] = None
+    on_missing: Optional[OnMissing] = None
 
     # The root object of the yaml or json file, required for resolving
     # placeholders
@@ -100,7 +103,12 @@ class GetterContext:
 
 
 class DeepGetter:
-    """Getter for deep container structures (Mapping and NonStrSequence)"""
+    """Getter for deep container structures (Mapping and NonStrSequence).
+
+    This is one of the core classes of the config package. It works in close
+    collaboration with GetterContext to provide the extensability and
+    flexibility we need.
+    """
 
     def __init__(self, *, on_missing: Optional[Callable] = None) -> None:
         self.on_missing = self.on_missing_default
@@ -111,7 +119,7 @@ class DeepGetter:
         self,
         data: ContainerType,
         *,
-        on_missing: Optional[Callable] = None,
+        on_missing: Optional[OnMissing] = None,
         _memo: Optional[list] = None,
         root: Optional[ContainerType] = None,
         **kvargs,
@@ -181,7 +189,7 @@ class DeepGetter:
         path: PathType,
         default: Any = DEFAULT,
         *,
-        on_missing: Optional[Callable] = None,
+        on_missing: Optional[OnMissing] = None,
         ctx: Optional[GetterContext] = None,
         _memo: Optional[list] = None,
     ) -> Any:

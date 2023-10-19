@@ -18,7 +18,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class ConfigSearchMixin:
+class DeepSearchMixin:
     """Extended standard dict like getter to also support deep paths, and also
     search patterns, such as 'a..c', 'a.*.c'
     """

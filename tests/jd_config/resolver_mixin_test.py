@@ -10,7 +10,7 @@ from typing import Mapping
 import pytest
 
 from jd_config import ConfigException, Placeholder
-from jd_config.config_search_mixin import ConfigSearchMixin
+from jd_config.deep_search_mixin import DeepSearchMixin
 from jd_config.deep_getter import DeepGetter
 from jd_config.resolver_mixin import ResolverMixin
 
@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 # Note: the order of the subclasses is relevant !!!
-class MyConfig(ConfigSearchMixin, ResolverMixin, DeepGetter):
+class MyConfig(DeepSearchMixin, ResolverMixin, DeepGetter):
     def __init__(self) -> None:
         DeepGetter.__init__(self)
         ResolverMixin.__init__(self)
-        ConfigSearchMixin.__init__(self)
+        DeepSearchMixin.__init__(self)
 
 
 def test_no_placeholders():

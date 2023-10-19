@@ -8,7 +8,7 @@ import logging
 import pytest
 
 from jd_config import ConfigException
-from jd_config.config_search_mixin import ConfigSearchMixin
+from jd_config.deep_search_mixin import DeepSearchMixin
 from jd_config.deep_getter import DeepGetter
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 # show logs: pytest --log-cli-level=DEBUG
 
 
-class MyConfig(ConfigSearchMixin, DeepGetter):
+class MyConfig(DeepSearchMixin, DeepGetter):
     def __init__(self) -> None:
         DeepGetter.__init__(self)
-        ConfigSearchMixin.__init__(self)
+        DeepSearchMixin.__init__(self)
 
 
 def test_simple():

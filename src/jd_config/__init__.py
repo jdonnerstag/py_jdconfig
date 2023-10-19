@@ -21,8 +21,7 @@ Please see the readme.md file for details. In summary:
 from .config_getter import ConfigGetter
 from .config_ini_mixin import ConfigIniMixin
 from .config_path import ConfigPath
-from .config_search_mixin import ConfigSearchMixin
-from .deep_access_mixin import DeepAccessMixin
+from .deep_search_mixin import DeepSearchMixin
 from .deep_dict import DeepDict
 from .deep_export_mixin import DeepExportMixin
 from .deep_update_mixin import DeepUpdateMixin

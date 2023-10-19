@@ -5,12 +5,12 @@
 """
 
 import logging
-from typing import Any, Callable, Iterator, Mapping, Optional, Union
+from typing import Any, Callable, Iterator, Mapping, Optional
 
 from .resolver_mixin import ResolverMixin
-from .config_search_mixin import ConfigSearchMixin
+from .deep_search_mixin import DeepSearchMixin
 from .deep_export_mixin import DeepExportMixin
-from .deep_getter import DeepGetter, GetterContext
+from .deep_getter import DeepGetter, GetterContext, OnMissing
 from .deep_update_mixin import DeepUpdateMixin
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
 from .value_reader import ValueReader
@@ -19,8 +19,11 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
+# pylint: disable=too-few-public-methods
 class DeepDictMixin:
-    """..."""
+    """A getter mixin which will get the (config) value directly from the
+    underlying container if it is a DeepDict
+    """
 
     def cb_get(self, data, key, ctx: GetterContext) -> Any:
         """Avoid recursive resolving ..."""
@@ -30,9 +33,9 @@ class DeepDictMixin:
         return super().cb_get(data, key, ctx)
 
 
-# Note: the order of the subclasses is relevant !!!
+# Note: the order of the subclasses is important !!!
 class DefaultConfigGetter(
-    DeepExportMixin, ConfigSearchMixin, ResolverMixin, DeepDictMixin, DeepGetter
+    DeepExportMixin, DeepSearchMixin, ResolverMixin, DeepDictMixin, DeepGetter
 ):
     """Default Deep Container Getter for Configs"""
 
@@ -40,12 +43,12 @@ class DefaultConfigGetter(
         self,
         *,
         value_reader: Optional[ValueReader] = None,
-        on_missing: Optional[Callable] = None,
+        on_missing: Optional[OnMissing] = None,
     ) -> None:
         DeepGetter.__init__(self, on_missing=on_missing)
         DeepDictMixin.__init__(self)
         ResolverMixin.__init__(self, value_reader)
-        ConfigSearchMixin.__init__(self)
+        DeepSearchMixin.__init__(self)
         DeepExportMixin.__init__(self)
 
 
@@ -87,8 +90,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
         And also: "c..c32", "c.c2[*].c32", "c.*.c32"
 
         :param path: the path to identify the element
-        :param sep: 'path' separator. Default: '.'
-        :return: The config value
+        :param default: A default value, if the value could not be retrieved.
+        :param resolve: If True, resolve placeholders (e.g. {ref:a})
+        :return: The value determined
         """
 
         getter = self.getter
@@ -164,7 +168,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         path: PathType,
         value: Any,
         *,
-        create_missing: Union[callable, bool, Mapping] = False,
+        create_missing: Callable | bool | Mapping = False,
         replace_path: bool = False,
     ) -> Any:
         """Similar to 'dict[key] = value', but with deep path support.
@@ -173,12 +177,11 @@ class DeepDict(Mapping, DeepUpdateMixin):
           - is not possible to append elements to a Sequence. You need to get() the list
             and manually append the element.
 
-        :param data: the Mapping like structure
         :param path: the path to identify the element
         :param value: the new value
         :param create_missing: what to do if a path element is missing
         :param replace_path: If true, then consider parts missing, of their not containers
-        :param sep: 'path' separator. Default: '.'
+        :return: the old value
         """
 
         path = self.getter.normalize_path(path)
@@ -196,25 +199,11 @@ class DeepDict(Mapping, DeepUpdateMixin):
                 ctx.data = self.getter.cb_get(ctx.data, ctx.key, ctx)
                 old_value = ctx.data
 
-                if (ctx.idx + 1) < len(ctx.path):
-                    next_key = ctx.path[ctx.idx + 1]
-                    missing_container = None
-                    if isinstance(next_key, str):
-                        replace = not isinstance(ctx.data, Mapping)
-                        missing_container = dict
-                    elif isinstance(next_key, int):
-                        replace = not isinstance(ctx.data, NonStrSequence)
-                        missing_container = list
-
-                    if replace:
-                        if replace_path:
-                            ctx.data = last_parent
-                            ctx.data = self._on_missing(
-                                ctx, None, create_missing, missing_container
-                            )
-                        else:
-                            raise_exc = True
-                            break
+                raise_exc = self._replace_existing(
+                    ctx, last_parent, replace_path, create_missing
+                )
+                if raise_exc:
+                    break
 
             except (KeyError, IndexError, ConfigException) as exc:
                 if (ctx.idx + 1) < len(ctx.path):
@@ -228,6 +217,33 @@ class DeepDict(Mapping, DeepUpdateMixin):
                 f" '{ctx.cur_path()}'"
             )
 
+        self._set_or_append(ctx, last_parent, value)
+
+        return old_value
+
+    def _replace_existing(self, ctx, last_parent, replace_path, create_missing) -> bool:
+        if (ctx.idx + 1) < len(ctx.path):
+            next_key = ctx.path[ctx.idx + 1]
+            missing_container = None
+            if isinstance(next_key, str):
+                replace = not isinstance(ctx.data, Mapping)
+                missing_container = dict
+            elif isinstance(next_key, int):
+                replace = not isinstance(ctx.data, NonStrSequence)
+                missing_container = list
+
+            if replace:
+                if replace_path:
+                    ctx.data = last_parent
+                    ctx.data = self._on_missing(
+                        ctx, None, create_missing, missing_container
+                    )
+                else:
+                    return True
+
+        return False
+
+    def _set_or_append(self, ctx: GetterContext, last_parent, value):
         # Append if it is a list, and index == list size
         if (
             isinstance(last_parent, NonStrSequence)
@@ -238,9 +254,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
         else:
             last_parent[ctx.key] = value
 
-        return old_value
-
-    def _on_missing(self, ctx, exc, create_missing, missing_container):
+    def _on_missing(
+        self, ctx: GetterContext, exc: Exception, create_missing, missing_container
+    ):
         if callable(create_missing):
             return create_missing(ctx, exc)
         if isinstance(create_missing, bool) and create_missing is True:
