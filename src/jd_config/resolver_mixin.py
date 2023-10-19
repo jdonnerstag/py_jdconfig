@@ -2,14 +2,16 @@
 # -*- coding: UTF-8 -*-
 
 """
-Extended standard dict like getter to also support deep paths, and also
-search patterns, such as 'a..c', 'a.*.c'
+A mixin that extends DeepGetter with a resolver. It resolves. e.g. 'a: {ref:b}'
+such that the reference placeholder gets virtually (not physically) replaced
+with the value from 'b'. Or 'a: {import:myfile.yaml}' which loads myfile.yaml
+and makes the config available under 'a'.
 """
 
 import logging
 from typing import Any, Optional
 
-from .deep_getter_base import GetterContext
+from .deep_getter import GetterContext
 from .placeholders import Placeholder
 from .utils import ConfigException
 from .value_reader import ValueReader
@@ -19,12 +21,15 @@ logger = logging.getLogger(__parent__name__)
 
 
 class ResolverMixin:
-    """Extended standard dict like getter to also support deep paths, and also
-    search patterns, such as 'a..c', 'a.*.c'
+    """A mixin that extends DeepGetter with a resolver. It resolves. e.g. 'a: {ref:b}'
+    such that the reference placeholder gets virtually (not physically) replaced
+    with the value from 'b'. Or 'a: {import:myfile.yaml}' which loads myfile.yaml
+    and makes the config available under 'a'.
     """
 
     def __init__(self, value_reader: Optional[ValueReader] = None) -> None:
-        # Read string into Placeholders ...
+        # ValueReader parses a yaml value and returns a list of literals
+        # and placeholders.
         self.value_reader = ValueReader() if value_reader is None else value_reader
 
     def register_placeholder_handler(self, name: str, type_: type) -> None:

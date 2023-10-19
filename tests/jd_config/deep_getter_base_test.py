@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from jd_config import ConfigException
-from jd_config.deep_getter_base import DeepGetter
+from jd_config.deep_getter import DeepGetter
 
 logger = logging.getLogger(__name__)
 
@@ -66,5 +66,5 @@ def test_manual_context():
     getter.on_missing = on_missing
     assert getter.get(cfg, "xxx") == "not found"
 
-    getter = DeepGetter(on_missing = on_missing)
+    getter = DeepGetter(on_missing=on_missing)
     assert getter.get(cfg, "xxx") == "not found"

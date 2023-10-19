@@ -17,7 +17,7 @@ from jd_config import (
     RefPlaceholder,
     ResolverMixin,
 )
-from jd_config.deep_getter_base import DeepGetter, GetterContext
+from jd_config.deep_getter import DeepGetter, GetterContext
 
 logger = logging.getLogger(__name__)
 

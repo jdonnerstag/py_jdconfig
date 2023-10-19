@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 from .utils import ConfigException, ContainerType
 
 if TYPE_CHECKING:
-    from .deep_getter_base import GetterContext
+    from .deep_getter import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

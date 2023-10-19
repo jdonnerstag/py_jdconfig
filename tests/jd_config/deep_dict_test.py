@@ -12,7 +12,7 @@ from typing import List, Mapping
 import pytest
 
 from jd_config import ConfigException, DeepDict
-from jd_config.deep_getter_base import GetterContext
+from jd_config.deep_getter import GetterContext
 from jd_config.placeholders import Placeholder
 
 logger = logging.getLogger(__name__)

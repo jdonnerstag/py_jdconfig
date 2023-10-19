@@ -11,7 +11,7 @@ import pytest
 
 from jd_config import ConfigException, Placeholder
 from jd_config.config_search_mixin import ConfigSearchMixin
-from jd_config.deep_getter_base import DeepGetter
+from jd_config.deep_getter import DeepGetter
 from jd_config.resolver_mixin import ResolverMixin
 
 logger = logging.getLogger(__name__)

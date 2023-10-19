@@ -8,7 +8,7 @@ import os
 import re
 
 from jd_config import DeepExportMixin
-from jd_config.deep_getter_base import DeepGetter
+from jd_config.deep_getter import DeepGetter
 from jd_config.resolver_mixin import ResolverMixin
 
 logger = logging.getLogger(__name__)

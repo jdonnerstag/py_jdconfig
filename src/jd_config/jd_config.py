@@ -13,7 +13,7 @@ from typing import Any, Iterator, Mapping, Optional
 
 from .config_ini_mixin import ConfigIniMixin
 from .deep_dict import DeepDict, DefaultConfigGetter
-from .deep_getter_base import GetterContext
+from .deep_getter import GetterContext
 from .file_loader import ConfigFileLoader
 from .objwalk import WalkerEvent
 from .utils import DEFAULT, ContainerType, PathType

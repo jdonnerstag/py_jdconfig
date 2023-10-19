@@ -21,7 +21,7 @@ Either the base class or a subclass should support:
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional, Protocol
 
 from .config_path import ConfigPath
 from .placeholders import Placeholder
@@ -127,7 +127,7 @@ class DeepGetter:
             data, root=root, on_missing=on_missing, memo=_memo, args=kvargs
         )
 
-    def cb_get(self, data, key, ctx: GetterContext, **kvargs) -> Any:
+    def cb_get(self, data, key, ctx: GetterContext) -> Any:
         """Retrieve an element from its parent container.
 
         Subclasses may extend it, e.g. to resolve the value `{ref:a}`,
