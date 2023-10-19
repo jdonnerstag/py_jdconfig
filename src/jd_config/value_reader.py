@@ -8,20 +8,14 @@
 ```
 
 Placeholders can only occur in yaml values. They are not allowed in keys.
-And it must be a yaml *string* value, surrounded by quotes.
+And it must be a yaml *string* value, surrounded by quotes. Because '{}'
+is a valid yaml/json construct.
 """
 
 import logging
-from typing import Iterator, Optional, Union
+from typing import Iterator, Optional
 
-from .placeholders import (
-    EnvPlaceholder,
-    GlobalRefPlaceholder,
-    ImportPlaceholder,
-    Placeholder,
-    RefPlaceholder,
-    TimestampPlaceholder,
-)
+from . import placeholders as ph
 from .string_converter_mixin import StringConverterMixin
 from .utils import ConfigException
 
@@ -29,26 +23,42 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-ValueType = Union[int, float, bool, str, Placeholder]
+ValueType = int | float | bool | str | ph.Placeholder
 
-RegistryType = dict[str, Placeholder]
+RegistryType = dict[str, ph.Placeholder]
 
 
 class ValueReader(StringConverterMixin):
     """Maintain a registry of supported placeholders and parse a yaml value
-    into its constituent parts
+    into its constituent parts.
+
+    E.g. "text", 1_000, 1.4, 1e3, True, Yes, "/tmp/{ref:a}-{ref.b}.txt".
+
+    Either return the literal value converted into str, int, float, bool,
+    or a list of literals and Placeholders, such as
+    `["/tmp/", RefPlaceholder("a"), "-", RefPlaceholder("b"), ".txt"]`
     """
 
     def __init__(self, registry: Optional[RegistryType] = None) -> None:
+        """Constructor
+
+        :param registry: An optional dict of name and Placeholder handlers pairs
+        """
+
+        # The registry is publically accessible and users may add, remove, or
+        # modify the entries. The 'name' (dict key) will be used to identify
+        # the Placeholder handler. E.g. as in the default below, '{ref:a}' will
+        # apply the RefPlaceholder,
         self.registry = registry
 
-        if not registry:
+        if registry is None:
+            # Initialize the registry with default Placeholders
             self.registry = {
-                "ref": RefPlaceholder,
-                "global": GlobalRefPlaceholder,
-                "import": ImportPlaceholder,
-                "env": EnvPlaceholder,
-                "timestamp": TimestampPlaceholder,
+                "ref": ph.RefPlaceholder,
+                "global": ph.GlobalRefPlaceholder,
+                "import": ph.ImportPlaceholder,
+                "env": ph.EnvPlaceholder,
+                "timestamp": ph.TimestampPlaceholder,
             }
 
     def parse(
@@ -82,7 +92,7 @@ class ValueReader(StringConverterMixin):
 
     def parse_placeholder(
         self, strval: str, sep: str, registry: Optional[RegistryType] = None
-    ) -> Placeholder:
+    ) -> ph.Placeholder:
         """Parse {<name>: <arg-1>, ...} into registered Placeholder objects"""
 
         strval = strval[1:-1]

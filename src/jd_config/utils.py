@@ -17,6 +17,7 @@ class ConfigException(Exception):
     """Base class for Config Exceptions"""
 
 
+# pylint: disable=too-few-public-methods
 class NonStrSequence(ABC):
     """Avoid having to do `isinstance(x, Sequence) and not isinstance(x, str)` all the time"""
 

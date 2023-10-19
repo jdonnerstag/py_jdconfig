@@ -47,6 +47,8 @@ def test_convert():
     assert StringConverterMixin.convert("-1") == -1
     assert StringConverterMixin.convert("1.2") == 1.2
     assert StringConverterMixin.convert("0.3") == 0.3
+    assert StringConverterMixin.convert("1e3") == 1000
+    assert StringConverterMixin.convert("1_000") == 1000
     assert StringConverterMixin.convert("text") == "text"
     assert StringConverterMixin.convert("0.3.4") == "0.3.4"
     assert StringConverterMixin.convert("true") is True
