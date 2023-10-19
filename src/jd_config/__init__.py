@@ -25,7 +25,7 @@ from .config_search_mixin import ConfigSearchMixin
 from .deep_access_mixin import DeepAccessMixin
 from .deep_dict import DeepDict
 from .deep_export_mixin import DeepExportMixin
-from .deep_update import DeepUpdateMixin
+from .deep_update_mixin import DeepUpdateMixin
 from .file_loader import ConfigFileLoader
 from .jd_config import JDConfig
 from .objwalk import (

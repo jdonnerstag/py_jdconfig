@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 """
-Load yaml config files and handle the placeholders
+Load yaml config files
 """
 
 import logging
@@ -19,11 +19,7 @@ logger = logging.getLogger(__parent__name__)
 
 
 class ConfigFileLoader:
-    """Load the yaml config files and process the placeholders.
-
-    Dependencies:
-    - self.resolve(): a method to lazily resolve placeholders
-    """
+    """Load the yaml config files."""
 
     def __init__(self) -> None:
         self.files_loaded = []
@@ -108,8 +104,9 @@ class ConfigFileLoader:
         :return: A deep dict-like structure, representing the yaml content
         """
 
+        logger.debug("Config: Load from file: '%s'", fname)
+
         # pyyaml will consider the BOM, if available,
         # and decode the bytes. utf-8 is default.
-        logger.debug("Config: Load from file: '%s'", fname)
         with open(fname, "rb") as fd:  # pylint: disable=invalid-name
             return self.load_yaml_raw_with_fd(fd)

@@ -11,7 +11,7 @@ from .resolver_mixin import ResolverMixin
 from .config_search_mixin import ConfigSearchMixin
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter import DeepGetter, GetterContext
-from .deep_update import DeepUpdateMixin
+from .deep_update_mixin import DeepUpdateMixin
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
 from .value_reader import ValueReader
 

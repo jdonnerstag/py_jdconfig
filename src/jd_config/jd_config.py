@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 """
-Main config package to load and access config values.
+Main config module to load and access config values.
 """
 
 import logging
@@ -53,29 +53,33 @@ class JDConfig(ConfigIniMixin):
 
         # Why this approach and not a Mixin/Base Class. ConfigFileLoader
         # is comparatively large with a number of functions. Functions
-        # which I consider private, but python has not means to mark them
+        # which I consider private, but python has no means to mark them
         # private. This is a more explicit approach.
         self.config_file_loader = ConfigFileLoader()
 
+        # We want access to the placeholder registry which is maintained by ValueReader.
         self.value_reader = ValueReader()
+
+        # We want the same Getter with the same configuration everywhere
         self.getter = DefaultConfigGetter(value_reader=self.value_reader)
 
-        # Make sure the register the 'file loader' with the ImportPlaceholder
+        # Associate the 'file loader' with the ImportPlaceholder
         orig_import_placeholder = self.value_reader.registry["import"]
         self.value_reader.registry["import"] = partial(
             orig_import_placeholder, loader=self
         )
 
-        # Make sure the register the object with the root config
+        # Associate the global config root with GlobalRefPlaceholder
         orig_global_placeholder = self.value_reader.registry["global"]
         self.value_reader.registry["global"] = partial(
             orig_global_placeholder, root_cfg=self.config
         )
 
+        # The global config root object
         self.data = None
 
     def config(self) -> ContainerType:
-        """Get the current config"""
+        """Get the config object"""
         return self.data
 
     def load(
@@ -86,17 +90,15 @@ class JDConfig(ConfigIniMixin):
     ) -> Mapping:
         """Main entry point to load configs"
 
-        The filename can be relativ or absolute. If relativ, it will loaded
+        The filename can be relativ or absolute. If relativ, it will be loaded
         relativ to 'config_dir'
 
-        Alternatively 'fname' can be an file descriptor, e.g. 'fd = io.StringIO("...")'
+        Alternatively 'fname' can be a file descriptor, e.g. 'fd = io.StringIO("...")'
         or 'with open("myfile.yaml", "rb") as fd:'.
 
-        'config_dir' is especially relevant when importing additional config files,
-        e.g. 'db: {import: ./db/database-config.yaml}
-
         :param fname: yaml config file (optional)
-        :param config_dir: working directory for loading config files (optional)
+        :param config_dir: overwrite self.config_dir to load the file. Default is to
+        use self.config_dir (see config.ini)
         :param env: environment name (optional)
         """
 
@@ -109,9 +111,10 @@ class JDConfig(ConfigIniMixin):
         config_dir = Path(config_dir or self.config_dir)
         env = env or self.env
 
-        # Make the yaml config data accessible via JDConfig
+        # Load the file
         data = self.config_file_loader.load(fname, config_dir, env)
 
+        # Make the yaml config data accessible via JDConfig
         if self.data is None and isinstance(data, ContainerType):
             self.data = DeepDict(data, getter=self.getter)
             return self.data
@@ -129,7 +132,7 @@ class JDConfig(ConfigIniMixin):
         return self.config_file_loader.files_loaded
 
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
-        """Get a config value (or noder)"""
+        """Get a config value (or node)"""
         return self.data.get(path, default=default, resolve=resolve)
 
     def walk(

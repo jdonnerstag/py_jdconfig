@@ -2,6 +2,12 @@
 # -*- coding: UTF-8 -*-
 
 """
+Deep update a dict with values from another deep structure.
+
+The functionality is e.g. use when overlaying environment specific
+configuration over the default one. E.g. assume default is the
+production configuration and for 'dev' you want to apply some
+changes to the 'prod' one.
 """
 
 import logging
@@ -16,8 +22,15 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
+# pylint: disable=too-few-public-methods
 class DeepUpdateMixin:
-    """ """
+    """Deep update a dict with values from another deep structure.
+
+    The functionality is e.g. use when overlaying environment specific
+    configuration over the default one. E.g. assume default is the
+    production configuration and for 'dev' you want to apply some
+    changes to the 'prod' one.
+    """
 
     def deep_update(self, updates: Optional[Mapping]) -> "DeepDict":
         """Deep update the 'obj' with only the leafs from 'updates'. Create
@@ -25,7 +38,6 @@ class DeepUpdateMixin:
 
         :param obj: The dict that will be updated
         :param updates: The dict providing the values to update
-        :param create_missing: If true, create any missing level.
         :return: the updated 'obj'
         """
 
