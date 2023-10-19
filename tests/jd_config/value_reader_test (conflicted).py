@@ -5,19 +5,11 @@
 
 import logging
 from dataclasses import dataclass
-
-import pytest
 import yaml
-
-from jd_config import (
-    ConfigException,
-    EnvPlaceholder,
-    ImportPlaceholder,
-    Placeholder,
-    RefPlaceholder,
-    ValueReader,
-    ValueType,
-)
+import pytest
+from jd_config import ValueType, ValueReader, ConfigException
+from jd_config import Placeholder, RefPlaceholder, ImportPlaceholder
+from jd_config import EnvPlaceholder
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +143,7 @@ def test_split_yaml_value():
     assert list(split("{ref:'a{}a'}")) == ["{ref:'a{}a'}"]
 
 
-def test_tokenize_placeholder_args():
+def test_tokenize():
     tokenize = ValueReader.tokenize_placeholder_args
     assert list(tokenize("")) == []
     assert list(tokenize("test, more")) == ["test", "more"]
@@ -159,12 +151,16 @@ def test_tokenize_placeholder_args():
     assert list(tokenize("test   , more")) == ["test", "more"]
     # Separator escaped
     assert list(tokenize(r"test\, more")) == ["test\\, more"]
-    assert list(tokenize("1")) == [1]  # Including conversion to int.
+    assert list(tokenize("1")) == [1]   # converted into int.
     assert list(tokenize("a, 1")) == ["a", 1]
     assert list(tokenize("'aa'")) == ["aa"]
     assert list(tokenize("'aa', bb, cc")) == ["aa", "bb", "cc"]
     assert list(tokenize("'aa',")) == ["aa"]
-    assert list(tokenize("{ref:a}, {ref:'default'}")) == ["{ref:a}", "{ref:'default'}"]
+    assert list(tokenize("{ref:a}, aaa',")) == ["aa"]
+
+
+def test_parse_placeholder():
+    pass
 
 
 def test_ValueReader():
@@ -190,9 +186,8 @@ def test_ValueReader():
     assert len(value) == 1
     assert value[0] == 123
 
-    # Treat as simple string. Separators only apply to placeholders
     value = parse(" aaa, bbb,ccc ,   123, ddd ")
-    assert value == [" aaa, bbb,ccc ,   123, ddd "]
+    assert value == ["aaa", "bbb", "ccc", 123, "ddd"]
 
     value = parse("{ref: test}")
     assert value == [RefPlaceholder("test")]
@@ -200,8 +195,8 @@ def test_ValueReader():
     value = parse("{ref: test,}")
     assert value == [RefPlaceholder("test")]
 
-    value = parse("{ref: test} - {ref: db}")
-    assert value == [RefPlaceholder("test"), " - ", RefPlaceholder("db")]
+    value = parse("{ref: test}-{ref: db}")
+    assert value == [RefPlaceholder("test"), "-", RefPlaceholder("db")]
 
     # Nested placeholders
     value = parse("{ref: test}-{ref: db, {ref: db_default, mysql}}")
@@ -227,6 +222,14 @@ def test_ValueReader():
     for fail in should_fail:
         with pytest.raises(ConfigException):
             parse(fail)
+
+    value = list(value_reader.parse(" aaa, bbb,ccc ,   123, ddd ", sep=";"))
+    assert value == [
+        "aaa, bbb,ccc ,   123, ddd"
+    ]  # Only leading and trailing whitespaces are stripped
+
+    value = list(value_reader.parse(" aaa; bbb;ccc ;   123; ddd ", sep=";"))
+    assert value == ["aaa", "bbb", "ccc", 123, "ddd"]
 
 
 @dataclass
