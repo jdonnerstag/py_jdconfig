@@ -128,7 +128,6 @@ def test_load_jdconfig_2(monkeypatch):
     assert cfg.get("database.DB_PASS") == "dbpass"
     assert cfg.get("database.DB_NAME") == "dbname"
     assert cfg.get("database.connection_string") == "oracle:dbuser/dbpass@dbname"
-
     assert cfg.get("debug.log_progress_after") == 20_000
 
 
@@ -259,5 +258,31 @@ def test_resolve_all(monkeypatch):
     monkeypatch.setenv("DB_PASS", "dbpass")
     monkeypatch.setenv("DB_NAME", "dbname")
 
+    assert cfg.get("db", None, resolve=False) == "oracle"
+    assert cfg.get("db", None, resolve=True) == "oracle"
+    assert cfg.get("database.DB_USER", None, resolve=False) == None
+    assert cfg.get("database.DB_USER", None, resolve=True) == "dbuser"
+    assert cfg.get("database.DB_PASS", None, resolve=False) == None
+    assert cfg.get("database.DB_PASS", None, resolve=True) == "dbpass"
+    assert cfg.get("database.DB_NAME", None, resolve=False) == None
+    assert cfg.get("database.DB_NAME", None, resolve=True) == "dbname"
+    assert cfg.get("database.connection_string", None, resolve=False) == None
+    assert cfg.get("database.connection_string", resolve=True) == "oracle:dbuser/dbpass@dbname"
+    assert cfg.get("debug.log_progress_after", resolve=False) == 20_000
+    assert cfg.get("debug.log_progress_after", resolve=True) == 20_000
+
     data = cfg.resolve_all()
     assert data
+
+    assert cfg.get("db", resolve=False) == "oracle"
+    assert cfg.get("db", resolve=True) == "oracle"
+    assert cfg.get("database.DB_USER", resolve=False) == "dbuser"
+    assert cfg.get("database.DB_USER", resolve=True) == "dbuser"
+    assert cfg.get("database.DB_PASS", resolve=False) == "dbpass"
+    assert cfg.get("database.DB_PASS", resolve=True) == "dbpass"
+    assert cfg.get("database.DB_NAME", resolve=False) == "dbname"
+    assert cfg.get("database.DB_NAME", resolve=True) == "dbname"
+    assert cfg.get("database.connection_string", resolve=False) == "oracle:dbuser/dbpass@dbname"
+    assert cfg.get("database.connection_string", resolve=True) == "oracle:dbuser/dbpass@dbname"
+    assert cfg.get("debug.log_progress_after", resolve=False) == 20_000
+    assert cfg.get("debug.log_progress_after", resolve=True) == 20_000

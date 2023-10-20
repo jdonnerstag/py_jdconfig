@@ -222,7 +222,7 @@ class DeepGetter:
         for ctx in self.walk_path(ctx, path):
             try:
                 ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
-            except (KeyError, IndexError, ConfigException) as exc:
+            except (KeyError, IndexError, TypeError, ConfigException) as exc:
                 if default is not DEFAULT:
                     return default
 
