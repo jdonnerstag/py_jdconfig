@@ -21,11 +21,9 @@
 - Make sure that {env:} results are not resolved any further. Else risky configs might be
   injected.
 - Add {delete:} to allow env files to remove a node
-- How should the config.ini look like, and the plugin config, to retrieve a config from remote.
+- Config from remote: How should the config.ini look like, and the plugin config, to retrieve such configs
 - may be add some stats feature: number of config values; list imported files; number of {ref:},
   max depth; list of envs referenced;
-- a resolve_all() function which resolves all. Main use case is: validate the config and avoid
-  config related errors much later. We may add resolve_eager a flag in config.ini
 
 Done:
 

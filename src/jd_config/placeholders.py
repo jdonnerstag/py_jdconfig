@@ -68,20 +68,9 @@ class ImportPlaceholder(Placeholder):
             self.loader is not None
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
-        rtn = self.loader.load(file)
+        rtn, _ = self.loader.load(file)
 
-        if ctx.file_imports is None:
-            ctx.file_imports = []
-        fname = self.loader.files_loaded[-1]
-        if fname in ctx.file_imports:
-            raise ConfigException(f"Import file recursion detected: {ctx.file_imports}")
-        ctx.file_imports.append(fname)
-
-        # Update the default root object to resolve against.
-        # Default for {ref:} is 'within the file'
-        # Use {global:} to reference the absolut root.
         ctx.files.append(rtn)
-        ctx.memo = None
 
         return rtn
 

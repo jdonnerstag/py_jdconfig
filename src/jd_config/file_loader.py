@@ -13,6 +13,7 @@ from typing import Mapping, Optional
 import yaml
 
 from .deep_dict import DeepDict
+from .utils import ContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -23,6 +24,7 @@ class ConfigFileLoader:
 
     def __init__(self) -> None:
         self.files_loaded = []
+        self.cache: dict[str, ContainerType] = {}
 
     def make_filename(
         self, fname: Path, config_dir: Path, env: Optional[str] = None
@@ -38,8 +40,12 @@ class ConfigFileLoader:
         return fname
 
     def load(
-        self, fname: Path | StringIO, config_dir: Path | None, env: str | None = None
-    ) -> Mapping:
+        self,
+        fname: Path | StringIO,
+        config_dir: Path | None,
+        env: str | None = None,
+        cache: bool = True,
+    ) -> tuple[Mapping, tuple[Path, Path]]:
         """Load a Yaml config file, and if an env var is defined, also load
         the environment specific overlay.
         """
@@ -50,13 +56,16 @@ class ConfigFileLoader:
         if isinstance(fname, Path):
             fname = self.make_filename(fname, config_dir=config_dir, env=None)
 
-        data_1 = self.load_one_file(fname)
+        data_1 = self.load_one_file(fname, cache=cache)
         data_2 = None
+        fname_1 = fname
+        fname_2 = None
 
         if env and isinstance(fname, Path):
             try:
                 fname = self.make_filename(fname, config_dir=None, env=env)
-                data_2 = self.load_one_file(fname)
+                data_2 = self.load_one_file(fname, cache=cache)
+                fname_2 = fname
 
             except FileNotFoundError:
                 pass  # This is perfectly ok. The file may not exist.
@@ -65,27 +74,31 @@ class ConfigFileLoader:
             # Inplace update of data_1
             DeepDict(data_1).deep_update(data_2)
 
-        return data_1
+        return data_1, (fname_1, fname_2)
 
-    def load_one_file(self, fname: Path | StringIO) -> Mapping:
+    def load_one_file(self, fname: Path | StringIO, cache: bool = True) -> Mapping:
         """Load a Yaml config file, determine and load 'imports', and
         pre-process for efficient, yet lazy, key/value resolution.
 
         :param fname: the yaml file to load. Default: config file configured in
             config.ini
         """
-        if isinstance(fname, Path):
-            fname = fname.resolve(fname)
-            self.files_loaded.append(fname)
-        else:
-            self.files_loaded.append("<data>")
+
+        if not isinstance(self.cache, dict):
+            cache = False
 
         if isinstance(fname, Path):
-            # self.file_recursions nicely shows the circle of imports
-            # self.files_loaded is nice to see the sequence of loaded files.
-            data = self.load_yaml_raw_with_filename(fname)
+            fname = fname.resolve(fname)
+            if cache and fname in self.cache:
+                data = self.cache[fname]
+            else:
+                self.files_loaded.append(fname)
+                data = self.load_yaml_raw_with_filename(fname)
+                if cache:
+                    self.cache[fname] = data
         else:
             # Assuming it is an IO stream of some sort
+            self.files_loaded.append("<data>")
             data = self.load_yaml_raw_with_fd(fname)
 
         return data

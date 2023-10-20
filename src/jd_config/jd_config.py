@@ -138,6 +138,13 @@ class JDConfig(ConfigIniMixin):
 
         return self.getter.to_yaml(self.data, path, stream=stream, **kvargs)
 
+    def validate(self, path: Optional[PathType] = None) -> dict:
+        """Validate the configuration by accessing and resolving all value,
+        all file imports, all environment files, etc.."""
+
+        # TODO add env name, to validate a specifc env setup
+        return self.to_dict(path, resolve=True)
+
     def resolve_all(self, path: Optional[PathType] = None) -> DeepDict:
         """Resolve configs in memory and replace in memory the current one.
 
@@ -148,6 +155,7 @@ class JDConfig(ConfigIniMixin):
         :param path: Only resolve config within the subtree
         """
 
+        logger.debug("Resolve all config placeholders for '%s'", path)
         data = self.getter.to_dict(self.data, path, resolve=True)
 
         if not path:
@@ -165,7 +173,7 @@ class JDConfig(ConfigIniMixin):
         fname: Optional[Path | StringIO] = None,
         config_dir: Optional[Path] = None,
         env: str | None = None,
-    ) -> Mapping:
+    ) -> tuple[Mapping, tuple[Path, Path]]:
         """Main entry point to load configs"
 
         The filename can be relativ or absolute. If relativ, it will be loaded
@@ -190,11 +198,15 @@ class JDConfig(ConfigIniMixin):
         env = env or self.env
 
         # Load the file
-        data = self.config_file_loader.load(fname, config_dir, env)
+        data, files = self.config_file_loader.load(fname, config_dir, env)
 
         # Make the yaml config data accessible via JDConfig
         if self.data is None and isinstance(data, ContainerType):
             self.data = DeepDict(data, getter=self.getter)
+
+            if self.ini["resolve_eagerly"]:
+                self.data = self.resolve_all()
+
             return self.data
 
-        return data
+        return data, files

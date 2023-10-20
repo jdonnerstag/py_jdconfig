@@ -25,16 +25,16 @@ def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
     cfg = ConfigFileLoader()
-    data = cfg.load(Path("config.yaml"), config_dir=data_dir("configs-1"))
+    data, _ = cfg.load(Path("config.yaml"), config_dir=data_dir("configs-1"))
     assert data
 
     # With an absolute filename, the config_dir is ignored. Which however
     # only works as long as no {import: ..} placeholders are used.
     cfg = ConfigFileLoader()
     file = data_dir("configs-1", "config.yaml")
-    data = cfg.load(file.absolute(), config_dir=Path("/this/likely/does/not/exist"))
+    data, _ = cfg.load(file.absolute(), config_dir=Path("/this/likely/does/not/exist"))
     assert data
 
     # It shouldn't matter
-    data = cfg.load(file.absolute(), config_dir=None)
+    data, _ = cfg.load(file.absolute(), config_dir=None)
     assert data
