@@ -51,10 +51,7 @@ class JDConfig(ConfigIniMixin):
         """
         ConfigIniMixin.__init__(self, ini_file=ini_file)
 
-        # Why this approach and not a Mixin/Base Class. ConfigFileLoader
-        # is comparatively large with a number of functions. Functions
-        # which I consider private, but python has no means to mark them
-        # private. This is a more explicit approach.
+        # Utils to load the config file(s)
         self.config_file_loader = ConfigFileLoader()
 
         # We want access to the placeholder registry which is maintained by ValueReader.
@@ -63,13 +60,13 @@ class JDConfig(ConfigIniMixin):
         # We want the same Getter with the same configuration everywhere
         self.getter = DefaultConfigGetter(value_reader=self.value_reader)
 
-        # Associate the 'file loader' with the ImportPlaceholder
+        # The ImportPlaceholder need to know how to load files
         orig_import_placeholder = self.value_reader.registry["import"]
         self.value_reader.registry["import"] = partial(
             orig_import_placeholder, loader=self
         )
 
-        # Associate the global config root with GlobalRefPlaceholder
+        # The GlobalRefPlaceholder needs to know the global config
         orig_global_placeholder = self.value_reader.registry["global"]
         self.value_reader.registry["global"] = partial(
             orig_global_placeholder, root_cfg=self.config
@@ -81,6 +78,87 @@ class JDConfig(ConfigIniMixin):
     def config(self) -> ContainerType:
         """Get the config object"""
         return self.data
+
+    @property
+    def config_dir(self) -> str | None:
+        """Default working directory to load/import files"""
+        return self.ini["config_dir"]
+
+    @property
+    def config_file(self) -> str | None:
+        """The main config file"""
+        return self.ini["config_file"]
+
+    @property
+    def env(self) -> str | None:
+        """The config environment, such as dev, test, prod"""
+        return self.ini["env"]
+
+    @property
+    def placeholder_registry(self) -> RegistryType:
+        """The registry of supported Placeholder handlers"""
+        return self.value_reader.registry
+
+    @property
+    def files_loaded(self) -> list[Path]:
+        """The list of files loaded so far"""
+        return self.config_file_loader.files_loaded
+
+    def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
+        """Get a config value (or node)"""
+        return self.data.get(path, default=default, resolve=resolve)
+
+    def walk(
+        self,
+        path: PathType = (),
+        *,
+        nodes_only: bool = False,
+        resolve: bool = True,
+        ctx: Optional[GetterContext] = None
+    ) -> Iterator[WalkerEvent]:
+        """Walk a subtree, with lazily resolving node values"""
+
+        path = self.getter.normalize_path(path)
+        root = self.get(path, resolve=True)
+        ctx = self.getter.new_context(
+            data=root, files=[self.data], skip_resolver=not resolve
+        )
+
+        yield from self.getter.walk_tree(ctx, nodes_only=nodes_only)
+
+    def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
+        """Walk the config items with an optional starting point, and create a
+        dict from it.
+        """
+
+        return self.getter.to_dict(self.data, path, resolve=resolve)
+
+    def to_yaml(self, path: Optional[PathType] = None, stream=None, **kvargs):
+        """Convert the configs (or part of it), into a yaml document"""
+
+        return self.getter.to_yaml(self.data, path, stream=stream, **kvargs)
+
+    def resolve_all(self, path: Optional[PathType] = None) -> DeepDict:
+        """Resolve configs in memory and replace in memory the current one.
+
+        Different to 'to_dict()' which creates a copy of the tree and returns
+        it, 'resolve_all()' will modify the config. Though, in memory only.
+        The files are never modified.
+
+        :param path: Only resolve config within the subtree
+        """
+
+        data = self.getter.to_dict(self.data, path, resolve=True)
+
+        if not path:
+            if not isinstance(data, DeepDict) and isinstance(data, ContainerType):
+                data = DeepDict(data, getter=self.getter)
+
+            self.data = data
+        else:
+            self.data.set(path, data)
+
+        return data
 
     def load(
         self,
@@ -120,45 +198,3 @@ class JDConfig(ConfigIniMixin):
             return self.data
 
         return data
-
-    @property
-    def placeholder_registry(self) -> RegistryType:
-        """The registry of supported Placeholder handlers"""
-        return self.value_reader.registry
-
-    @property
-    def files_loaded(self) -> list[Path]:
-        """The list of files loaded so far"""
-        return self.config_file_loader.files_loaded
-
-    def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
-        """Get a config value (or node)"""
-        return self.data.get(path, default=default, resolve=resolve)
-
-    def walk(
-        self,
-        path: PathType = (),
-        *,
-        nodes_only: bool = False,
-        resolve: bool = True,
-        ctx: Optional[GetterContext] = None
-    ) -> Iterator[WalkerEvent]:
-        """Walk a subtree, with lazily resolving node values"""
-
-        path = self.getter.normalize_path(path)
-        root = self.get(path, resolve=True)
-        ctx = self.getter.new_context(data=root, skip_resolver=not resolve)
-
-        yield from self.getter.walk_tree(ctx, nodes_only=nodes_only)
-
-    def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
-        """Walk the config items with an optional starting point, and create a
-        dict from it.
-        """
-
-        return self.getter.to_dict(self.data, path, resolve=resolve)
-
-    def to_yaml(self, path: Optional[PathType] = None, stream=None, **kvargs):
-        """Convert the configs (or part of it), into a yaml document"""
-
-        return self.getter.to_yaml(self.data, path, stream=stream, **kvargs)

@@ -10,6 +10,7 @@ from typing import Any, Mapping, Optional, Sequence
 
 import yaml
 
+from .deep_search_mixin import DeepSearchMixin
 from .objwalk import (
     DropContainerEvent,
     NewMappingEvent,
@@ -23,7 +24,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepExportMixin:
+class DeepExportMixin(DeepSearchMixin):
     """A mixin to export configs into dict or yaml structures.
 
     Dependencies:
@@ -43,18 +44,13 @@ class DeepExportMixin:
         dict from it.
         """
 
-        root = data
-        data = self.get(data, path)
+        ctx = self.new_context(data, files=[data], skip_resolver=not resolve)
 
-        def cb_get(data, key, _path):
-            ctx = self.new_context(data, root=root)
-            ctx.args["skip_resolver"] = not resolve
-            return self.cb_get(data, key, ctx)
-
+        ctx.data = self.get(data, path)
         cur: Mapping | Sequence = {}
         stack = [cur]
 
-        for event in objwalk(data, nodes_only=False, cb_get=cb_get):
+        for event in self.walk_tree(ctx, nodes_only=False):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 new = event.new()
                 stack.append(new)

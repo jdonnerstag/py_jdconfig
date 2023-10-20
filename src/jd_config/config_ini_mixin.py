@@ -26,7 +26,9 @@ class EnvInterpolation(configparser.BasicInterpolation):
 class ConfigIniMixin:
     """A mixin to load the Config specific configurations."""
 
-    def __init__(self, *, ini_file: str = "config.ini") -> None:
+    def __init__(
+        self, *, ini_env: str | None = None, ini_file: str | None = "config.ini"
+    ) -> None:
         """Initialize.
 
         User and Config specific configurations are kept separate.
@@ -41,6 +43,7 @@ class ConfigIniMixin:
         config_file = config.yaml
         env_var =
         default_env = prod
+        resolve_eagerly = False
         ```
 
         Some of the JDConfig configs determine where to find the user
@@ -54,6 +57,9 @@ class ConfigIniMixin:
             interpolation=EnvInterpolation(), allow_no_value=True
         )
 
+        if ini_env and not ini_file:
+            ini_file = os.environ.get(ini_env, None)
+
         if ini_file:
             logger.debug("Config: Load ini-file: '%s'", ini_file)
             config.read(ini_file)
@@ -63,7 +69,9 @@ class ConfigIniMixin:
         except KeyError:
             config = {}
 
-        self.config_dir = config.get("config_dir", ".")
-        self.config_file = config.get("config_file", "config.yaml")
-        self.default_env = config.get("default_env", None)
-        self.env = config.get("env", self.default_env)
+        self.ini = {}
+        self.ini["config_dir"] = config.get("config_dir", ".")
+        self.ini["config_file"] = config.get("config_file", "config.yaml")
+        self.ini["default_env"] = config.get("default_env", None)
+        self.ini["env"] = config.get("env", self.ini.get("default_env", None))
+        self.ini["resolve_eagerly"] = bool(config.get("resolve_eagerly", False))

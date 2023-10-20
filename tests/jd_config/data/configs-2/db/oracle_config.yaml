@@ -6,7 +6,7 @@ DB_USER: '{env: DB_USER, ???}'
 DB_PASS: '{env: DB_PASS, ???}'
 DB_NAME: '{env: DB_NAME, ???}'
 
-# Lazy load the connection string. The actuall value will never be stored in config (not even in memory)
+# Lazy load the connection string. The actual value will never be stored in config (not even in memory)
 connection_string: "{global:db}:{ref:DB_USER}/{ref:DB_PASS}@{ref:DB_NAME}"
 db_job_name: IMPORT_FILES
 

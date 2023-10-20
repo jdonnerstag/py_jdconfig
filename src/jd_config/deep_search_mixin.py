@@ -6,6 +6,8 @@ Extended standard dict like getter to also support deep paths, and also
 search patterns, such as 'a..c', 'a.*.c'
 """
 
+from copy import copy
+from dataclasses import replace
 import logging
 from typing import Any, Iterator, Mapping
 
@@ -97,7 +99,13 @@ class DeepSearchMixin:
     ) -> Iterator[WalkerEvent]:
         """Like walking a deep filesystem, walk a deep object structure"""
 
+        files = copy(ctx.files)
+
         def cb_get(data, key, _path):
-            return self.cb_get(data, key, ctx=ctx)
+            logger.debug("objwalk: path=%s", _path + (key,))
+            new_ctx = replace(ctx, data=data, files=copy(files))
+            rtn = self.cb_get(data, key, ctx=new_ctx)
+            new_ctx.copy_files_to(files)
+            return rtn
 
         yield from objwalk(ctx.data, nodes_only=nodes_only, cb_get=cb_get)

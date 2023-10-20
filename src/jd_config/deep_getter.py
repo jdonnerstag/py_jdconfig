@@ -18,6 +18,7 @@ Either the base class or a subclass should support:
   replace an existing int or string value, with a dict or list.
 """
 
+from copy import copy
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,7 +57,7 @@ class GetterContext:
 
     # The root object of the yaml or json file, required for resolving
     # placeholders
-    root: Optional[ContainerType] = None
+    files: Optional[ContainerType] = None
 
     file_imports: Optional[list[Path]] = None
 
@@ -68,8 +69,8 @@ class GetterContext:
     memo: Optional[list] = None
 
     def __post_init__(self) -> None:
-        if self.root is None:
-            self.root = self.data
+        if self.files is None:
+            self.files = [self.data]
 
     @property
     def value(self) -> Any:
@@ -101,6 +102,11 @@ class GetterContext:
 
         self.memo.append(placeholder)
 
+    def copy_files_to(self, to: list):
+        """Copy the current file content list to the list provided"""
+        to.clear()
+        to.extend(self.files)
+
 
 class DeepGetter:
     """Getter for deep container structures (Mapping and NonStrSequence).
@@ -121,7 +127,7 @@ class DeepGetter:
         *,
         on_missing: Optional[OnMissing] = None,
         _memo: Optional[list] = None,
-        root: Optional[ContainerType] = None,
+        files: Optional[list[ContainerType]] = None,
         **kvargs,
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
@@ -131,8 +137,11 @@ class DeepGetter:
         if not callable(on_missing):
             on_missing = self.on_missing
 
+        if files:
+            files = copy(files)
+
         return GetterContext(
-            data, root=root, on_missing=on_missing, memo=_memo, args=kvargs
+            data, files=files, on_missing=on_missing, memo=_memo, args=kvargs
         )
 
     def cb_get(self, data, key, ctx: GetterContext) -> Any:
@@ -201,6 +210,7 @@ class DeepGetter:
         :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
         """
 
+        logger.debug("Config get(path=%s)", path)
         if ctx is None:
             ctx = self.new_context(data, _memo=_memo)
         else:

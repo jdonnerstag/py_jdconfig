@@ -14,7 +14,7 @@ import dataclasses
 import logging
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
@@ -49,7 +49,7 @@ class ImportPlaceholder(Placeholder):
     """Import Placeholder: '{import: <file>[, <replace=False>]}'"""
 
     file: str
-    loader: Optional[LoaderType] = None
+    loader: Optional[LoaderType] = field(default=None, repr=False)
     # TODO Add an optional cache flag
 
     def __post_init__(self):
@@ -80,7 +80,7 @@ class ImportPlaceholder(Placeholder):
         # Update the default root object to resolve against.
         # Default for {ref:} is 'within the file'
         # Use {global:} to reference the absolut root.
-        ctx.root = rtn
+        ctx.files.append(rtn)
         ctx.memo = None
 
         return rtn
@@ -98,10 +98,13 @@ class RefPlaceholder(Placeholder):
         assert self.path
 
     def resolve(self, getter, ctx: "GetterContext"):
-        data = ctx.root or ctx.data
+        data = ctx.files[-1]
         new_ctx = dataclasses.replace(ctx)
+        return self._resolve_inner(getter, new_ctx, data)
+
+    def _resolve_inner(self, getter, ctx: "GetterContext", data):
         try:
-            obj = getter.get(data, self.path, ctx=new_ctx)
+            obj = getter.get(data, self.path, ctx=ctx)
             return obj
         except (
             KeyError,
@@ -132,22 +135,12 @@ class GlobalRefPlaceholder(RefPlaceholder):
 
     # The order of the arguments is: all the attributes from the parent(s)
     # class(es) first then those of the child class.
-    root_cfg: Optional[ConfigFn] = None
+    root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
     def resolve(self, getter, ctx: "GetterContext"):
-        # Temporarily change the 'root' to resolve against
-        orig_root = ctx.root
-        try:
-            if self.root_cfg is not None:
-                ctx.root = self.root_cfg()
-            else:
-                logger.warning(
-                    "GlobalRefPlaceholder: Bug. No global config object defined"
-                )
-
-            return super().resolve(getter, ctx)
-        finally:
-            ctx.root = orig_root
+        data = ctx.files[0]
+        new_ctx = dataclasses.replace(ctx, files=[data])
+        return self._resolve_inner(getter, new_ctx, data)
 
 
 @dataclass

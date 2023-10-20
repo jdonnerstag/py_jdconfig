@@ -62,7 +62,6 @@ class ResolverMixin:
         the pieces together for the actuall yaml value.
         """
 
-        logger.debug("resolve(%s)", value)
         key = value
 
         if isinstance(value, list) and len(value) == 1:
@@ -74,6 +73,7 @@ class ResolverMixin:
                 value = value[0]
 
         if isinstance(value, Placeholder):
+            logger.debug("resolve(%s)", value)
             placeholder = value
             ctx.add_memo(placeholder)
             value = placeholder.resolve(self, ctx)

@@ -28,9 +28,9 @@ def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
     cfg = JDConfig(ini_file=None)
-    cfg.config_dir = data_dir("configs-1")
-    cfg.config_file = "config.yaml"
-    cfg.default_env = "dev"
+    cfg.ini["config_dir"] = data_dir("configs-1")
+    cfg.ini["config_file"] = "config.yaml"
+    cfg.ini["default_env"] = "dev"
 
     data = cfg.load()
     assert data
@@ -83,8 +83,8 @@ def test_load_jdconfig_4():
     # config-4 is is about simple {import:}, {ref:} and {global:}
 
     cfg = JDConfig(ini_file=None)
-    cfg.env = None  # Make sure, we are not even trying to load an env file
-    cfg.config_dir = data_dir("configs-4")  # configure the directory for imports
+    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    cfg.ini["config_dir"] = data_dir("configs-4")  # configure the directory for imports
     data = cfg.load("config.yaml")
     assert data
 
@@ -109,13 +109,11 @@ def test_load_jdconfig_2(monkeypatch):
     # where the actually path refers to config value.
 
     cfg = JDConfig(ini_file=None)
-    cfg.env = None  # Make sure, we are not even trying to load an env file
-    cfg.config_dir = data_dir(
-        "configs-2"
-    )  # config-2 has imports. Make sure, it is available for imports.
-    data = cfg.load(
-        "main_config.yaml"
-    )  # if config_dir provided to load() it is only used for this one file
+    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    # config-2 has imports. Make sure, it is available for imports.
+    cfg.ini["config_dir"] = data_dir("configs-2")
+    # if config_dir provided to load() it is only used for this one file
+    data = cfg.load("main_config.yaml")
     assert data
 
     monkeypatch.setenv("DB_USER", "dbuser")
@@ -166,7 +164,7 @@ def test_load_jdconfig_3():
     # config-3 has a file recursion
 
     cfg = JDConfig(ini_file=None)
-    cfg.config_dir = data_dir("configs-3")
+    cfg.ini["config_dir"] = data_dir("configs-3")
 
     # Since we lazy resolve, loading the main file will not raise an exception
     cfg.load("config.yaml")
@@ -221,8 +219,8 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     monkeypatch.setenv("DB_NAME", "dbname")
 
     cfg = JDConfig(ini_file=None)
-    cfg.env = "jd_dev"  # Apply own env specific changes
-    cfg.config_dir = data_dir("configs-2")
+    cfg.ini["env"] = "jd_dev"  # Apply own env specific changes
+    cfg.ini["config_dir"] = data_dir("configs-2")
     data = cfg.load("main_config.yaml")
     assert data
 
@@ -243,3 +241,23 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert cfg.get("database.connection_string", None) is None
 
     assert cfg.get("debug.log_progress_after") == 20_000
+
+
+def test_resolve_all(monkeypatch):
+    # config-2 is using some import placeholders, including dynamic ones,
+    # where the actually path refers to config value.
+
+    cfg = JDConfig(ini_file=None)
+    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    # config-2 has imports. Make sure, it is available for imports.
+    cfg.ini["config_dir"] = data_dir("configs-2")
+    # if config_dir provided to load() it is only used for this one file
+    data = cfg.load("main_config.yaml")
+    assert data
+
+    monkeypatch.setenv("DB_USER", "dbuser")
+    monkeypatch.setenv("DB_PASS", "dbpass")
+    monkeypatch.setenv("DB_NAME", "dbname")
+
+    data = cfg.resolve_all()
+    assert data

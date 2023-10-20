@@ -1,15 +1,11 @@
 # Todos / Requirements
 
-- funktioniert objwalk zusammen mit resolve, wo resolve z.B. auf ein Dict verweist?
-- on missing, it should not be required to add the new object to the parent.
 - right now we are re-importing config file all the time => cache
 - I like structured configs with dataclass and pydantic
-- support making a subtree read-only
 - We construct one config "dict", not multiple layers as we had earlier. But we need
   some debugging, tracing/logging. May be a list of add/change/deletes with filename
   and line number? Also when replacing syntax with real values. Why not replace the
   values eagerly? => Because if the referenced value changes, then its outdated.
-- Maybe we should additional have std yaml '!include config.yaml'
 - Error handling can be improved
 - I'm no longer 100% convinced that keeping filename, line, and col is adding lots of value
   Can we make this flexible, such as that we have 2 implementations and both are working fine?
@@ -18,23 +14,18 @@
 - Allow the env overlays to be in a different directory. Does that make any sense?
 - Env placeholders could be resolved early. We need a generic approach, that allows
   the placeholder implementation to decide.
-- Not 100% sure the effort with preprocessing creates enough value, vs. lazy (and repeated)
-  evaluation of {..} constructs.
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
-- Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
 - When dumping config, allow to add file, line, col as comment for debugging.
 - For debugging, log placeholder replacements
-- We need a more *efficient* walk implementation. One that supports `a.b[2]` but also `c..c2[*]`
-- CONFIG_INI_FILE env to find config.ini file
 - Make sure that {env:} results are not resolved any further. Else risky configs might be
   injected.
-- {global:} is only a stub so far, but not yet implemented
 - Add {delete:} to allow env files to remove a node
-- Allow to use any *.ini file, since we just use the [config] section
 - How should the config.ini look like, and the plugin config, to retrieve a config from remote.
 - may be add some stats feature: number of config values; list imported files; number of {ref:},
-  max depth; list of envs referenced; 
+  max depth; list of envs referenced;
+- a resolve_all() function which resolves all. Main use case is: validate the config and avoid
+  config related errors much later. We may add resolve_eager a flag in config.ini
 
 Done:
 
@@ -90,7 +81,17 @@ Done:
   unfortunately that is rarely the case. And the "workarounds" make it very obvious:
   copy the file, append the env name, and simply change them. If we don't support
   deletes, how to replace dicts and lists, vs. values only? (see test cases)
-
+- on missing, it should not be required to add the new object to the parent.
+- Maybe we should additional have std yaml '!include config.yaml' => No. {import:} is
+  more flexible and consistent
+- Not 100% sure the effort with preprocessing creates enough value, vs. lazy (and repeated)
+  evaluation of {..} constructs. => all lazy right now
+- Separate the loader and access to the config data. Add DeepAccessMixin to config, not loader.
+- We need a more *efficient* walk implementation. One that supports `a.b[2]` but also `c..c2[*]`
+- {global:} is only a stub so far, but not yet implemented
+- Implemented r".." for raw text, which will not be interpreted
+- CONFIG_INI_FILE env to find config.ini file => now possible to provide env var name
+- Allow to use any *.ini file, since we just use the [config] section => done
 
 # Nice to know
 

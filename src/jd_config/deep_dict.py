@@ -63,11 +63,13 @@ class DeepDict(Mapping, DeepUpdateMixin):
         root: Optional[Mapping] = None,
         path: Optional[PathType] = None,
         getter: Optional[DeepGetter] = None,
+        read_only: bool = False,
     ) -> None:
         self.getter = self.new_getter() if getter is None else getter
         self.obj = obj
         self.root = obj if root is None else root
         self.path = () if path is None else self.getter.normalize_path(path)
+        self.read_only = read_only
 
         DeepUpdateMixin.__init__(self)
 
@@ -79,6 +81,17 @@ class DeepDict(Mapping, DeepUpdateMixin):
         """Register (add or replace) a placeholder handler"""
 
         self.getter.value_reader.registry[name] = type_
+
+    def clone(self, obj: ContainerType, path: PathType) -> "DeepDict":
+        """Create a clone with just the obj and path changed"""
+
+        return DeepDict(
+            obj=obj,
+            root=self.root,
+            path=path,
+            getter=self.getter,
+            read_only=self.read_only,
+        )
 
     # pylint: disable=arguments-renamed
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
@@ -96,16 +109,22 @@ class DeepDict(Mapping, DeepUpdateMixin):
         """
 
         getter = self.getter
-        ctx = getter.new_context(self.obj, root=self.root, skip_resolver=not resolve)
+        ctx = getter.new_context(self.obj, files=[self.root], skip_resolver=not resolve)
         path = getter.normalize_path(path)
         rtn = getter.get(self.obj, path, default=default, ctx=ctx)
         if isinstance(rtn, ContainerType):
-            rtn = DeepDict(rtn, self.root, self.path + path, self.getter)
+            rtn = self.clone(rtn, self.path + path)
 
         return rtn
 
+    def _check_read_only(self, path):
+        if self.read_only:
+            raise ConfigException(f"DeepDict instance is read_only: 'path={path}'")
+
     def delete(self, path: PathType, *, exception: bool = True) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
+
+        self._check_read_only(path)
 
         path = self.getter.normalize_path(path)
         assert path
@@ -183,6 +202,8 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :param replace_path: If true, then consider parts missing, of their not containers
         :return: the old value
         """
+
+        self._check_read_only(path)
 
         path = self.getter.normalize_path(path)
         if not path:

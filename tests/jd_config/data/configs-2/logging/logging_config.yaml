@@ -3,6 +3,9 @@
 version: 1
 disable_existing_loggers: False
 
+log_dir: "{global:log_dir}"
+timestamp: "{global:timestamp}"
+
 formatters:
     simple:
         format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

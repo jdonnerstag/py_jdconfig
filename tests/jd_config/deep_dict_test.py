@@ -184,3 +184,12 @@ def test_bespoke_placeholder():
     data = DeepDict(cfg)
     data.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     assert data.get("a") == "it's me"
+
+
+def test_read_only():
+    data = DeepDict(deepcopy(DATA))
+    assert not data.read_only
+    data.set("a", "aa")
+    data.read_only = True
+    with pytest.raises(ConfigException):
+        data.set("a", "aa")
