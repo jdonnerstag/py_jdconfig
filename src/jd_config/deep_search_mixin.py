@@ -13,7 +13,14 @@ from typing import Any, Iterator, Mapping
 
 from .config_path import ConfigPath
 from .deep_getter import GetterContext
-from .objwalk import WalkerEvent, objwalk
+from .objwalk import (
+    DropContainerEvent,
+    NewMappingEvent,
+    NewSequenceEvent,
+    NodeEvent,
+    WalkerEvent,
+    objwalk,
+)
 from .utils import ConfigException, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -99,16 +106,22 @@ class DeepSearchMixin:
     ) -> Iterator[WalkerEvent]:
         """Like walking a deep filesystem, walk a deep object structure"""
 
-        files = copy(ctx.files)
+        ctx_stack = [ctx]
 
         def cb_get(data, key, _path):
             logger.debug("objwalk: path=%s", _path + (key,))
-            if not _path:
-                while len(files) > 1:
-                    files.pop()
-            new_ctx = replace(ctx, data=data, files=copy(files))
-            rtn = self.cb_get(data, key, ctx=new_ctx)
-            new_ctx.copy_files_to(files)
-            return rtn
+
+            while (len(ctx_stack) - 1) > len(_path):
+                ctx_stack.pop()
+
+            if len(_path) >= (len(ctx_stack) - 1):
+                cur_ctx = ctx_stack[-1]
+                new_ctx = replace(cur_ctx, data=data, files=cur_ctx.files.copy())
+                ctx_stack.append(new_ctx)
+
+            cur_ctx = ctx_stack[-1]
+            cur_ctx.memo = None
+
+            return self.cb_get(data, key, ctx=cur_ctx)
 
         yield from objwalk(ctx.data, nodes_only=nodes_only, cb_get=cb_get)

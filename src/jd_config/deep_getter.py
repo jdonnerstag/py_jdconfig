@@ -57,7 +57,7 @@ class GetterContext:
 
     # The root object of the yaml or json file, required for resolving
     # placeholders
-    files: Optional[ContainerType] = None
+    files: Optional[list[ContainerType]] = None
 
     file_imports: Optional[list[Path]] = None
 

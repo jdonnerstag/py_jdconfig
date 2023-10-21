@@ -26,6 +26,7 @@
 - add "__file__" to the config for easy access? Alternative: a simple class consisting
   of file name and data? Essentially dict extended with file_name attribute?
 - The error message should at least show the filename
+
 Done:
 
 - OmegaConf can use directories, e.g. to support mssql, postgres, oracle, or
