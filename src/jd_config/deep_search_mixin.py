@@ -103,6 +103,9 @@ class DeepSearchMixin:
 
         def cb_get(data, key, _path):
             logger.debug("objwalk: path=%s", _path + (key,))
+            if not _path:
+                while len(files) > 1:
+                    files.pop()
             new_ctx = replace(ctx, data=data, files=copy(files))
             rtn = self.cb_get(data, key, ctx=new_ctx)
             new_ctx.copy_files_to(files)

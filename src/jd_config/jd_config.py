@@ -173,6 +173,7 @@ class JDConfig(ConfigIniMixin):
         fname: Optional[Path | StringIO] = None,
         config_dir: Optional[Path] = None,
         env: str | None = None,
+        cache: bool = True,
     ) -> tuple[Mapping, tuple[Path, Path]]:
         """Main entry point to load configs"
 
@@ -198,7 +199,7 @@ class JDConfig(ConfigIniMixin):
         env = env or self.env
 
         # Load the file
-        data, files = self.config_file_loader.load(fname, config_dir, env)
+        data, files = self.config_file_loader.load(fname, config_dir, env, cache)
 
         # Make the yaml config data accessible via JDConfig
         if self.data is None and isinstance(data, ContainerType):

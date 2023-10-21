@@ -49,8 +49,8 @@ class ImportPlaceholder(Placeholder):
     """Import Placeholder: '{import: <file>[, <replace=False>]}'"""
 
     file: str
+    cache: bool = field(default=True, repr=False)
     loader: Optional[LoaderType] = field(default=None, repr=False)
-    # TODO Add an optional cache flag
 
     def __post_init__(self):
         assert self.file
@@ -68,7 +68,7 @@ class ImportPlaceholder(Placeholder):
             self.loader is not None
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
-        rtn, _ = self.loader.load(file)
+        rtn, _ = self.loader.load(file, cache=self.cache)
 
         ctx.files.append(rtn)
 
@@ -81,7 +81,6 @@ class RefPlaceholder(Placeholder):
 
     path: str
     default_val: Any = None
-    file_root: Optional[Mapping] = None
 
     def __post_init__(self):
         assert self.path

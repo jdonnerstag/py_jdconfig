@@ -8,7 +8,7 @@ Load yaml config files
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Any, Mapping, Optional
 
 import yaml
 
@@ -24,7 +24,13 @@ class ConfigFileLoader:
 
     def __init__(self) -> None:
         self.files_loaded = []
-        self.cache: dict[str, ContainerType] = {}
+        self.cache: dict[Any, ContainerType] = {}
+
+    def clear(self) -> None:
+        """Clear the files list and the cache"""
+
+        self.files_loaded.clear()
+        self.cache.clear()
 
     def make_filename(
         self, fname: Path, config_dir: Path, env: Optional[str] = None

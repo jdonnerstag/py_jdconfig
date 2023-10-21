@@ -53,6 +53,9 @@ class ConfigIniMixin:
         :param ini_file: Path to JDConfig config file. Default: 'config.ini'
         """
 
+        self.ini_file = ini_file
+        self.ini_env_var = ini_env
+
         config = configparser.ConfigParser(
             interpolation=EnvInterpolation(), allow_no_value=True
         )

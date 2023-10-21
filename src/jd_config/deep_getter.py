@@ -62,7 +62,7 @@ class GetterContext:
     file_imports: Optional[list[Path]] = None
 
     # I'm not a fan of dynamically adding attributes to a class.
-    # Arbitrary attribute which extensions may require.
+    # Arbitrary attributes which extensions may require.
     args: Optional[dict] = None
 
     # internal: detect recursions

@@ -1,6 +1,5 @@
 # Todos / Requirements
 
-- right now we are re-importing config file all the time => cache
 - I like structured configs with dataclass and pydantic
 - We construct one config "dict", not multiple layers as we had earlier. But we need
   some debugging, tracing/logging. May be a list of add/change/deletes with filename
@@ -24,7 +23,9 @@
 - Config from remote: How should the config.ini look like, and the plugin config, to retrieve such configs
 - may be add some stats feature: number of config values; list imported files; number of {ref:},
   max depth; list of envs referenced;
-
+- add "__file__" to the config for easy access? Alternative: a simple class consisting
+  of file name and data? Essentially dict extended with file_name attribute?
+- The error message should at least show the filename
 Done:
 
 - OmegaConf can use directories, e.g. to support mssql, postgres, oracle, or
@@ -90,6 +91,7 @@ Done:
 - Implemented r".." for raw text, which will not be interpreted
 - CONFIG_INI_FILE env to find config.ini file => now possible to provide env var name
 - Allow to use any *.ini file, since we just use the [config] section => done
+- right now we are re-importing config file all the time => cache
 
 # Nice to know
 
