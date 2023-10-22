@@ -25,7 +25,7 @@ def data_dir(*args) -> Path:
     return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
-def assertTrace(trace_1, path, placeholder = None, file=None) -> None:
+def assertTrace(trace_1, path, placeholder=None, file=None) -> None:
     assert trace_1.path == path
 
     if placeholder:
@@ -163,21 +163,21 @@ def test_not_found_import():
         data.get("c.b")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 2)
-        assertTrace(exc.trace[0], ("c","b"), "x", None)
+        assertTrace(exc.trace[0], ("c", "b"), "x", None)
         assertTrace(exc.trace[1], ("x",), None, None)
 
     try:
         data.get("c.c")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 2)
-        assertTrace(exc.trace[0], ("c","c"), "x", None)
+        assertTrace(exc.trace[0], ("c", "c"), "x", None)
         assertTrace(exc.trace[1], ("x",), None, None)
 
     try:
         data.get("c.d")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
-        assertTrace(exc.trace[0], ("c","d"), "b", None)
+        assertTrace(exc.trace[0], ("c", "d"), "b", None)
         assertTrace(exc.trace[1], ("b",), "x", None)
         assertTrace(exc.trace[2], ("x",), None, None)
 
@@ -185,21 +185,67 @@ def test_not_found_import():
         data.get("c.e")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
-        assertTrace(exc.trace[0], ("c","e"), "c.b", None)
-        assertTrace(exc.trace[1], ("c","b"), "x", None)
+        assertTrace(exc.trace[0], ("c", "e"), "c.b", None)
+        assertTrace(exc.trace[1], ("c", "b"), "x", None)
         assertTrace(exc.trace[2], ("x",), None, None)
 
 
 def test_not_found_env():
-    # TODO
-    pass
+    data = DeepDict({"a": "{env:DOES_NOT_EXIST}", "b": "{ref:a}"})
 
+    try:
+        data.get("a")
+    except ConfigException as exc:
+        assert isinstance(exc.trace, list) and (len(exc.trace) == 1)
+        assertTrace(exc.trace[0], ("a",), None, None)
 
-def test_not_found_global():
-    # TODO
-    pass
+    try:
+        data.get("b")
+    except ConfigException as exc:
+        assert isinstance(exc.trace, list) and (len(exc.trace) == 2)
+        assertTrace(exc.trace[0], ("b",), "a", None)
+        assertTrace(exc.trace[1], ("a",), None, None)
 
 
 def test_not_found_question_mark():
+    data = DeepDict({"a": "???", "b": "{ref:a}"})
+
+    try:
+        data.get("a")
+    except ConfigException as exc:
+        assert isinstance(exc.trace, list) and (len(exc.trace) == 1)
+        assertTrace(exc.trace[0], ("a",), None, None)
+
+    try:
+        data.get("b")
+    except ConfigException as exc:
+        assert isinstance(exc.trace, list) and (len(exc.trace) == 2)
+        assertTrace(exc.trace[0], ("b",), "a", None)
+        assertTrace(exc.trace[1], ("a",), None, None)
+
+
+def test_local_recursion():
+    data = DeepDict({"a": "{ref:b}", "b": "{ref:c}", "c": "{ref:a}"})
+
+    try:
+        data.get("a")
+    except ConfigException as exc:
+        assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
+        assertTrace(exc.trace[0], ("a",), "b", None)
+        assertTrace(exc.trace[1], ("b",), "c", None)
+        assertTrace(exc.trace[2], ("c",), "a", None)
+
+    try:
+        data.get("b")
+    except ConfigException as exc:
+        assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
+
+    try:
+        data.get("c")
+    except ConfigException as exc:
+        assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
+
+
+def test_global_recursion():
     # TODO
     pass

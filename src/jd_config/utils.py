@@ -31,12 +31,17 @@ class Trace:
 class ConfigException(Exception):
     """Base class for Config Exceptions"""
 
-    def __init__(self, *args: object, ctx: "GetterContext" = None) -> None:
+    def __init__(
+        self,
+        *args: object,
+        ctx: "GetterContext" = None,
+        placeholder: "Placeholder" = None
+    ) -> None:
         super().__init__(*args)
 
         trace = []
         if ctx is not None:
-            trace.append(Trace(ctx.cur_path(), None, None))
+            trace.append(Trace(ctx.cur_path(), placeholder, None))
 
         self.trace: list[Trace] = trace
 

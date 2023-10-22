@@ -173,7 +173,7 @@ def test_load_jdconfig_3():
     assert cfg.get("1b.2b.3a") == "aaa"
     assert cfg.get("1b.2b.3b.1a") == "a"
 
-    with pytest.raises(RecursionError):
+    with pytest.raises(ConfigException):
         # Recursion with imports in between
         cfg.get("1b.2b.3b.1b")
 

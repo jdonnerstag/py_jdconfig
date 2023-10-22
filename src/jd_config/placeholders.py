@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
-from .utils import ConfigException, Trace, ContainerType
+from .utils import DEFAULT, ConfigException, Trace, ContainerType
 
 if TYPE_CHECKING:
     from .deep_getter import GetterContext
@@ -40,6 +40,10 @@ class Placeholder(ABC):
     def resolve(self, getter, ctx: "GetterContext"):
         """Resolve the placeholder"""
 
+    def memo_relevant(self) -> bool:
+        """If relevant for Placeholder recursion detection"""
+        return True
+
 
 LoaderType = Callable[[str], Mapping]
 
@@ -57,6 +61,10 @@ class ImportPlaceholder(Placeholder):
         if isinstance(self.file, (str, Path)):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
+
+    def memo_relevant(self) -> bool:
+        """Not relevant for Placeholder recursion detection"""
+        return False
 
     def resolve(self, getter, ctx: "GetterContext"):
         if hasattr(getter, "resolve") and callable(getter.resolve):
@@ -86,12 +94,10 @@ class RefPlaceholder(Placeholder):
         assert self.path
 
     def resolve(self, getter, ctx: "GetterContext"):
-        new_ctx = dataclasses.replace(ctx, memo=None)
+        new_ctx = dataclasses.replace(ctx)
         return self._resolve_inner(getter, ctx, new_ctx)
 
-    def _resolve_inner(
-        self, getter, parent_ctx: "GetterContext", ctx: "GetterContext"
-    ):
+    def _resolve_inner(self, getter, parent_ctx: "GetterContext", ctx: "GetterContext"):
         try:
             obj = getter.get(ctx.current_file, self.path, ctx=ctx)
             return obj
@@ -128,8 +134,12 @@ class GlobalRefPlaceholder(RefPlaceholder):
     root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
     def resolve(self, getter, ctx: "GetterContext"):
-        new_ctx = dataclasses.replace(ctx, current_file=ctx.global_file, memo=None)
+        new_ctx = dataclasses.replace(ctx, current_file=ctx.global_file)
         return self._resolve_inner(getter, ctx, new_ctx)
+
+
+class EnvvarConfigException(ConfigException):
+    """EnvPlaceholder related exception"""
 
 
 @dataclass
@@ -137,13 +147,20 @@ class EnvPlaceholder(Placeholder):
     """Environment Variable Placeholder: '{env: <env-var>[, <default>]}'"""
 
     env_var: str
-    default_val: Any = None
+    default_val: Any = DEFAULT
 
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, *_, **__) -> str:
+    def resolve(self, _getter, ctx) -> str:
         value = os.environ.get(self.env_var, self.default_val)
+        if value is DEFAULT:
+            raise EnvvarConfigException(
+                f"Environment does not exist: '{self.env_var}'",
+                ctx=ctx,
+                placeholder=self,
+            )
+
         return value
 
 

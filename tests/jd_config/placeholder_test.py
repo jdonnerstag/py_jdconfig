@@ -18,6 +18,7 @@ from jd_config import (
     ResolverMixin,
 )
 from jd_config.deep_getter import DeepGetter, GetterContext
+from jd_config.utils import DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def test_GlobalRefPlaceholder():
 def test_EnvPlaceholder(monkeypatch):
     obj = EnvPlaceholder(env_var="ENV")
     assert obj.env_var == "ENV"
-    assert obj.default_val is None
+    assert obj.default_val is DEFAULT
 
     # Filename is missing
     with pytest.raises(Exception):
@@ -73,7 +74,7 @@ def test_EnvPlaceholder(monkeypatch):
 
     resolver = ResolverMixin()
     env = EnvPlaceholder("ENV")
-    assert env.resolve(resolver) == "this is a test"
+    assert env.resolve(resolver, None) == "this is a test"
 
 
 def test_resolve():
@@ -189,5 +190,5 @@ def test_detect_recursion():
     resolver = MyConfig()
     ctx = GetterContext(cfg)
     ref = RefPlaceholder("a")
-    with pytest.raises(RecursionError):
+    with pytest.raises(ConfigException):
         assert ref.resolve(resolver, ctx)

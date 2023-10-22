@@ -20,6 +20,10 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
+class MissingConfigException(ConfigException):
+    """'???' denotes a mandatory value. Must be defined in an overlay."""
+
+
 class ResolverMixin:
     """A mixin that extends DeepGetter with a resolver. It resolves. e.g. 'a: {ref:b}'
     such that the reference placeholder gets virtually (not physically) replaced
@@ -49,7 +53,9 @@ class ResolverMixin:
                 value = self.resolve(value, ctx)
 
         if value == "???":
-            raise ConfigException(f"Mandatory config value missing: '{ctx.cur_path()}'")
+            raise MissingConfigException(
+                f"Mandatory config value missing: '{ctx.cur_path()}'", ctx=ctx
+            )
 
         return value
 
@@ -62,8 +68,6 @@ class ResolverMixin:
         the pieces together for the actuall yaml value.
         """
 
-        key = value
-
         if isinstance(value, list) and len(value) == 1:
             value = value[0]
 
@@ -75,14 +79,13 @@ class ResolverMixin:
         if isinstance(value, Placeholder):
             logger.debug("resolve(%s)", value)
             placeholder = value
+            if placeholder.memo_relevant():
+                ctx.add_memo(placeholder)
             value = placeholder.resolve(self, ctx)
 
         if isinstance(value, list):
             value = [self.resolve(x, ctx) for x in value]
             value = "".join(value)
             return value
-
-        if value == "???":
-            raise ConfigException(f"Mandatory config value missing: '{key}'")
 
         return value

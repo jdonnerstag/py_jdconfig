@@ -96,12 +96,13 @@ class GetterContext:
     def add_memo(self, placeholder: Placeholder) -> None:
         """Identify recursions"""
 
+        # TODO current id() which means nothing to anybody.
         if self.memo is None:
             self.memo = []
 
         if placeholder in self.memo:
             self.memo.append(placeholder)
-            raise RecursionError(f"Config recursion detected: {self.memo}")
+            raise ConfigException(f"Config recursion detected: {self.memo}")
 
         self.memo.append(placeholder)
 
@@ -222,11 +223,12 @@ class DeepGetter:
             if _memo is not None:
                 ctx.memo = _memo
 
+        recursions = []
+
         # pylint: disable=redefined-argument-from-local
         for ctx in self.walk_path(ctx, path):
             try:
                 ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
-                ctx.add_memo(id(ctx.data))
             except (KeyError, IndexError, TypeError, ConfigException) as exc:
                 if default is not DEFAULT:
                     return default
@@ -240,6 +242,11 @@ class DeepGetter:
 
                 if not isinstance(ctx.data, ContainerType):
                     return ctx.data
+
+            if id(ctx.data) in recursions:
+                raise ConfigException(f"Recursion detected: '{ctx.cur_path()}'", ctx=ctx)
+
+            recursions.append(id(ctx.data))
 
         # pylint: disable=undefined-loop-variable
         return ctx.data

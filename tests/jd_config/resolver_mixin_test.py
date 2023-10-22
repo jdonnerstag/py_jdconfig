@@ -137,7 +137,7 @@ def test_detect_recursion():
     }
 
     getter = MyConfig()
-    with pytest.raises(RecursionError):
+    with pytest.raises(ConfigException):
         getter.get(cfg, "a")
 
 
