@@ -14,7 +14,7 @@ from typing import Any, Iterator, Mapping, Optional
 from .config_ini_mixin import ConfigIniMixin
 from .deep_dict import DeepDict, DefaultConfigGetter
 from .deep_getter import GetterContext
-from .file_loader import ConfigFileLoader
+from .file_loader import ConfigFile, ConfigFileLoader
 from .objwalk import WalkerEvent
 from .utils import DEFAULT, ContainerType, PathType
 from .value_reader import RegistryType, ValueReader
@@ -174,7 +174,7 @@ class JDConfig(ConfigIniMixin):
         config_dir: Optional[Path] = None,
         env: str | None = None,
         cache: bool = True,
-    ) -> tuple[Mapping, tuple[Path, Path]]:
+    ) -> ConfigFile:
         """Main entry point to load configs"
 
         The filename can be relativ or absolute. If relativ, it will be loaded
@@ -199,15 +199,15 @@ class JDConfig(ConfigIniMixin):
         env = env or self.env
 
         # Load the file
-        data, files = self.config_file_loader.load(fname, config_dir, env, cache)
+        file = self.config_file_loader.load(fname, config_dir, env, cache)
 
         # Make the yaml config data accessible via JDConfig
-        if self.data is None and isinstance(data, ContainerType):
-            self.data = DeepDict(data, getter=self.getter)
+        if self.data is None and isinstance(file, ContainerType):
+            self.data = DeepDict(file, getter=self.getter)
 
             if self.ini["resolve_eagerly"]:
                 self.data = self.resolve_all()
 
             return self.data
 
-        return data, files
+        return file

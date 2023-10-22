@@ -5,7 +5,7 @@
   some debugging, tracing/logging. May be a list of add/change/deletes with filename
   and line number? Also when replacing syntax with real values. Why not replace the
   values eagerly? => Because if the referenced value changes, then its outdated.
-- Error handling can be improved
+- Error handling can be improved. Done, except filenames
 - I'm no longer 100% convinced that keeping filename, line, and col is adding lots of value
   Can we make this flexible, such as that we have 2 implementations and both are working fine?
 - It happens regularly to me, that I forget to put quotes around {..}.
@@ -15,17 +15,16 @@
   the placeholder implementation to decide.
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
+  Some may provide files, others leverage SDKs which provide a Mapping. We need to support both.
 - When dumping config, allow to add file, line, col as comment for debugging.
 - For debugging, log placeholder replacements
 - Make sure that {env:} results are not resolved any further. Else risky configs might be
   injected.
 - Add {delete:} to allow env files to remove a node
 - Config from remote: How should the config.ini look like, and the plugin config, to retrieve such configs
-- may be add some stats feature: number of config values; list imported files; number of {ref:},
-  max depth; list of envs referenced;
 - add "__file__" to the config for easy access? Alternative: a simple class consisting
   of file name and data? Essentially dict extended with file_name attribute?
-- The error message should at least show the filename
+- test {import:} with env specific overlay
 
 Done:
 
@@ -93,6 +92,8 @@ Done:
 - CONFIG_INI_FILE env to find config.ini file => now possible to provide env var name
 - Allow to use any *.ini file, since we just use the [config] section => done
 - right now we are re-importing config file all the time => cache
+- may be add some stats feature: number of config values; list imported files; number of {ref:},
+  max depth; list of envs referenced;
 
 # Nice to know
 

@@ -5,30 +5,62 @@
 Load yaml config files
 """
 
+from collections import ChainMap
+from dataclasses import dataclass
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Iterator, Mapping, Optional
 
 import yaml
 
-from .deep_dict import DeepDict
 from .utils import ContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
+@dataclass
+class ConfigFile(Mapping):
+    """A config file and optional environment specifc overlay (dev, test, prod)"""
+
+    file_1: Path | None  # Main file
+    file_2: Path | None  # Env specific overlay
+    data: ChainMap  # Both data combined
+    env: str | None  # The env name
+
+    def __getitem__(self, key: str) -> Any:
+        return self.data.__getitem__(key)
+
+    def __iter__(self) -> Iterator:
+        return self.data.__iter__()
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, ConfigFile):
+            return False
+
+        return self.file_1 == value.file_1 and self.file_2 == value.file_2
+
+
 class ConfigFileLoader:
     """Load the yaml config files."""
 
     def __init__(self) -> None:
+        self.env = None
+
+        # List of all files loaded
         self.files_loaded = []
-        self.cache: dict[Any, ContainerType] = {}
+
+        # Cache files
+        self.cache: dict[str, ContainerType] = {}
 
     def clear(self) -> None:
         """Clear the files list and the cache"""
 
+        self.env = None
         self.files_loaded.clear()
         self.cache.clear()
 
@@ -51,10 +83,21 @@ class ConfigFileLoader:
         config_dir: Path | None,
         env: str | None = None,
         cache: bool = True,
-    ) -> tuple[Mapping, tuple[Path, Path]]:
+    ) -> ConfigFile:
         """Load a Yaml config file, and if an env var is defined, also load
         the environment specific overlay.
         """
+
+        if self.env != env:
+            if self.cache:
+                logger.debug(
+                    "Clearing file cache. Detected env change: %s != %s", self.env, env
+                )
+
+            # Clear any cached files associated with the previous env.
+            self.clear()
+
+        self.env = env
 
         # If fname is a relative Path, then prepend the config_dir.
         # If fname is absolute, keep as is
@@ -77,10 +120,16 @@ class ConfigFileLoader:
                 pass  # This is perfectly ok. The file may not exist.
 
         if data_2:
-            # Inplace update of data_1
-            DeepDict(data_1).deep_update(data_2)
+            data = ChainMap(data_2, data_1)
+        else:
+            data = data_1
 
-        return data_1, (fname_1, fname_2)
+        return ConfigFile(
+            file_1=fname_1,
+            file_2=fname_2,
+            data=data,
+            env=env,
+        )
 
     def load_one_file(self, fname: Path | StringIO, cache: bool = True) -> Mapping:
         """Load a Yaml config file, determine and load 'imports', and
@@ -129,4 +178,5 @@ class ConfigFileLoader:
         # pyyaml will consider the BOM, if available,
         # and decode the bytes. utf-8 is default.
         with open(fname, "rb") as fd:  # pylint: disable=invalid-name
-            return self.load_yaml_raw_with_fd(fd)
+            data = self.load_yaml_raw_with_fd(fd)
+            return data

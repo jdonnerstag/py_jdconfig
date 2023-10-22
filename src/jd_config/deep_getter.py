@@ -243,10 +243,12 @@ class DeepGetter:
                 if not isinstance(ctx.data, ContainerType):
                     return ctx.data
 
-            if id(ctx.data) in recursions:
-                raise ConfigException(f"Recursion detected: '{ctx.cur_path()}'", ctx=ctx)
+            if ctx.data in recursions:
+                raise ConfigException(
+                    f"Recursion detected: '{ctx.cur_path()}'", ctx=ctx
+                )
 
-            recursions.append(id(ctx.data))
+            recursions.append(ctx.data)
 
         # pylint: disable=undefined-loop-variable
         return ctx.data

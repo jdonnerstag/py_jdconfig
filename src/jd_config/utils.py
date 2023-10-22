@@ -5,11 +5,12 @@
 Package utilities
 """
 
-from dataclasses import dataclass
 import logging
-from abc import ABC
 import typing
-from typing import Iterable, Mapping, Sequence, Optional
+from abc import ABC
+from dataclasses import dataclass
+from io import StringIO
+from typing import Iterable, Mapping, Optional, Sequence
 
 if typing.TYPE_CHECKING:
     from .deep_getter import GetterContext
@@ -35,7 +36,7 @@ class ConfigException(Exception):
         self,
         *args: object,
         ctx: "GetterContext" = None,
-        placeholder: "Placeholder" = None
+        placeholder: "Placeholder" = None,
     ) -> None:
         super().__init__(*args)
 
@@ -44,6 +45,21 @@ class ConfigException(Exception):
             trace.append(Trace(ctx.cur_path(), placeholder, None))
 
         self.trace: list[Trace] = trace
+
+    def __str__(self) -> str:
+        out = StringIO(super().__str__())
+
+        if self.trace:
+            print(file=out)  # newline
+            print("Config Trace:", file=out)  # newline
+
+            for i, trace in enumerate(self.trace):
+                print(file=out)  # newline
+                print(f"{i:2d}: path={trace.path}", file=out)
+                print(f"    placeholder={trace.placeholder}", file=out)
+                print(f"    file={trace.file}", file=out)
+
+        return out.getvalue()
 
 
 # pylint: disable=too-few-public-methods
