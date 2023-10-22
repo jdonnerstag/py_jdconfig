@@ -26,7 +26,7 @@ class ConfigFile(Mapping):
 
     file_1: Path | None  # Main file
     file_2: Path | None  # Env specific overlay
-    data: ChainMap  # Both data combined
+    data: Mapping  # The actual data: either dict or ChainMap of both files
     env: str | None  # The env name
 
     def __getitem__(self, key: str) -> Any:

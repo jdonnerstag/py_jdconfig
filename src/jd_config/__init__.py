@@ -20,11 +20,12 @@ Please see the readme.md file for details. In summary:
 
 from .config_ini_mixin import ConfigIniMixin
 from .config_path import ConfigPath
-from .deep_search_mixin import DeepSearchMixin
-from .deep_dict import DeepDict
+from .deep_dict import DeepDict, DeepDictMixin, DefaultConfigGetter
 from .deep_export_mixin import DeepExportMixin
+from .deep_getter import DeepGetter, GetterContext
+from .deep_search_mixin import DeepSearchMixin
 from .deep_update_mixin import DeepUpdateMixin
-from .file_loader import ConfigFileLoader
+from .file_loader import ConfigFile, ConfigFileLoader
 from .jd_config import JDConfig
 from .objwalk import (
     DropContainerEvent,
@@ -43,7 +44,15 @@ from .placeholders import (
     RefPlaceholder,
     TimestampPlaceholder,
 )
-from .resolver_mixin import ResolverMixin
+from .resolver_mixin import MissingConfigException, ResolverMixin
+from .stats import ConfigStats
 from .string_converter_mixin import StringConverterMixin
-from .utils import ConfigException, NonStrSequence, PathType
-from .value_reader import ValueReader, ValueType
+from .utils import (
+    DEFAULT,
+    ConfigException,
+    ContainerType,
+    NonStrSequence,
+    PathType,
+    Trace,
+)
+from .value_reader import RegistryType, ValueReader, ValueReaderException, ValueType

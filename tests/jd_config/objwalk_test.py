@@ -7,8 +7,7 @@ import logging
 from copy import deepcopy
 from typing import Any
 
-from jd_config import DropContainerEvent, objwalk
-from jd_config.utils import ContainerType, PathType
+from jd_config import ContainerType, DropContainerEvent, PathType, objwalk
 
 logger = logging.getLogger(__name__)
 

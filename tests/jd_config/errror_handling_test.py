@@ -6,14 +6,11 @@
 import logging
 import os
 from dataclasses import dataclass
-from io import StringIO
 from pathlib import Path
 
 import pytest
 
-from jd_config import ConfigException, JDConfig, NodeEvent, Placeholder
-from jd_config.deep_dict import DeepDict
-from jd_config.placeholders import RefPlaceholder
+from jd_config import ConfigException, DeepDict, JDConfig
 
 logger = logging.getLogger(__name__)
 

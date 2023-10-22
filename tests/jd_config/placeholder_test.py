@@ -9,16 +9,17 @@ from dataclasses import dataclass
 import pytest
 
 from jd_config import (
+    DEFAULT,
     ConfigException,
+    DeepGetter,
     EnvPlaceholder,
+    GetterContext,
     GlobalRefPlaceholder,
     ImportPlaceholder,
     Placeholder,
     RefPlaceholder,
     ResolverMixin,
 )
-from jd_config.deep_getter import DeepGetter, GetterContext
-from jd_config.utils import DEFAULT
 
 logger = logging.getLogger(__name__)
 

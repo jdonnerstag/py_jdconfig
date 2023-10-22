@@ -7,9 +7,7 @@ import logging
 import os
 import re
 
-from jd_config import DeepExportMixin
-from jd_config.deep_getter import DeepGetter
-from jd_config.resolver_mixin import ResolverMixin
+from jd_config import DeepExportMixin, DeepGetter, ResolverMixin
 
 logger = logging.getLogger(__name__)
 

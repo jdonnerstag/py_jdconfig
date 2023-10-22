@@ -5,11 +5,19 @@
 
 import logging
 from dataclasses import dataclass
-import yaml
+
 import pytest
-from jd_config import ValueType, ValueReader, ConfigException
-from jd_config import Placeholder, RefPlaceholder, ImportPlaceholder
-from jd_config import EnvPlaceholder
+import yaml
+
+from jd_config import (
+    ConfigException,
+    EnvPlaceholder,
+    ImportPlaceholder,
+    Placeholder,
+    RefPlaceholder,
+    ValueReader,
+    ValueType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +159,7 @@ def test_tokenize():
     assert list(tokenize("test   , more")) == ["test", "more"]
     # Separator escaped
     assert list(tokenize(r"test\, more")) == ["test\\, more"]
-    assert list(tokenize("1")) == [1]   # converted into int.
+    assert list(tokenize("1")) == [1]  # converted into int.
     assert list(tokenize("a, 1")) == ["a", 1]
     assert list(tokenize("'aa'")) == ["aa"]
     assert list(tokenize("'aa', bb, cc")) == ["aa", "bb", "cc"]

@@ -16,7 +16,6 @@ from .objwalk import (
     NewMappingEvent,
     NewSequenceEvent,
     NodeEvent,
-    objwalk,
 )
 from .utils import ContainerType, PathType
 

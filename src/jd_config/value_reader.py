@@ -28,10 +28,6 @@ ValueType = int | float | bool | str | ph.Placeholder
 RegistryType = dict[str, ph.Placeholder]
 
 
-class PlaceholderException(ConfigException):
-    """Placeholder related exception"""
-
-
 class ValueReaderException(ConfigException):
     """ValueReader related exception"""
 
@@ -174,16 +170,16 @@ class ValueReader(StringConverterMixin):
         # Determine the placeholder's name
         i = strval.find(":")
         if i == -1:
-            raise PlaceholderException(
+            raise ValueReaderException(
                 f"Expected to find placeholder name separated by colon: '{strval}'"
             )
 
         name = strval[:i].strip()
         if not name:
-            raise PlaceholderException(f"Missing placeholder name in '{strval}'")
+            raise ValueReaderException(f"Missing placeholder name in '{strval}'")
 
         if name not in self.registry:
-            raise PlaceholderException(
+            raise ValueReaderException(
                 f"Unknown placeholder name: '{name}' in '{strval}'"
             )
 
@@ -193,7 +189,7 @@ class ValueReader(StringConverterMixin):
         try:
             return self.registry[name](*args)
         except Exception as exc:
-            raise PlaceholderException(
+            raise ValueReaderException(
                 f"Error while instantiating Placeholder: '{strval}'"
             ) from exc
 

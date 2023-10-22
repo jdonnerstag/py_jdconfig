@@ -9,8 +9,7 @@ from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 
-from jd_config import JDConfig, Placeholder
-from jd_config.stats import ConfigStats
+from jd_config import ConfigStats, JDConfig, Placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +51,7 @@ def test_simple_stats(monkeypatch):
     assert stats.envvars == {"DB_USER"}
     assert len(stats.files) == 1
     assert stats.placeholders == {"ref": 4, "env": 1}
+
 
 def test_load_jdconfig_1(monkeypatch):
     # config-1 contains a simple config file, with no imports.
@@ -108,7 +108,14 @@ def test_load_jdconfig_2(monkeypatch):
     assert stats.ini_file is None
     assert stats.envvars == {"DB_USER", "DB_PASS", "DB_NAME"}
     assert len(stats.files) == 4
-    assert stats.placeholders == {"ref": 7, "env": 3, "timestamp": 1, "import": 3, "global": 3}
+    assert stats.placeholders == {
+        "ref": 7,
+        "env": 3,
+        "timestamp": 1,
+        "import": 3,
+        "global": 3,
+    }
+
 
 def test_load_jdconfig_2_with_env(monkeypatch):
     monkeypatch.setenv("DB_USER", "dbuser")
@@ -163,6 +170,7 @@ def test_load_jdconfig_4(monkeypatch):
     assert len(stats.files) == 2
     assert stats.placeholders == {"ref": 7, "import": 1, "global": 2}
 
+
 @dataclass
 class MyBespokePlaceholder(Placeholder):
     """This is also a test for a placeholder that does not take any parameters"""
@@ -197,4 +205,3 @@ def test_add_placeholder():
     assert stats.envvars == set()
     assert len(stats.files) == 1
     assert stats.placeholders == {"bespoke": 1}
-

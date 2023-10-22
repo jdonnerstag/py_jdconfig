@@ -9,10 +9,13 @@ from typing import Mapping
 
 import pytest
 
-from jd_config import ConfigException, Placeholder
-from jd_config.deep_search_mixin import DeepSearchMixin
-from jd_config.deep_getter import DeepGetter
-from jd_config.resolver_mixin import ResolverMixin
+from jd_config import (
+    ConfigException,
+    DeepGetter,
+    DeepSearchMixin,
+    Placeholder,
+    ResolverMixin,
+)
 
 logger = logging.getLogger(__name__)
 

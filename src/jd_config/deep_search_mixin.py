@@ -6,21 +6,13 @@ Extended standard dict like getter to also support deep paths, and also
 search patterns, such as 'a..c', 'a.*.c'
 """
 
-from copy import copy
 from dataclasses import replace
 import logging
 from typing import Any, Iterator, Mapping
 
 from .config_path import ConfigPath
 from .deep_getter import GetterContext
-from .objwalk import (
-    DropContainerEvent,
-    NewMappingEvent,
-    NewSequenceEvent,
-    NodeEvent,
-    WalkerEvent,
-    objwalk,
-)
+from .objwalk import WalkerEvent, objwalk
 from .utils import ConfigException, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]

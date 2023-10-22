@@ -4,16 +4,14 @@
 # pylint: disable=C
 # pylint: disable=protected-access
 
-from dataclasses import dataclass
 import logging
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import List, Mapping
 
 import pytest
 
-from jd_config import ConfigException, DeepDict
-from jd_config.deep_getter import GetterContext
-from jd_config.placeholders import Placeholder
+from jd_config import ConfigException, DeepDict, GetterContext, Placeholder
 
 logger = logging.getLogger(__name__)
 

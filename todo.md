@@ -1,5 +1,6 @@
 # Todos / Requirements
 
+- move things to __init__ again
 - I like structured configs with dataclass and pydantic
 - We construct one config "dict", not multiple layers as we had earlier. But we need
   some debugging, tracing/logging. May be a list of add/change/deletes with filename

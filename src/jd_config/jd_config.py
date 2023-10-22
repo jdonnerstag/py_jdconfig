@@ -9,7 +9,7 @@ import logging
 from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Optional
+from typing import Any, Iterator, Optional
 
 from .config_ini_mixin import ConfigIniMixin
 from .deep_dict import DeepDict, DefaultConfigGetter
