@@ -220,9 +220,6 @@ class DeepGetter:
             ctx = self.new_context(data, _memo=_memo)
         else:
             ctx.data = data
-            # TODO still needed?
-            if _memo is not None:
-                ctx.memo = _memo
 
         recursions = []
 

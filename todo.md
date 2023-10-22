@@ -1,11 +1,6 @@
 # Todos / Requirements
 
 - I like structured configs with dataclass and pydantic
-- We construct one config "dict", not multiple layers as we had earlier. But we need
-  some debugging, tracing/logging. May be a list of add/change/deletes with filename
-  and line number? Also when replacing syntax with real values. Why not replace the
-  values eagerly? => Because if the referenced value changes, then its outdated.
-- Error handling can be improved. Done, except filenames
 - I'm no longer 100% convinced that keeping filename, line, and col is adding lots of value
   Can we make this flexible, such as that we have 2 implementations and both are working fine?
 - It happens regularly to me, that I forget to put quotes around {..}.
@@ -17,7 +12,6 @@
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
   Some may provide files, others leverage SDKs which provide a Mapping. We need to support both.
 - When dumping config, allow to add file, line, col as comment for debugging.
-- For debugging, log placeholder replacements
 - Make sure that {env:} results are not resolved any further. Else risky configs might be
   injected.
 - Add {delete:} to allow env files to remove a node
@@ -94,3 +88,9 @@ Done:
 - add "__file__" to the config for easy access? Alternative: a simple class consisting
   of file name and data? Essentially dict extended with file_name attribute? => create ConfigFile
 - test {import:} with env specific overlay
+- We construct one config "dict", not multiple layers as we had earlier. But we need
+  some debugging, tracing/logging. May be a list of add/change/deletes with filename
+  and line number? Also when replacing syntax with real values. Why not replace the
+  values eagerly? => Because if the referenced value changes, then its outdated.
+- Error handling can be improved.
+- For debugging, log placeholder replacements

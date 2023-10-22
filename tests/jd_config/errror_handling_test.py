@@ -242,8 +242,3 @@ def test_local_recursion():
         data.get("c")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
-
-
-def test_global_recursion():
-    # TODO
-    pass
