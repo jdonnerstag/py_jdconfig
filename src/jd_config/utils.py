@@ -5,15 +5,14 @@
 Package utilities
 """
 
+from dataclasses import dataclass
 import logging
 import typing
 from abc import ABC
-from dataclasses import dataclass
 from io import StringIO
-from typing import Iterable, Mapping, Optional, Sequence
+from typing import Iterable, Mapping, Sequence, Optional
 
 if typing.TYPE_CHECKING:
-    from .deep_getter import GetterContext
     from .placeholders import Placeholder
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -32,30 +31,22 @@ class Trace:
 class ConfigException(Exception):
     """Base class for Config Exceptions"""
 
-    def __init__(
-        self,
-        *args: object,
-        ctx: "GetterContext" = None,
-        placeholder: "Placeholder" = None,
-    ) -> None:
+    def __init__(self, *args: object, trace: "Trace" = None) -> None:
         super().__init__(*args)
 
-        trace = []
-        if ctx is not None:
-            trace.append(Trace(ctx.cur_path(), placeholder, None))
-
-        self.trace: list[Trace] = trace
+        self.trace = []
+        if trace:
+            self.trace.append(trace)
 
     def __str__(self) -> str:
-        out = StringIO(super().__str__())
+        out = StringIO()
+        print(super().__str__(), file=out)
 
         if self.trace:
-            print(file=out)  # newline
             print("Config Trace:", file=out)  # newline
 
             for i, trace in enumerate(self.trace):
-                print(file=out)  # newline
-                print(f"{i:2d}: path={trace.path}", file=out)
+                print(f"{i + 1:2d}: path={trace.path}", file=out)
                 print(f"    placeholder={trace.placeholder}", file=out)
                 print(f"    file={trace.file}", file=out)
 

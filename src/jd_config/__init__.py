@@ -43,6 +43,7 @@ from .placeholders import (
     PlaceholderException,
     RefPlaceholder,
     TimestampPlaceholder,
+    new_trace,
 )
 from .resolver_mixin import MissingConfigException, ResolverMixin
 from .stats import ConfigStats

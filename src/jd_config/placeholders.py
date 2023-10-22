@@ -19,13 +19,28 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
-from .utils import DEFAULT, ConfigException, Trace, ContainerType
+from jd_config.file_loader import ConfigFile
+
+from .utils import DEFAULT, ConfigException, ContainerType, Trace
 
 if TYPE_CHECKING:
     from .deep_getter import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+def new_trace(ctx: "GetterContext", placeholder: "Placeholder" = None):
+    """Create a new Trace or None"""
+
+    if not ctx:
+        return None
+
+    filename = None
+    if isinstance(ctx.current_file, ConfigFile):
+        filename = ctx.current_file.file_1
+
+    return Trace(path=ctx.cur_path(), placeholder=placeholder, file=filename)
 
 
 class PlaceholderException(ConfigException):
@@ -109,7 +124,7 @@ class RefPlaceholder(Placeholder):
                 return obj
 
             if isinstance(exc, ConfigException):
-                exc.trace.insert(0, Trace(parent_ctx.cur_path(), self, None))
+                exc.trace.insert(0, new_trace(parent_ctx, self))
                 raise exc
 
             raise PlaceholderException(
@@ -156,8 +171,7 @@ class EnvPlaceholder(Placeholder):
         if value is DEFAULT:
             raise EnvvarConfigException(
                 f"Environment does not exist: '{self.env_var}'",
-                ctx=ctx,
-                placeholder=self,
+                trace=new_trace(ctx=ctx, placeholder=self),
             )
 
         return value

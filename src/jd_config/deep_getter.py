@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 
 from .config_path import ConfigPath
-from .placeholders import Placeholder
+from .placeholders import Placeholder, new_trace
 from .utils import DEFAULT, ConfigException, ContainerType, PathType
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -165,7 +165,8 @@ class DeepGetter:
         if isinstance(exc, ConfigException):
             raise exc
 
-        raise ConfigException(f"Config not found: {ctx.cur_path()}", ctx=ctx)
+        trace = new_trace(ctx)
+        raise ConfigException(f"Config not found: {ctx.cur_path()}", trace=trace)
 
     def normalize_path(self, path: PathType) -> tuple[str | int]:
         """Normalize a path. See `ConfigPath`for details."""
@@ -219,6 +220,7 @@ class DeepGetter:
             ctx = self.new_context(data, _memo=_memo)
         else:
             ctx.data = data
+            # TODO still needed?
             if _memo is not None:
                 ctx.memo = _memo
 
@@ -244,7 +246,7 @@ class DeepGetter:
 
             if ctx.data in recursions:
                 raise ConfigException(
-                    f"Recursion detected: '{ctx.cur_path()}'", ctx=ctx
+                    f"Recursion detected: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
                 )
 
             recursions.append(ctx.data)

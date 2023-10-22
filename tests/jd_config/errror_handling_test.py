@@ -5,10 +5,7 @@
 
 import logging
 import os
-from dataclasses import dataclass
 from pathlib import Path
-
-import pytest
 
 from jd_config import ConfigException, DeepDict, JDConfig
 
@@ -22,17 +19,21 @@ def data_dir(*args) -> Path:
     return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
-def assertTrace(trace_1, path, placeholder=None, file=None) -> None:
-    assert trace_1.path == path
+def assertTrace(trace, path, placeholder=None, file=None) -> None:
+    assert trace.path == path
 
     if placeholder:
         if isinstance(placeholder, str):
-            assert trace_1.placeholder.path == placeholder
+            assert trace.placeholder.path == placeholder
         else:
-            assert trace_1.placeholder == placeholder
+            assert trace.placeholder == placeholder
 
-    if file:
-        assert trace_1.file == file
+    if trace.file:
+        assert file, f"You must provide the 'file' parameter: {trace.file}"
+        if isinstance(file, str):
+            assert str(trace.file).endswith(file)
+        else:
+            assert trace.file.parts[-len(file) :] == tuple(file)
 
 
 def test_not_found_simple():
@@ -153,38 +154,38 @@ def test_not_found_import():
         data.get("b")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 2)
-        assertTrace(exc.trace[0], ("b",), "x", None)
-        assertTrace(exc.trace[1], ("x",), None, None)
+        assertTrace(exc.trace[0], ("b",), "x", "config.yaml")
+        assertTrace(exc.trace[1], ("x",), None, "config.yaml")
 
     try:
         data.get("c.b")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 2)
-        assertTrace(exc.trace[0], ("c", "b"), "x", None)
-        assertTrace(exc.trace[1], ("x",), None, None)
+        assertTrace(exc.trace[0], ("c", "b"), "x", ["config-2.yaml"])
+        assertTrace(exc.trace[1], ("x",), None, ["config-2.yaml"])
 
     try:
         data.get("c.c")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 2)
-        assertTrace(exc.trace[0], ("c", "c"), "x", None)
-        assertTrace(exc.trace[1], ("x",), None, None)
+        assertTrace(exc.trace[0], ("c", "c"), "x", "config-2.yaml")
+        assertTrace(exc.trace[1], ("x",), None, "config.yaml")
 
     try:
         data.get("c.d")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
-        assertTrace(exc.trace[0], ("c", "d"), "b", None)
-        assertTrace(exc.trace[1], ("b",), "x", None)
-        assertTrace(exc.trace[2], ("x",), None, None)
+        assertTrace(exc.trace[0], ("c", "d"), "b", "config-2.yaml")
+        assertTrace(exc.trace[1], ("b",), "x", "config-2.yaml")
+        assertTrace(exc.trace[2], ("x",), None, "config-2.yaml")
 
     try:
         data.get("c.e")
     except ConfigException as exc:
         assert isinstance(exc.trace, list) and (len(exc.trace) == 3)
-        assertTrace(exc.trace[0], ("c", "e"), "c.b", None)
-        assertTrace(exc.trace[1], ("c", "b"), "x", None)
-        assertTrace(exc.trace[2], ("x",), None, None)
+        assertTrace(exc.trace[0], ("c", "e"), "c.b", "config-2.yaml")
+        assertTrace(exc.trace[1], ("c", "b"), "x", "config-2.yaml")
+        assertTrace(exc.trace[2], ("x",), None, "config-2.yaml")
 
 
 def test_not_found_env():
