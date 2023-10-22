@@ -1,6 +1,5 @@
 # Todos / Requirements
 
-- move things to __init__ again
 - I like structured configs with dataclass and pydantic
 - We construct one config "dict", not multiple layers as we had earlier. But we need
   some debugging, tracing/logging. May be a list of add/change/deletes with filename
@@ -23,9 +22,6 @@
   injected.
 - Add {delete:} to allow env files to remove a node
 - Config from remote: How should the config.ini look like, and the plugin config, to retrieve such configs
-- add "__file__" to the config for easy access? Alternative: a simple class consisting
-  of file name and data? Essentially dict extended with file_name attribute?
-- test {import:} with env specific overlay
 
 Done:
 
@@ -95,6 +91,9 @@ Done:
 - right now we are re-importing config file all the time => cache
 - may be add some stats feature: number of config values; list imported files; number of {ref:},
   max depth; list of envs referenced;
+- add "__file__" to the config for easy access? Alternative: a simple class consisting
+  of file name and data? Essentially dict extended with file_name attribute? => create ConfigFile
+- test {import:} with env specific overlay
 
 # Nice to know
 

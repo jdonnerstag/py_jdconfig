@@ -225,7 +225,7 @@ def test_load_jdconfig_2_with_env(monkeypatch):
 
     # Since we lazy resolve, run to_dict(resolve=True) ones
     cfg.to_dict(resolve=True)
-    assert len(cfg.files_loaded) == 5
+    assert len(cfg.files_loaded) == 6
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert cfg.files_loaded[1].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
 
@@ -233,7 +233,7 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert cfg.get("db") == "mysql"
     assert cfg.get("database.driver") == "mysql"
     assert cfg.get("database.user") == "omry"
-    assert cfg.get("database.password") == "secret"
+    assert cfg.get("database.password") == "another_secret" # from the overlay
     assert cfg.get("database.DB_USER", None) is None
     assert cfg.get("database.DB_PASS", None) is None
     assert cfg.get("database.DB_NAME", None) is None

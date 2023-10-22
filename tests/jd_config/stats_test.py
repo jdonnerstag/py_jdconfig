@@ -138,7 +138,7 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert stats.ini_env_var is None
     assert stats.ini_file is None
     assert stats.envvars == set()
-    assert len(stats.files) == 5
+    assert len(stats.files) == 6
     assert stats.placeholders == {"ref": 3, "timestamp": 1, "import": 3, "global": 2}
 
 
