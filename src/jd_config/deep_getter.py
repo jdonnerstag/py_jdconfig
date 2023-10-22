@@ -124,7 +124,6 @@ class DeepGetter:
         data: ContainerType,
         *,
         on_missing: Optional[OnMissing] = None,
-        _memo: Optional[list] = None,
         current_file: Optional[ContainerType] = None,
         global_file: Optional[ContainerType] = None,
         **kvargs,
@@ -141,7 +140,6 @@ class DeepGetter:
             current_file=current_file,
             global_file=global_file,
             on_missing=on_missing,
-            memo=_memo,
             args=kvargs,
         )
 
@@ -205,19 +203,17 @@ class DeepGetter:
         *,
         on_missing: Optional[OnMissing] = None,
         ctx: Optional[GetterContext] = None,
-        _memo: Optional[list] = None,
     ) -> Any:
         """The main entry point: walk the provided path and return whatever the
         value at that end of that path will be.
 
         :param path: A user provided (config) path like object, e.g. `a.b[2].c`
         :param default: Optional default value, if the value was not found
-        :param _memo: Used to detect recursions when resolving values, e.g. `{ref:a}`
         """
 
         logger.debug("Config get(path=%s)", path)
         if ctx is None:
-            ctx = self.new_context(data, _memo=_memo)
+            ctx = self.new_context(data)
         else:
             ctx.data = data
 
