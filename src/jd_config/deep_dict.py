@@ -109,7 +109,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
         """
 
         getter = self.getter
-        ctx = getter.new_context(self.obj, files=[self.root], skip_resolver=not resolve)
+        ctx = getter.new_context(
+            self.obj, current_file=self.root, skip_resolver=not resolve
+        )
         path = getter.normalize_path(path)
         rtn = getter.get(self.obj, path, default=default, ctx=ctx)
         if isinstance(rtn, ContainerType):

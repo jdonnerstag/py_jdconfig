@@ -75,7 +75,6 @@ class ResolverMixin:
         if isinstance(value, Placeholder):
             logger.debug("resolve(%s)", value)
             placeholder = value
-            ctx.add_memo(placeholder)
             value = placeholder.resolve(self, ctx)
 
         if isinstance(value, list):

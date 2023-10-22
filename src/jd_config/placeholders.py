@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
-from .utils import ConfigException, ContainerType
+from .utils import ConfigException, Trace, ContainerType
 
 if TYPE_CHECKING:
     from .deep_getter import GetterContext
@@ -70,7 +70,7 @@ class ImportPlaceholder(Placeholder):
 
         rtn, _ = self.loader.load(file, cache=self.cache)
 
-        ctx.files.append(rtn)
+        ctx.current_file = rtn
 
         return rtn
 
@@ -86,13 +86,14 @@ class RefPlaceholder(Placeholder):
         assert self.path
 
     def resolve(self, getter, ctx: "GetterContext"):
-        data = ctx.files[-1]
-        new_ctx = dataclasses.replace(ctx)
-        return self._resolve_inner(getter, new_ctx, data)
+        new_ctx = dataclasses.replace(ctx, memo=None)
+        return self._resolve_inner(getter, ctx, new_ctx)
 
-    def _resolve_inner(self, getter, ctx: "GetterContext", data):
+    def _resolve_inner(
+        self, getter, parent_ctx: "GetterContext", ctx: "GetterContext"
+    ):
         try:
-            obj = getter.get(data, self.path, ctx=ctx)
+            obj = getter.get(ctx.current_file, self.path, ctx=ctx)
             return obj
         except (
             KeyError,
@@ -103,7 +104,8 @@ class RefPlaceholder(Placeholder):
                 return obj
 
             if isinstance(exc, ConfigException):
-                raise
+                exc.trace.insert(0, Trace(parent_ctx.cur_path(), self, None))
+                raise exc
 
             raise PlaceholderException(
                 f"Failed to resolve RefPlaceholder: '{self.path}'"
@@ -126,9 +128,8 @@ class GlobalRefPlaceholder(RefPlaceholder):
     root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
     def resolve(self, getter, ctx: "GetterContext"):
-        data = ctx.files[0]
-        new_ctx = dataclasses.replace(ctx, files=[data])
-        return self._resolve_inner(getter, new_ctx, data)
+        new_ctx = dataclasses.replace(ctx, current_file=ctx.global_file, memo=None)
+        return self._resolve_inner(getter, ctx, new_ctx)
 
 
 @dataclass

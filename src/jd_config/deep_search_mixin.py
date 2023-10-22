@@ -116,7 +116,7 @@ class DeepSearchMixin:
 
             if len(_path) >= (len(ctx_stack) - 1):
                 cur_ctx = ctx_stack[-1]
-                new_ctx = replace(cur_ctx, data=data, files=cur_ctx.files.copy())
+                new_ctx = replace(cur_ctx, data=data)
                 ctx_stack.append(new_ctx)
 
             cur_ctx = ctx_stack[-1]

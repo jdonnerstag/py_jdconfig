@@ -55,10 +55,10 @@ class GetterContext:
 
     on_missing: Optional[OnMissing] = None
 
-    # The root object of the yaml or json file, required for resolving
-    # placeholders
-    files: Optional[list[ContainerType]] = None
+    current_file: Optional[ContainerType] = None
+    global_file: Optional[ContainerType] = None
 
+    # TODO still needed?
     file_imports: Optional[list[Path]] = None
 
     # I'm not a fan of dynamically adding attributes to a class.
@@ -69,8 +69,11 @@ class GetterContext:
     memo: Optional[list] = None
 
     def __post_init__(self) -> None:
-        if self.files is None:
-            self.files = [self.data]
+        if self.current_file is None:
+            self.current_file = self.data
+
+        if self.global_file is None:
+            self.global_file = self.current_file
 
     @property
     def value(self) -> Any:
@@ -102,11 +105,6 @@ class GetterContext:
 
         self.memo.append(placeholder)
 
-    def copy_files_to(self, to: list):
-        """Copy the current file content list to the list provided"""
-        to.clear()
-        to.extend(self.files)
-
 
 class DeepGetter:
     """Getter for deep container structures (Mapping and NonStrSequence).
@@ -127,7 +125,8 @@ class DeepGetter:
         *,
         on_missing: Optional[OnMissing] = None,
         _memo: Optional[list] = None,
-        files: Optional[list[ContainerType]] = None,
+        current_file: Optional[ContainerType] = None,
+        global_file: Optional[ContainerType] = None,
         **kvargs,
     ) -> GetterContext:
         """Assign a new context to the getter, optionally providing
@@ -137,11 +136,13 @@ class DeepGetter:
         if not callable(on_missing):
             on_missing = self.on_missing
 
-        if files:
-            files = copy(files)
-
         return GetterContext(
-            data, files=files, on_missing=on_missing, memo=_memo, args=kvargs
+            data,
+            current_file=current_file,
+            global_file=global_file,
+            on_missing=on_missing,
+            memo=_memo,
+            args=kvargs,
         )
 
     def cb_get(self, data, key, ctx: GetterContext) -> Any:
@@ -161,7 +162,10 @@ class DeepGetter:
         """Default behavior if an element along the path is missing.
         => Re-raise the exception.
         """
-        raise ConfigException(f"Config not found: {ctx.cur_path()}")
+        if isinstance(exc, ConfigException):
+            raise exc
+
+        raise ConfigException(f"Config not found: {ctx.cur_path()}", ctx=ctx)
 
     def normalize_path(self, path: PathType) -> tuple[str | int]:
         """Normalize a path. See `ConfigPath`for details."""
@@ -222,6 +226,7 @@ class DeepGetter:
         for ctx in self.walk_path(ctx, path):
             try:
                 ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
+                ctx.add_memo(id(ctx.data))
             except (KeyError, IndexError, TypeError, ConfigException) as exc:
                 if default is not DEFAULT:
                     return default

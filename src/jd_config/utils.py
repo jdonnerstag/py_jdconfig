@@ -5,16 +5,40 @@
 Package utilities
 """
 
+from dataclasses import dataclass
 import logging
 from abc import ABC
-from typing import Iterable, Mapping, Sequence
+import typing
+from typing import Iterable, Mapping, Sequence, Optional
+
+if typing.TYPE_CHECKING:
+    from .deep_getter import GetterContext
+    from .placeholders import Placeholder
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
+@dataclass
+class Trace:
+    """Config Exception Trace Entry"""
+
+    path: tuple[str | int, ...] | None = None
+    placeholder: Optional["Placeholder"] = None
+    file: str | None = None
+
+
 class ConfigException(Exception):
     """Base class for Config Exceptions"""
+
+    def __init__(self, *args: object, ctx: "GetterContext" = None) -> None:
+        super().__init__(*args)
+
+        trace = []
+        if ctx is not None:
+            trace.append(Trace(ctx.cur_path(), None, None))
+
+        self.trace: list[Trace] = trace
 
 
 # pylint: disable=too-few-public-methods

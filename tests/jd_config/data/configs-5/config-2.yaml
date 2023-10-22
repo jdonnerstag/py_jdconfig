@@ -1,0 +1,5 @@
+a: 2aa
+b: "{ref:x}"
+c: "{global:x}"
+d: "{ref:b}"
+e: "{global:c.b}"
