@@ -139,10 +139,14 @@ class JDConfig(ConfigIniMixin):
         return self.getter.to_yaml(self.data, path, stream=stream, **kvargs)
 
     def validate(self, path: Optional[PathType] = None) -> dict:
-        """Validate the configuration by accessing and resolving all value,
-        all file imports, all environment files, etc.."""
+        """Validate the configuration by accessing and resolving all values,
+        all file imports, all environment files, etc..
 
-        # TODO add env name, to validate a specifc env setup
+        It validates the config data currently loaded. To validate another
+        combination (e.g. another dev, test environment overlay), re-load
+        the data.
+        """
+
         return self.to_dict(path, resolve=True)
 
     def resolve_all(self, path: Optional[PathType] = None) -> DeepDict:

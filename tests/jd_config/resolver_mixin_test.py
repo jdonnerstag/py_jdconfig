@@ -86,7 +86,6 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    # TODO {global:} so far is == {ref:}
     getter = MyConfig()
     assert getter.get(cfg, "a") == "aa"
     assert getter.get(cfg, "b") == "aa"

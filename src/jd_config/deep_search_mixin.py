@@ -10,6 +10,8 @@ from dataclasses import replace
 import logging
 from typing import Any, Iterator, Mapping
 
+from jd_config.placeholders import new_trace
+
 from .config_path import ConfigPath
 from .deep_getter import GetterContext
 from .objwalk import WalkerEvent, objwalk
@@ -38,27 +40,35 @@ class DeepSearchMixin:
         """Callback if 'a.*.c' was found"""
 
         if not isinstance(ctx.data, Mapping):
-            raise ConfigException(f"Expected a Mapping: '{ctx.cur_path()}'")
+            raise ConfigException(
+                f"Expected a Mapping: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
+            )
 
         find_key = ctx.path[ctx.idx + 1]
         for key in ctx.data.keys():
             if self._for_each_key(ctx, key, find_key):
                 return ctx.data
 
-        raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
+        raise ConfigException(
+            f"Config not found: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
+        )
 
     def _on_any_idx(self, ctx: GetterContext) -> GetterContext:
         """Callback if 'a[*].b' was found"""
 
         if not isinstance(ctx.data, NonStrSequence):
-            raise ConfigException(f"Expected a Sequence: '{ctx.cur_path()}'")
+            raise ConfigException(
+                f"Expected a Sequence: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
+            )
 
         find_key = ctx.path[ctx.idx + 1]
         for key, _ in enumerate(ctx.data):
             if self._for_each_key(ctx, key, find_key):
                 return ctx.data
 
-        raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
+        raise ConfigException(
+            f"Config not found: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
+        )
 
     def _for_each_key(self, ctx: GetterContext, key: str | int, find_key) -> bool:
         # Allow to resolve placeholder if necessary
@@ -91,7 +101,9 @@ class DeepSearchMixin:
                 ctx.idx += len(event.path) - 1
                 return ctx.data
 
-        raise ConfigException(f"Config not found: '{ctx.cur_path()}'")
+        raise ConfigException(
+            f"Config not found: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
+        )
 
     def walk_tree(
         self, ctx: GetterContext, *, nodes_only: bool = False

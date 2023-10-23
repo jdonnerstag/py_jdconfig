@@ -52,13 +52,14 @@ class GetterContext:
     # While walking, the current index within the path
     idx: int = 0
 
+    # Callback function if key could not be found
     on_missing: Optional[OnMissing] = None
 
+    # While walking, the yaml file associated with the container
     current_file: Optional[ContainerType] = None
-    global_file: Optional[ContainerType] = None
 
-    # TODO still needed?
-    file_imports: Optional[list[Path]] = None
+    # The global (main) yaml file
+    global_file: Optional[ContainerType] = None
 
     # I'm not a fan of dynamically adding attributes to a class.
     # Arbitrary attributes which extensions may require.
@@ -95,7 +96,6 @@ class GetterContext:
     def add_memo(self, placeholder: Placeholder) -> None:
         """Identify recursions"""
 
-        # TODO current id() which means nothing to anybody.
         if self.memo is None:
             self.memo = []
 
@@ -191,7 +191,10 @@ class DeepGetter:
             for ctx in self.walk_path(ctx, path):
                 ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
         except (KeyError, IndexError) as exc:
-            raise ConfigException(f"Config not found: '{ctx.cur_path()}'") from exc
+            trace = new_trace(ctx=ctx)
+            raise ConfigException(
+                f"Config not found: '{ctx.cur_path()}'", trace=trace
+            ) from exc
 
         return ctx.path
 
@@ -268,4 +271,7 @@ class DeepGetter:
                 yield ctx
                 ctx.idx += 1
         except (KeyError, IndexError) as exc:
-            raise ConfigException(f"Config not found: '{ctx.cur_path()}'") from exc
+            trace = new_trace(ctx=ctx)
+            raise ConfigException(
+                f"Config not found: '{ctx.cur_path()}'", trace=trace
+            ) from exc
