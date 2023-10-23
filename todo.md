@@ -94,3 +94,5 @@ Done:
   values eagerly? => Because if the referenced value changes, then its outdated.
 - Error handling can be improved.
 - For debugging, log placeholder replacements
+- Added "*.*." search support.
+- More and import debug log message.

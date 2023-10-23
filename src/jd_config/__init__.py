@@ -25,7 +25,7 @@ from .deep_export_mixin import DeepExportMixin
 from .deep_getter import DeepGetter, GetterContext
 from .deep_search_mixin import DeepSearchMixin
 from .deep_update_mixin import DeepUpdateMixin
-from .file_loader import ConfigFile, ConfigFileLoader
+from .file_loader import ConfigFile, ConfigFileLoader, ConfigFileLoggerMixin
 from .jd_config import JDConfig
 from .objwalk import (
     DropContainerEvent,
@@ -55,5 +55,6 @@ from .utils import (
     NonStrSequence,
     PathType,
     Trace,
+    relative_to_cwd,
 )
 from .value_reader import RegistryType, ValueReader, ValueReaderException, ValueType

@@ -10,14 +10,39 @@ from dataclasses import dataclass
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Optional
+from typing import Any, Iterator, Mapping, Optional, TYPE_CHECKING
 
 import yaml
 
-from .utils import ContainerType
+from .utils import ContainerType, relative_to_cwd
+
+if TYPE_CHECKING:
+    from .deep_getter import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+# pylint: disable=too-few-public-methods
+class ConfigFileLoggerMixin:
+    """Log a debug message if the key was found in the overlay file"""
+
+    def cb_get(self, data, key, ctx: "GetterContext") -> Any:
+        """Log a debug message if the key was found in the overlay file"""
+        rtn = super().cb_get(data, key, ctx)
+
+        if isinstance(data, ConfigFile) and data.file_2 is not None:
+            if isinstance(data.data, ChainMap) and key in data.data.maps[0]:
+                if ctx.key is None:
+                    ctx.key = key
+                    
+                logger.debug(
+                    "Found key %s in environment overlay: %s",
+                    ctx.cur_path(),
+                    relative_to_cwd(data.file_2),
+                )
+
+        return rtn
 
 
 @dataclass
@@ -173,7 +198,7 @@ class ConfigFileLoader:
         :return: A deep dict-like structure, representing the yaml content
         """
 
-        logger.debug("Config: Load from file: '%s'", fname)
+        logger.debug("Config: Load from file: '%s'", relative_to_cwd(fname))
 
         # pyyaml will consider the BOM, if available,
         # and decode the bytes. utf-8 is default.

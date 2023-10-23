@@ -103,6 +103,9 @@ def test_load_jdconfig_4():
     assert cfg.get("e") == "2aa"
     assert cfg.get("f") == "aa"
 
+    with pytest.raises(ConfigException):
+        cfg.get("g")
+
 
 def test_load_jdconfig_2(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,

@@ -7,6 +7,7 @@ Package utilities
 
 from dataclasses import dataclass
 import logging
+from pathlib import Path, WindowsPath
 import typing
 from abc import ABC
 from io import StringIO
@@ -17,6 +18,26 @@ if typing.TYPE_CHECKING:
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+def relative_to_cwd(path: Path | str) -> str:
+    """Return either the a path relative to cwd or an absolute path"""
+
+    if not isinstance(path, (Path, str)):
+        return repr(path)
+
+    path = Path(path).resolve().absolute()
+    is_win = isinstance(path, WindowsPath)
+    orig = path = str(path)
+    cwd = str(Path.cwd())
+    if is_win:
+        path = path.lower()
+        cwd = cwd.lower()
+
+    if path.startswith(cwd):
+        orig = "." + orig[len(cwd) :]
+
+    return orig
 
 
 @dataclass

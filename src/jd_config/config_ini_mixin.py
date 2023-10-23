@@ -9,6 +9,8 @@ import configparser
 import logging
 import os
 
+from .utils import relative_to_cwd
+
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
@@ -64,7 +66,7 @@ class ConfigIniMixin:
             ini_file = os.environ.get(ini_env, None)
 
         if ini_file:
-            logger.debug("Config: Load ini-file: '%s'", ini_file)
+            logger.debug("Config: Load ini-file: '%s'", relative_to_cwd(ini_file))
             config.read(ini_file)
 
         try:

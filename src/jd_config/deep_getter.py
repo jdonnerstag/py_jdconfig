@@ -20,12 +20,12 @@ Either the base class or a subclass should support:
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Callable, Iterator, Optional
 
 from .config_path import ConfigPath
+from .file_loader import ConfigFile
 from .placeholders import Placeholder, new_trace
-from .utils import DEFAULT, ConfigException, ContainerType, PathType
+from .utils import DEFAULT, ConfigException, ContainerType, PathType, relative_to_cwd
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -224,9 +224,16 @@ class DeepGetter:
 
         # pylint: disable=redefined-argument-from-local
         for ctx in self.walk_path(ctx, path):
+            if isinstance(ctx.current_file, ConfigFile):
+                logger.debug(
+                    "Current context is: %s", relative_to_cwd(ctx.current_file.file_1)
+                )
+
             try:
                 ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
             except (KeyError, IndexError, TypeError, ConfigException) as exc:
+                logger.debug("Failure: %s", repr(exc))
+
                 if default is not DEFAULT:
                     return default
 
