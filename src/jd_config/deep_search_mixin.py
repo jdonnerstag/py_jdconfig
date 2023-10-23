@@ -15,7 +15,7 @@ from jd_config.placeholders import new_trace
 from .config_path import ConfigPath
 from .deep_getter import GetterContext
 from .objwalk import WalkerEvent, objwalk
-from .utils import ConfigException, NonStrSequence
+from .utils import ConfigException, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -27,6 +27,10 @@ class DeepSearchMixin:
     """
 
     def cb_get(self, data, key, ctx: GetterContext) -> Any:
+        """Retrieve an element from its parent container.
+
+        See DeepGetter.cb_get() for more details.
+        """
         if key == ConfigPath.PAT_ANY_KEY:
             return self._on_any_key(ctx)
         if key == ConfigPath.PAT_ANY_IDX:
@@ -74,6 +78,13 @@ class DeepSearchMixin:
         # Allow to resolve placeholder if necessary
         ctx.key = key
         value = self.cb_get(ctx.data, ctx.key, ctx)
+
+        # Test "*.*.b" use cases
+        if find_key == ConfigPath.PAT_ANY_KEY and isinstance(value, ContainerType):
+            ctx.data = value
+            ctx.path = ctx.path_replace(key)
+            ctx.idx += 1
+            return self._on_any_key(ctx)
 
         if isinstance(value, Mapping) and isinstance(find_key, str):
             if find_key in value:

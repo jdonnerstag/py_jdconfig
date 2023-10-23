@@ -80,4 +80,6 @@ def test_any_key_or_index():
     assert getter.get(cfg, "c[*].c4b", None) == 55
     assert getter.get(cfg, "c.*.c4b", None) is None
     assert getter.get(cfg, "*.ba") == 11
-    #assert getter.get(cfg, "*.*.bbb") == 33   # TODO Not yet supported
+    assert getter.get(cfg, "*.*.bbb") == 33
+
+    assert getter.get_path(cfg, "*.*.bbb") == ("b", "bb", "bbb")
