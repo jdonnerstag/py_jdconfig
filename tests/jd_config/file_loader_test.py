@@ -41,3 +41,83 @@ def test_load_jdconfig_1():
     # It shouldn't matter
     data = cfg.load(file.absolute(), config_dir=None)
     assert data
+
+
+def test_separate_env_dir():
+    # Config-6 is all about env specific overlay files.
+
+    cfg_file = Path("config.yaml")
+    config_dir = data_dir("configs-6")
+    cfg = ConfigFileLoader()
+
+    cfg_file = Path("config.yaml")
+    env = None
+    env_dirs = None
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2 is None
+    assert data.data
+
+    cfg_file = Path("config.yaml")
+    env = "missing"
+    env_dirs = None
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2 is None
+    assert data.data
+
+    cfg_file = Path("config.yaml")
+    env = "dev"
+    env_dirs = None
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2.parts[-1] == "config-dev.yaml"
+    assert data.data
+
+    cfg_file = Path("config-2.yaml")
+    env = "dev"
+    env_dirs = None
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config-2.yaml"
+    assert data.file_2 is None
+    assert data.data
+
+    cfg_file = Path("config-2.yaml")
+    env = "qa"
+    env_dirs = None
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config-2.yaml"
+    assert data.file_2.parts[-1] == "config-2-qa.yaml"
+    assert data.data
+
+    cfg_file = Path("config-2.yaml")
+    env = "qa"
+    env_dirs = ["."]
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config-2.yaml"
+    assert data.file_2.parts[-1] == "config-2-qa.yaml"
+    assert data.data
+
+    cfg_file = Path("config-2.yaml")
+    env = "dev-2"
+    env_dirs = ["."]
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config-2.yaml"
+    assert data.file_2 is None
+    assert data.data
+
+    cfg_file = Path("config-2.yaml")
+    env = "qa"
+    env_dirs = [".", os.path.join(config_dir, "env_files")]
+    data = cfg.load(cfg_file, config_dir=config_dir, env=env, add_env_dirs=env_dirs)
+    assert data
+    assert data.file_1.parts[-1] == "config-2.yaml"
+    assert data.file_2.parts[-1] == "config-2-qa.yaml"
+    assert data.data

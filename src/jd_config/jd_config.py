@@ -121,7 +121,7 @@ class JDConfig(ConfigIniMixin):
         path = self.getter.normalize_path(path)
         root = self.get(path, resolve=True)
         ctx = self.getter.new_context(
-            data=root, files=[self.data], skip_resolver=not resolve
+            data=root, current_file=self.data, skip_resolver=not resolve
         )
 
         yield from self.getter.walk_tree(ctx, nodes_only=nodes_only)
@@ -172,20 +172,16 @@ class JDConfig(ConfigIniMixin):
 
         return data
 
-    def load(
+    def load_import(
         self,
         fname: Optional[Path | StringIO] = None,
         config_dir: Optional[Path] = None,
         env: str | None = None,
         cache: bool = True,
     ) -> ConfigFile:
-        """Main entry point to load configs"
+        """Used by {import:} to laod a config file
 
-        The filename can be relativ or absolute. If relativ, it will be loaded
-        relativ to 'config_dir'
-
-        Alternatively 'fname' can be a file descriptor, e.g. 'fd = io.StringIO("...")'
-        or 'with open("myfile.yaml", "rb") as fd:'.
+        See load() for more details
 
         :param fname: yaml config file (optional)
         :param config_dir: overwrite self.config_dir to load the file. Default is to
@@ -203,15 +199,38 @@ class JDConfig(ConfigIniMixin):
         env = env or self.env
 
         # Load the file
-        file = self.config_file_loader.load(fname, config_dir, env, cache)
-
-        # Make the yaml config data accessible via JDConfig
-        if self.data is None and isinstance(file, ContainerType):
-            self.data = DeepDict(file, getter=self.getter)
-
-            if self.ini["resolve_eagerly"]:
-                self.data = self.resolve_all()
-
-            return self.data
+        file = self.config_file_loader.load(
+            fname, config_dir, env, cache, add_env_dirs=self.ini["add_env_dirs"]
+        )
 
         return file
+
+    def load(
+        self,
+        fname: Optional[Path | StringIO] = None,
+        config_dir: Optional[Path] = None,
+        env: str | None = None,
+        cache: bool = True,
+    ) -> ContainerType:
+        """Main entry point to load configs"
+
+        The filename can be relativ or absolute. If relativ, it will be loaded
+        relativ to 'config_dir'
+
+        Alternatively 'fname' can be a file descriptor, e.g. 'fd = io.StringIO("...")'
+        or 'with open("myfile.yaml", "rb") as fd:'.
+
+        :param fname: yaml config file (optional)
+        :param config_dir: overwrite self.config_dir to load the file. Default is to
+        use self.config_dir (see config.ini)
+        :param env: environment name (optional)
+        """
+
+        file = self.load_import(fname, config_dir, env, cache)
+
+        self.data = DeepDict(file, getter=self.getter)
+
+        if self.ini["resolve_eagerly"]:
+            self.data = self.resolve_all()
+
+        return self.data

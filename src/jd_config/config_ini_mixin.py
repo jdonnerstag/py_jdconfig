@@ -6,8 +6,10 @@ Mixin to load "system" configs from config.ini
 """
 
 import configparser
+import json
 import logging
 import os
+from pathlib import Path
 
 from .utils import relative_to_cwd
 
@@ -79,4 +81,11 @@ class ConfigIniMixin:
         self.ini["config_file"] = config.get("config_file", "config.yaml")
         self.ini["default_env"] = config.get("default_env", None)
         self.ini["env"] = config.get("env", self.ini.get("default_env", None))
+        self.ini["add_env_dirs"] = config.get("add_env_dirs", None)
         self.ini["resolve_eagerly"] = bool(config.get("resolve_eagerly", False))
+
+        add_env_dirs = self.ini["add_env_dirs"]
+        if add_env_dirs is None:
+            self.ini["add_env_dirs"] = [Path.cwd()]
+        else:
+            self.ini["add_env_dirs"] = json.loads(add_env_dirs)

@@ -236,7 +236,7 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert cfg.get("db") == "mysql"
     assert cfg.get("database.driver") == "mysql"
     assert cfg.get("database.user") == "omry"
-    assert cfg.get("database.password") == "another_secret" # from the overlay
+    assert cfg.get("database.password") == "another_secret"  # from the overlay
     assert cfg.get("database.DB_USER", None) is None
     assert cfg.get("database.DB_PASS", None) is None
     assert cfg.get("database.DB_NAME", None) is None
@@ -270,7 +270,10 @@ def test_resolve_all(monkeypatch):
     assert cfg.get("database.DB_NAME", None, resolve=False) == None
     assert cfg.get("database.DB_NAME", None, resolve=True) == "dbname"
     assert cfg.get("database.connection_string", None, resolve=False) == None
-    assert cfg.get("database.connection_string", resolve=True) == "oracle:dbuser/dbpass@dbname"
+    assert (
+        cfg.get("database.connection_string", resolve=True)
+        == "oracle:dbuser/dbpass@dbname"
+    )
     assert cfg.get("debug.log_progress_after", resolve=False) == 20_000
     assert cfg.get("debug.log_progress_after", resolve=True) == 20_000
 
@@ -285,7 +288,99 @@ def test_resolve_all(monkeypatch):
     assert cfg.get("database.DB_PASS", resolve=True) == "dbpass"
     assert cfg.get("database.DB_NAME", resolve=False) == "dbname"
     assert cfg.get("database.DB_NAME", resolve=True) == "dbname"
-    assert cfg.get("database.connection_string", resolve=False) == "oracle:dbuser/dbpass@dbname"
-    assert cfg.get("database.connection_string", resolve=True) == "oracle:dbuser/dbpass@dbname"
+    assert (
+        cfg.get("database.connection_string", resolve=False)
+        == "oracle:dbuser/dbpass@dbname"
+    )
+    assert (
+        cfg.get("database.connection_string", resolve=True)
+        == "oracle:dbuser/dbpass@dbname"
+    )
     assert cfg.get("debug.log_progress_after", resolve=False) == 20_000
     assert cfg.get("debug.log_progress_after", resolve=True) == 20_000
+
+
+def test_separate_env_dir():
+    # Config-6 is all about env specific overlay files.
+
+    cfg = JDConfig(ini_file=None)
+    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    cfg.ini["config_dir"] = data_dir("configs-6")
+    assert cfg.ini["add_env_dirs"] == [Path.cwd()]
+
+    cfg_file = Path("config.yaml")
+
+    data = cfg.load(cfg_file)
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config.yaml"
+    assert data.obj.file_2 is None
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    data = data.get("c")
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config-2.yaml"
+    assert data.obj.file_2 is None
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    cfg.ini["env"] = "dev"
+    data = cfg.load(cfg_file)
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config.yaml"
+    assert data.obj.file_2.parts[-1] == "config-dev.yaml"
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    data = data.get("c")
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config-2.yaml"
+    assert data.obj.file_2 is None
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    cfg.ini["env"] = "qa"
+    data = cfg.load(cfg_file)
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config.yaml"
+    assert data.obj.file_2 is None
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    data = data.get("c")
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config-2.yaml"
+    assert data.obj.file_2.parts[-1] == "config-2-qa.yaml"
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    cfg.ini["env"] = "dev-2"
+    data = cfg.load(cfg_file)
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config.yaml"
+    assert data.obj.file_2 is None
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    data = data.get("c")
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config-2.yaml"
+    assert data.obj.file_2 is None
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    env_dir = Path(os.path.join(cfg.ini["config_dir"], "env_files"))
+    cfg.ini["add_env_dirs"].append(env_dir)
+    data = cfg.load(cfg_file)
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config.yaml"
+    assert data.obj.file_2.parts[-1] == "config-dev-2.yaml"
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+    data = data.get("c")
+    assert data  # DeepDict
+    assert data.obj  # The ConfigFile object containing the DeepDict data
+    assert data.obj.file_1.parts[-1] == "config-2.yaml"
+    assert data.obj.file_2 is None
+    assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile

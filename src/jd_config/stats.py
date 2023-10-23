@@ -83,7 +83,7 @@ class ConfigStats:
             if i == 0:
                 data = cfg.config().obj
             else:
-                data = cfg.load(fd)
+                data = cfg.load_import(fd)
 
             for event in objwalk(data, nodes_only=True):
                 self.parse_value(cfg, event.value, self.envvars, self.placeholders)

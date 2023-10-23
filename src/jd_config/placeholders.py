@@ -91,7 +91,7 @@ class ImportPlaceholder(Placeholder):
             self.loader is not None
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
-        rtn = self.loader.load(file, cache=self.cache)
+        rtn = self.loader.load_import(file, cache=self.cache)
         ctx.current_file = rtn
 
         return rtn

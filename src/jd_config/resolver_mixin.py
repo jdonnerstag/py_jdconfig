@@ -12,7 +12,7 @@ import logging
 from typing import Any, Optional
 
 from .deep_getter import GetterContext
-from .placeholders import Placeholder
+from .placeholders import Placeholder, new_trace
 from .utils import ConfigException
 from .value_reader import ValueReader
 
@@ -54,7 +54,8 @@ class ResolverMixin:
 
         if value == "???":
             raise MissingConfigException(
-                f"Mandatory config value missing: '{ctx.cur_path()}'", ctx=ctx
+                f"Mandatory config value missing: '{ctx.cur_path()}'",
+                trace=new_trace(ctx),
             )
 
         return value

@@ -10,11 +10,11 @@ from dataclasses import dataclass
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Optional, TYPE_CHECKING
+from typing import Any, Iterator, Mapping, Optional, TYPE_CHECKING, Sequence
 
 import yaml
 
-from .utils import ContainerType, relative_to_cwd
+from .utils import ConfigException, ContainerType, relative_to_cwd
 
 if TYPE_CHECKING:
     from .deep_getter import GetterContext
@@ -35,7 +35,7 @@ class ConfigFileLoggerMixin:
             if isinstance(data.data, ChainMap) and key in data.data.maps[0]:
                 if ctx.key is None:
                     ctx.key = key
-                    
+
                 logger.debug(
                     "Found key %s in environment overlay: %s",
                     ctx.cur_path(),
@@ -90,7 +90,7 @@ class ConfigFileLoader:
         self.cache.clear()
 
     def make_filename(
-        self, fname: Path, config_dir: Path, env: Optional[str] = None
+        self, fname: Path, config_dir: str|Path, env: Optional[str] = None
     ) -> tuple[Path, Path]:
         """Make a filename from the parts"""
 
@@ -98,16 +98,18 @@ class ConfigFileLoader:
             fname = fname.parent.joinpath(f"{fname.stem}-{env}{fname.suffix}")
 
         if config_dir and not fname.is_absolute():
-            fname = config_dir.joinpath(fname)
+            fname = Path(config_dir).joinpath(fname)
 
         return fname
 
+    # pylint: disable=too-many-arguments
     def load(
         self,
         fname: Path | StringIO,
         config_dir: Path | None,
         env: str | None = None,
         cache: bool = True,
+        add_env_dirs: Optional[Sequence[str | Path] | str | Path] = None,
     ) -> ConfigFile:
         """Load a Yaml config file, and if an env var is defined, also load
         the environment specific overlay.
@@ -127,8 +129,9 @@ class ConfigFileLoader:
         # If fname is a relative Path, then prepend the config_dir.
         # If fname is absolute, keep as is
         # If fname is StringIO, we don't want any modifications
+        orig_fname = fname
         if isinstance(fname, Path):
-            fname = self.make_filename(fname, config_dir=config_dir, env=None)
+            fname = self.make_filename(orig_fname, config_dir=config_dir, env=None)
 
         data_1 = self.load_one_file(fname, cache=cache)
         data_2 = None
@@ -136,13 +139,24 @@ class ConfigFileLoader:
         fname_2 = None
 
         if env and isinstance(fname, Path):
-            try:
-                fname = self.make_filename(fname, config_dir=None, env=env)
-                data_2 = self.load_one_file(fname, cache=cache)
-                fname_2 = fname
+            if add_env_dirs is None:
+                add_env_dirs = [config_dir]
+            elif isinstance(add_env_dirs, (str, Path)):
+                add_env_dirs = [config_dir, Path(add_env_dirs)]
+            elif isinstance(add_env_dirs, list):
+                add_env_dirs.append(config_dir)
+            else:
+                raise ConfigException(f"Bug: invalid 'add_env_dirs': {add_env_dirs}")
 
-            except FileNotFoundError:
-                pass  # This is perfectly ok. The file may not exist.
+            for cfg_dir in add_env_dirs:
+                try:
+                    fname = self.make_filename(orig_fname, config_dir=cfg_dir, env=env)
+                    data_2 = self.load_one_file(fname, cache=cache)
+                    fname_2 = fname
+                    break
+
+                except FileNotFoundError:
+                    pass  # This is perfectly ok. The file may not exist.
 
         if data_2:
             data = ChainMap(data_2, data_1)

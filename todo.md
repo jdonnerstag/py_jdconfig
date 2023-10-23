@@ -1,14 +1,10 @@
 # Todos / Requirements
 
 - I like structured configs with dataclass and pydantic
-- I'm no longer 100% convinced that keeping filename, line, and col is adding lots of value
-  Can we make this flexible, such as that we have 2 implementations and both are working fine?
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??
-- Allow the env overlays to be in a different directory. Does that make any sense?
 - Env placeholders could be resolved early. We need a generic approach, that allows
   the placeholder implementation to decide.
-- Support env sepcific yaml config files in working directory (not required to be in config dir)
 - Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
   Some may provide files, others leverage SDKs which provide a Mapping. We need to support both.
 - When dumping config, allow to add file, line, col as comment for debugging.
@@ -96,3 +92,8 @@ Done:
 - For debugging, log placeholder replacements
 - Added "*.*." search support.
 - More and import debug log message.
+- I'm no longer 100% convinced that keeping filename, line, and col is adding lots of value
+  Can we make this flexible, such as that we have 2 implementations and both are working fine?
+  Abondaned the idea, now that we have much improve logging (debug)
+- Allow the env overlays to be in a different directory.
+- Support env sepcific yaml config files in working directory (not required to be in config dir)

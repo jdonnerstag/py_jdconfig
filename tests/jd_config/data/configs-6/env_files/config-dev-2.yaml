@@ -1,0 +1,6 @@
+a: aa # "aa"
+b: "{ref:a}" # "aa"
+c: "{import: config-2.yaml}"
+d: "{ref:c.a}" # "2aa"
+e: "{ref:c.b}" # "2aa"
+f: "{ref:c.c}" # "aa"

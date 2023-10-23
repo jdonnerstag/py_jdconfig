@@ -43,7 +43,7 @@ class DeepExportMixin(DeepSearchMixin):
         dict from it.
         """
 
-        ctx = self.new_context(data, files=[data], skip_resolver=not resolve)
+        ctx = self.new_context(data, current_file=data, skip_resolver=not resolve)
 
         ctx.data = self.get(data, path)
         cur: Mapping | Sequence = {}
