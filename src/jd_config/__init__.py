@@ -19,7 +19,7 @@ Please see the readme.md file for details. In summary:
 """
 
 from .config_ini_mixin import ConfigIniMixin
-from .config_path import ConfigPath
+from .config_path import CfgPath, PathType
 from .deep_dict import DeepDict, DeepDictMixin, DefaultConfigGetter
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter import DeepGetter, GetterContext
@@ -53,7 +53,6 @@ from .utils import (
     ConfigException,
     ContainerType,
     NonStrSequence,
-    PathType,
     Trace,
     relative_to_cwd,
 )

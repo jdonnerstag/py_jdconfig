@@ -6,15 +6,14 @@ Extended standard dict like getter to also support deep paths, and also
 search patterns, such as 'a..c', 'a.*.c'
 """
 
-from dataclasses import replace
 import logging
+from dataclasses import replace
 from typing import Any, Iterator, Mapping
 
-from jd_config.placeholders import new_trace
-
-from .config_path import ConfigPath
+from .config_path import CfgPath
 from .deep_getter import GetterContext
 from .objwalk import WalkerEvent, objwalk
+from .placeholders import new_trace
 from .utils import ConfigException, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -31,11 +30,11 @@ class DeepSearchMixin:
 
         See DeepGetter.cb_get() for more details.
         """
-        if key == ConfigPath.PAT_ANY_KEY:
+        if key == CfgPath.PAT_ANY_KEY:
             return self._on_any_key(ctx)
-        if key == ConfigPath.PAT_ANY_IDX:
+        if key == CfgPath.PAT_ANY_IDX:
             return self._on_any_idx(ctx)
-        if key == ConfigPath.PAT_DEEP:
+        if key == CfgPath.PAT_DEEP:
             return self._on_any_deep(ctx)
 
         return super().cb_get(data, key, ctx)
@@ -80,7 +79,7 @@ class DeepSearchMixin:
         value = self.cb_get(ctx.data, ctx.key, ctx)
 
         # Test "*.*.b" use cases
-        if find_key == ConfigPath.PAT_ANY_KEY and isinstance(value, ContainerType):
+        if find_key == CfgPath.PAT_ANY_KEY and isinstance(value, ContainerType):
             ctx.data = value
             ctx.path = ctx.path_replace(key)
             ctx.idx += 1

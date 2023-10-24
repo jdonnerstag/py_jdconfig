@@ -61,9 +61,9 @@ def test_load_jdconfig_1(monkeypatch):
     monkeypatch.setenv("DB_NAME", "dbname")
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["config_dir"] = data_dir("configs-1")
-    cfg.ini["config_file"] = "config.yaml"
-    cfg.ini["default_env"] = "dev"
+    cfg.ini.config_dir = data_dir("configs-1")
+    cfg.ini.config_file = "config.yaml"
+    cfg.ini.default_env = "dev"
     data = cfg.load()
     assert data
 
@@ -86,9 +86,9 @@ def test_load_jdconfig_2(monkeypatch):
     # where the actually path refers to config value.
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     # config-2 has imports. Make sure, it is available for imports.
-    cfg.ini["config_dir"] = data_dir("configs-2")
+    cfg.ini.config_dir = data_dir("configs-2")
     # if config_dir provided to load() it is only used for this one file
     data = cfg.load("main_config.yaml")
     assert data
@@ -123,8 +123,8 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     monkeypatch.setenv("DB_NAME", "dbname")
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = "jd_dev"  # Apply own env specific changes
-    cfg.ini["config_dir"] = data_dir("configs-2")
+    cfg.ini.env = "jd_dev"  # Apply own env specific changes
+    cfg.ini.config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml")
     assert data
 
@@ -146,8 +146,8 @@ def test_load_jdconfig_4(monkeypatch):
     # config-4 is is about simple {import:}, {ref:} and {global:}
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
-    cfg.ini["config_dir"] = data_dir("configs-4")  # configure the directory for imports
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.config_dir = data_dir("configs-4")  # configure the directory for imports
     data = cfg.load("config.yaml")
     assert data
     assert data.get("c.a") == "2aa"

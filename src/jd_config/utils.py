@@ -11,7 +11,7 @@ from pathlib import Path, WindowsPath
 import typing
 from abc import ABC
 from io import StringIO
-from typing import Iterable, Mapping, Sequence, Optional
+from typing import Mapping, Sequence, Optional
 
 if typing.TYPE_CHECKING:
     from .placeholders import Placeholder
@@ -87,7 +87,5 @@ class NonStrSequence(ABC):
 
 
 ContainerType = Mapping | NonStrSequence
-
-PathType = str | int | Iterable[str | int]
 
 DEFAULT = object()

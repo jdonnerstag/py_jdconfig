@@ -10,14 +10,11 @@ from typing import Any, Mapping, Optional, Sequence
 
 import yaml
 
+from .config_path import PathType
+
 from .deep_search_mixin import DeepSearchMixin
-from .objwalk import (
-    DropContainerEvent,
-    NewMappingEvent,
-    NewSequenceEvent,
-    NodeEvent,
-)
-from .utils import ContainerType, PathType
+from .objwalk import DropContainerEvent, NewMappingEvent, NewSequenceEvent, NodeEvent
+from .utils import ContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

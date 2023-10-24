@@ -145,8 +145,8 @@ def test_not_found_import():
     # config-5 has plenty errors
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
-    cfg.ini["config_dir"] = data_dir("configs-5")  # configure the directory for imports
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.config_dir = data_dir("configs-5")  # configure the directory for imports
     data = cfg.load("config.yaml")
     assert data
 

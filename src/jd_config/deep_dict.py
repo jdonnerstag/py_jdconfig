@@ -7,13 +7,14 @@
 import logging
 from typing import Any, Callable, Iterator, Mapping, Optional
 
+from .config_path import CfgPath, PathType
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter import DeepGetter, GetterContext, OnMissing
 from .deep_search_mixin import DeepSearchMixin
 from .deep_update_mixin import DeepUpdateMixin
 from .file_loader import ConfigFileLoggerMixin
 from .resolver_mixin import ResolverMixin
-from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence, PathType
+from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
 from .value_reader import ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -74,7 +75,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         self.getter = self.new_getter() if getter is None else getter
         self.obj = obj
         self.root = obj if root is None else root
-        self.path = () if path is None else self.getter.normalize_path(path)
+        self.path = CfgPath(path)
         self.read_only = read_only
 
         DeepUpdateMixin.__init__(self)
@@ -118,8 +119,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
         ctx = getter.new_context(
             self.obj, current_file=self.root, skip_resolver=not resolve
         )
-        path = getter.normalize_path(path)
+        path = CfgPath(path)
         rtn = getter.get(self.obj, path, default=default, ctx=ctx)
+
         if isinstance(rtn, ContainerType):
             rtn = self.clone(rtn, self.path + path)
 
@@ -134,9 +136,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
         self._check_read_only(path)
 
-        path = self.getter.normalize_path(path)
+        path = CfgPath(path)
         assert path
-        key, path = path[-1], path[:-1]
+        key, path = path[-1], CfgPath(path[:-1])
 
         old_data = None
         try:
@@ -211,9 +213,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :return: the old value
         """
 
+        path = CfgPath(path)
         self._check_read_only(path)
 
-        path = self.getter.normalize_path(path)
         if not path:
             raise ConfigException("Empty path not allowed for set()")
 

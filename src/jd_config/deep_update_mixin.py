@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Mapping, Optional
 from .objwalk import objwalk
 
 if TYPE_CHECKING:
-    from jd_config.deep_dict import DeepDict
+    from .deep_dict import DeepDict
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

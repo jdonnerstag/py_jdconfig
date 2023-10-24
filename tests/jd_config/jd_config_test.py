@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from jd_config import ConfigException, JDConfig, NodeEvent, Placeholder
+from jd_config.config_path import CfgPath
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +29,9 @@ def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["config_dir"] = data_dir("configs-1")
-    cfg.ini["config_file"] = "config.yaml"
-    cfg.ini["default_env"] = "dev"
+    cfg.ini.config_dir = data_dir("configs-1")
+    cfg.ini.config_file = "config.yaml"
+    cfg.ini.default_env = "dev"
 
     data = cfg.load()
     assert data
@@ -83,8 +84,8 @@ def test_load_jdconfig_4():
     # config-4 is about simple {import:}, {ref:} and {global:}
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
-    cfg.ini["config_dir"] = data_dir("configs-4")  # configure the directory for imports
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.config_dir = data_dir("configs-4")  # configure the directory for imports
     data = cfg.load("config.yaml")
     assert data
 
@@ -112,9 +113,9 @@ def test_load_jdconfig_2(monkeypatch):
     # where the actually path refers to config value.
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     # config-2 has imports. Make sure, it is available for imports.
-    cfg.ini["config_dir"] = data_dir("configs-2")
+    cfg.ini.config_dir = data_dir("configs-2")
     # if config_dir provided to load() it is only used for this one file
     data = cfg.load("main_config.yaml")
     assert data
@@ -166,7 +167,7 @@ def test_load_jdconfig_3():
     # config-3 has a file recursion
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["config_dir"] = data_dir("configs-3")
+    cfg.ini.config_dir = data_dir("configs-3")
 
     # Since we lazy resolve, loading the main file will not raise an exception
     cfg.load("config.yaml")
@@ -221,8 +222,8 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     monkeypatch.setenv("DB_NAME", "dbname")
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = "jd_dev"  # Apply own env specific changes
-    cfg.ini["config_dir"] = data_dir("configs-2")
+    cfg.ini.env = "jd_dev"  # Apply own env specific changes
+    cfg.ini.config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml")
     assert data
 
@@ -250,9 +251,9 @@ def test_resolve_all(monkeypatch):
     # where the actually path refers to config value.
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     # config-2 has imports. Make sure, it is available for imports.
-    cfg.ini["config_dir"] = data_dir("configs-2")
+    cfg.ini.config_dir = data_dir("configs-2")
     # if config_dir provided to load() it is only used for this one file
     data = cfg.load("main_config.yaml")
     assert data
@@ -304,9 +305,9 @@ def test_separate_env_dir():
     # Config-6 is all about env specific overlay files.
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
-    cfg.ini["config_dir"] = data_dir("configs-6")
-    assert cfg.ini["add_env_dirs"] == [Path.cwd()]
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.config_dir = data_dir("configs-6")
+    assert cfg.ini.add_env_dirs == [Path.cwd()]
 
     cfg_file = Path("config.yaml")
 
@@ -324,7 +325,7 @@ def test_separate_env_dir():
     assert data.obj.file_2 is None
     assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
 
-    cfg.ini["env"] = "dev"
+    cfg.ini.env = "dev"
     data = cfg.load(cfg_file)
     assert data  # DeepDict
     assert data.obj  # The ConfigFile object containing the DeepDict data
@@ -339,7 +340,7 @@ def test_separate_env_dir():
     assert data.obj.file_2 is None
     assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
 
-    cfg.ini["env"] = "qa"
+    cfg.ini.env = "qa"
     data = cfg.load(cfg_file)
     assert data  # DeepDict
     assert data.obj  # The ConfigFile object containing the DeepDict data
@@ -354,7 +355,7 @@ def test_separate_env_dir():
     assert data.obj.file_2.parts[-1] == "config-2-qa.yaml"
     assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
 
-    cfg.ini["env"] = "dev-2"
+    cfg.ini.env = "dev-2"
     data = cfg.load(cfg_file)
     assert data  # DeepDict
     assert data.obj  # The ConfigFile object containing the DeepDict data
@@ -369,8 +370,8 @@ def test_separate_env_dir():
     assert data.obj.file_2 is None
     assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
 
-    env_dir = Path(os.path.join(cfg.ini["config_dir"], "env_files"))
-    cfg.ini["add_env_dirs"].append(env_dir)
+    env_dir = Path(os.path.join(cfg.ini.config_dir, "env_files"))
+    cfg.ini.add_env_dirs.append(env_dir)
     data = cfg.load(cfg_file)
     assert data  # DeepDict
     assert data.obj  # The ConfigFile object containing the DeepDict data
@@ -391,8 +392,8 @@ def test_path_separator():
     # config-4 is about simple {import:}, {ref:} and {global:}
 
     cfg = JDConfig(ini_file=None)
-    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
-    cfg.ini["config_dir"] = data_dir("configs-4")  # configure the directory for imports
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.config_dir = data_dir("configs-4")  # configure the directory for imports
     data = cfg.load("config.yaml")
     assert data
 
@@ -411,46 +412,46 @@ def test_path_separator():
     assert cfg.get("f") == "aa"
 
     # Default: "."
-    assert data.get(cfg.normalize_path("a")) == "aa"
-    assert data.get(cfg.normalize_path("b")) == "aa"
-    assert data.get(cfg.normalize_path("c"))
-    assert data.get(cfg.normalize_path("c.a")) == "2aa"
-    assert data.get(cfg.normalize_path("c.b")) == "2aa"
-    assert data.get(cfg.normalize_path("c.c")) == "aa"
-    assert data.get(cfg.normalize_path("c.d")) == "2aa"
-    assert data.get(cfg.normalize_path("c.e")) == "aa"
-    assert data.get(cfg.normalize_path("c.f")) == "aa"
-    assert data.get(cfg.normalize_path("d")) == "2aa"
-    assert data.get(cfg.normalize_path("e")) == "2aa"
-    assert data.get(cfg.normalize_path("f")) == "aa"
+    assert data.get(CfgPath("a")) == "aa"
+    assert data.get(CfgPath("b")) == "aa"
+    assert data.get(CfgPath("c"))
+    assert data.get(CfgPath("c.a")) == "2aa"
+    assert data.get(CfgPath("c.b")) == "2aa"
+    assert data.get(CfgPath("c.c")) == "aa"
+    assert data.get(CfgPath("c.d")) == "2aa"
+    assert data.get(CfgPath("c.e")) == "aa"
+    assert data.get(CfgPath("c.f")) == "aa"
+    assert data.get(CfgPath("d")) == "2aa"
+    assert data.get(CfgPath("e")) == "2aa"
+    assert data.get(CfgPath("f")) == "aa"
 
     # Explicit: "."
     sep = "."
-    assert data.get(cfg.normalize_path("a", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("b", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("c", sep=sep))
-    assert data.get(cfg.normalize_path("c.a", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("c.b", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("c.c", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("c.d", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("c.e", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("c.f", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("d", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("e", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("f", sep=sep)) == "aa"
+    assert data.get(CfgPath("a", sep=sep)) == "aa"
+    assert data.get(CfgPath("b", sep=sep)) == "aa"
+    assert data.get(CfgPath("c", sep=sep))
+    assert data.get(CfgPath("c.a", sep=sep)) == "2aa"
+    assert data.get(CfgPath("c.b", sep=sep)) == "2aa"
+    assert data.get(CfgPath("c.c", sep=sep)) == "aa"
+    assert data.get(CfgPath("c.d", sep=sep)) == "2aa"
+    assert data.get(CfgPath("c.e", sep=sep)) == "aa"
+    assert data.get(CfgPath("c.f", sep=sep)) == "aa"
+    assert data.get(CfgPath("d", sep=sep)) == "2aa"
+    assert data.get(CfgPath("e", sep=sep)) == "2aa"
+    assert data.get(CfgPath("f", sep=sep)) == "aa"
 
     # Explicit: "/"
     # Note: this does not apply to {ref:..} which still use default "."
     sep = "/"
-    assert data.get(cfg.normalize_path("a", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("b", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("c", sep=sep))
-    assert data.get(cfg.normalize_path("c/a", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("c/b", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("c/c", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("c/d", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("c/e", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("c/f", sep=sep)) == "aa"
-    assert data.get(cfg.normalize_path("d", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("e", sep=sep)) == "2aa"
-    assert data.get(cfg.normalize_path("f", sep=sep)) == "aa"
+    assert data.get(CfgPath("a", sep=sep)) == "aa"
+    assert data.get(CfgPath("b", sep=sep)) == "aa"
+    assert data.get(CfgPath("c", sep=sep))
+    assert data.get(CfgPath("c/a", sep=sep)) == "2aa"
+    assert data.get(CfgPath("c/b", sep=sep)) == "2aa"
+    assert data.get(CfgPath("c/c", sep=sep)) == "aa"
+    assert data.get(CfgPath("c/d", sep=sep)) == "2aa"
+    assert data.get(CfgPath("c/e", sep=sep)) == "aa"
+    assert data.get(CfgPath("c/f", sep=sep)) == "aa"
+    assert data.get(CfgPath("d", sep=sep)) == "2aa"
+    assert data.get(CfgPath("e", sep=sep)) == "2aa"
+    assert data.get(CfgPath("f", sep=sep)) == "aa"

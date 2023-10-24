@@ -12,11 +12,12 @@ from pathlib import Path
 from typing import Any, Iterator, Optional
 
 from .config_ini_mixin import ConfigIniMixin
+from .config_path import PathType, CfgPath
 from .deep_dict import DeepDict, DefaultConfigGetter
 from .deep_getter import GetterContext
 from .file_loader import ConfigFile, ConfigFileLoader
 from .objwalk import WalkerEvent
-from .utils import DEFAULT, ContainerType, PathType
+from .utils import DEFAULT, ContainerType
 from .value_reader import RegistryType, ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -82,17 +83,17 @@ class JDConfig(ConfigIniMixin):
     @property
     def config_dir(self) -> str | None:
         """Default working directory to load/import files"""
-        return self.ini["config_dir"]
+        return self.ini.config_dir
 
     @property
     def config_file(self) -> str | None:
         """The main config file"""
-        return self.ini["config_file"]
+        return self.ini.config_file
 
     @property
     def env(self) -> str | None:
         """The config environment, such as dev, test, prod"""
-        return self.ini["env"]
+        return self.ini.env
 
     @property
     def placeholder_registry(self) -> RegistryType:
@@ -110,17 +111,12 @@ class JDConfig(ConfigIniMixin):
         default: Any = DEFAULT,
         resolve: bool = True,
     ) -> Any:
-        """Get a config value (or node)"""
-        return self.data.get(path, default=default, resolve=resolve)
+        """Get a config value (or node)
 
-    def normalize_path(self, path: PathType, sep: str = ".") -> tuple[str | int, ...]:
-        """Normalize a config path
-
-        Most functions do not expose the path separator argument, but 'normalize_path()'
-        does. Normalize a path before invoking any of the other functions to apply
-        another separator.
+        In case path requires a special separator, use e.g.
+        'CfgPath(path, sep="/")' to create the path.
         """
-        return self.getter.normalize_path(path, sep=sep)
+        return self.data.get(path, default=default, resolve=resolve)
 
     def walk(
         self,
@@ -132,7 +128,7 @@ class JDConfig(ConfigIniMixin):
     ) -> Iterator[WalkerEvent]:
         """Walk a subtree, with lazily resolving node values"""
 
-        path = self.getter.normalize_path(path)
+        path = CfgPath(path)
         root = self.get(path, resolve=True)
         ctx = self.getter.new_context(
             data=root, current_file=self.data, skip_resolver=not resolve
@@ -173,6 +169,7 @@ class JDConfig(ConfigIniMixin):
         :param path: Only resolve config within the subtree
         """
 
+        path = CfgPath(path)
         logger.debug("Resolve all config placeholders for '%s'", path)
         data = self.getter.to_dict(self.data, path, resolve=True)
 
@@ -214,7 +211,7 @@ class JDConfig(ConfigIniMixin):
 
         # Load the file
         file = self.config_file_loader.load(
-            fname, config_dir, env, cache, add_env_dirs=self.ini["add_env_dirs"]
+            fname, config_dir, env, cache, add_env_dirs=self.ini.add_env_dirs
         )
 
         return file
@@ -244,7 +241,7 @@ class JDConfig(ConfigIniMixin):
 
         self.data = DeepDict(file, getter=self.getter)
 
-        if self.ini["resolve_eagerly"]:
+        if self.ini.resolve_eagerly:
             self.data = self.resolve_all()
 
         return self.data

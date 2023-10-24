@@ -10,9 +10,10 @@ This is similar to walking a file system or directory structure.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator, Mapping, Optional, Tuple
+from typing import Any, Callable, Iterator, Mapping, Optional
 
-from .utils import ConfigException, ContainerType, NonStrSequence, PathType
+from .config_path import CfgPath, PathType
+from .utils import ConfigException, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -23,7 +24,7 @@ class WalkerEvent:
     """The common base class for all objwalk events"""
 
     # The path to the config value
-    path: Tuple[str | int, ...]
+    path: CfgPath
 
     # The config value itself
     value: Any
@@ -106,7 +107,7 @@ def objwalk(
 
     creator_map = {Mapping: NewMappingEvent, NonStrSequence: NewSequenceEvent}
 
-    path_ = ()  # Empty tuple
+    path_ = CfgPath()  # Empty
     iter_obj = [obj]
     iter_stack = [_container_iter(obj)]
 
@@ -122,7 +123,7 @@ def objwalk(
                 if not isinstance(value, type_):
                     continue
 
-                path_ = path_ + (key,)
+                path_ = path_ + key
                 if not nodes_only:
                     event = event_type(path_, value, iter_obj[-1])
                     yield event
@@ -142,7 +143,7 @@ def objwalk(
                 yield DropContainerEvent(path_, value, iter_obj[-1])
 
             iter_stack.pop()
-            path_ = path_[:-1]
+            path_ = CfgPath(path_[:-1])
 
 
 def _container_iter(obj: Mapping | NonStrSequence) -> Iterator:

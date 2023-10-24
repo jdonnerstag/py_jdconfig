@@ -19,8 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
-from jd_config.file_loader import ConfigFile
-
+from .file_loader import ConfigFile
 from .utils import DEFAULT, ConfigException, ContainerType, Trace
 
 if TYPE_CHECKING:

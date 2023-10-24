@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 from typing import TYPE_CHECKING, Mapping
 
-from .utils import PathType
+from .config_path import PathType
 from .placeholders import EnvPlaceholder
 from .objwalk import objwalk, NewMappingEvent, NewSequenceEvent, NodeEvent
 
@@ -57,6 +57,8 @@ class ConfigStats:
         self.ini_env_var: str | None = None
 
     def create(self, cfg: "JDConfig"):
+        """Create the stats"""
+
         self.env_name = cfg.env
         self.ini_file = cfg.ini_file
         self.ini_env_var = cfg.ini_env_var
@@ -102,7 +104,7 @@ class ConfigStats:
         for match in re.finditer(r"(?=(\{\s*(\w+)\s*\:.*?\}))", value):
             count += 1
 
-            ph_text = match.group(1)
+            _ph_text = match.group(1)
             name = match.group(2)
             placeholders[name] = placeholders.get(name, 0) + 1
 

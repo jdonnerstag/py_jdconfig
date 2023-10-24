@@ -19,13 +19,13 @@ Either the base class or a subclass should support:
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Iterator, Optional
 
-from .config_path import ConfigPath
+from .config_path import CfgPath, PathType
 from .file_loader import ConfigFile
 from .placeholders import Placeholder, new_trace
-from .utils import DEFAULT, ConfigException, ContainerType, PathType, relative_to_cwd
+from .utils import DEFAULT, ConfigException, ContainerType, relative_to_cwd
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -47,7 +47,7 @@ class GetterContext:
     key: str | int | None = None
 
     # Normalized full path as provided by the user
-    path: tuple[str | int] = ()
+    path: CfgPath = field(default_factory=CfgPath)
 
     # While walking, the current index within the path
     idx: int = 0
@@ -80,18 +80,21 @@ class GetterContext:
         """Given the current 'key', get the value from the underlying container"""
         return self.data[self.key]
 
-    def cur_path(self) -> tuple[str | int]:
+    def cur_path(self) -> CfgPath:
         """While walking, the path to the current parent element"""
-        return self.path[: self.idx] + (self.key,)
+        return CfgPath(self.path[: self.idx] + (self.key,))
 
-    def path_replace(self, replace, count=1) -> tuple:
+    def path_replace(self, replace, count=1) -> CfgPath:
         """Replace the path element(s) at the current position (idx), with
         the new ones provided.
         """
+        if isinstance(replace, CfgPath):
+            replace = replace.path
+            
         if not isinstance(replace, tuple):
             replace = (replace,)
 
-        return self.path[: self.idx] + replace + self.path[self.idx + count :]
+        return CfgPath(self.path[: self.idx] + replace + self.path[self.idx + count :])
 
     def add_memo(self, placeholder: Placeholder) -> None:
         """Identify recursions"""
@@ -166,12 +169,6 @@ class DeepGetter:
         trace = new_trace(ctx)
         raise ConfigException(f"Config not found: {ctx.cur_path()}", trace=trace)
 
-    def normalize_path(self, path: PathType, sep: str = ".") -> tuple[str | int, ...]:
-        """Normalize a path. See `ConfigPath`for details."""
-
-        # TODO Need a version without search pattern support
-        return tuple(ConfigPath.normalize_path(path, sep=sep))
-
     def get_path(self, data: ContainerType, path: PathType) -> list[str | int]:
         """Determine the real path.
 
@@ -214,6 +211,7 @@ class DeepGetter:
         :param default: Optional default value, if the value was not found
         """
 
+        path = CfgPath(path)
         logger.debug("Config get(path=%s)", path)
         if ctx is None:
             ctx = self.new_context(data)
@@ -267,7 +265,7 @@ class DeepGetter:
            retrieve the value easily
         """
 
-        ctx.path = self.normalize_path(path)
+        ctx.path = CfgPath(path)
         if not ctx.path:
             return
 
