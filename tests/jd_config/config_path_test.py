@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 def test_path():
+    cfg = CfgPath()
+    assert cfg == []
     assert CfgPath("") == []
     assert CfgPath("a", sep=".") == ["a"]
     assert CfgPath(["a"], sep=".") == ["a"]
@@ -34,23 +36,25 @@ def test_path():
     assert CfgPath("222[1]") == ["222", 1]
     assert CfgPath("a.*.c") == ["a", "*", "c"]
     assert CfgPath("a.b[*].c") == ["a", "b", "%", "c"]
-    assert CfgPath("a..c") == ["a", "", "c"]
-    assert CfgPath("a...c") == ["a", "", "c"]
+    assert CfgPath("a.**.c") == ["a", "**", "c"]
+    assert CfgPath("a.**.**.c") == ["a", "**", "c"]
     assert CfgPath("a.*.*.c") == ["a", "*", "*", "c"]
-    assert CfgPath("a.*..c") == ["a", "", "c"]  # same as "a..c"
-    assert CfgPath("a..*.c") == ["a", "", "c"]  # same as "a..c"
-    assert CfgPath("a[*]..c") == ["a", "", "c"]  # same as "a..c"
-    assert CfgPath("..c") == ["", "c"]
+    assert CfgPath("a.*.**.c") == ["a", "**", "c"]  # same as "a.**.c"
+    assert CfgPath("a.**.*.c") == ["a", "**", "c"]  # same as "a.**.c"
+    assert CfgPath("a[*].**.c") == ["a", "**", "c"]  # same as "a.**.c"
+    assert CfgPath("**.c") == ["**", "c"]
     assert CfgPath("*.c") == ["*", "c"]
+    assert CfgPath("a*.c") == ["a*", "c"]  # only "*" and "**" have special meanings
+    assert CfgPath("a.*c") == ["a", "*c"]
 
-    # Should work with tuples as well
-    assert CfgPath("a.b[*].c") == ("a", "b", "%", "c")
 
-    should_fail = ["a[1", "a[a]", "a]1]", "a[1[", "a[", "a]", "a[]", "a..", "a.*"]
-
-    for elem in should_fail:
-        with pytest.raises(ConfigException):
-            CfgPath(elem)
+@pytest.mark.parametrize(
+    "path",
+    ["a[1", "a[a]", "a]1]", "a[1[", "a[", "a]", "a[]", "a..b", "a..", "a.*", "a.**"],
+)
+def test_should_fail(path):
+    with pytest.raises(ConfigException):
+        CfgPath(path)
 
 
 def test_to_str():
@@ -71,17 +75,15 @@ def test_to_str():
     assert CfgPath("222[1]").to_str() == "222[1]"
     assert CfgPath("a.*.c").to_str() == "a.*.c"
     assert CfgPath("a.b[*].c").to_str() == "a.b[*].c"
-    assert CfgPath("a..c").to_str() == "a..c"
-    assert CfgPath("a...c").to_str() == "a..c"
+    assert CfgPath("a.**.c").to_str() == "a.**.c"
+    assert CfgPath("a.**.**.c").to_str() == "a.**.c"
     assert CfgPath("a.*.*.c").to_str() == "a.*.*.c"
-    assert CfgPath("a.*..c").to_str() == "a..c"  # ".*.." == ".."
-    assert CfgPath("a..*.c").to_str() == "a..c"  # "..*." == ".."
-    assert CfgPath("a[*]..c").to_str() == "a..c"  # "[*].." == ".."
-    assert CfgPath("..c").to_str() == "..c"
+    assert CfgPath("a.*.**.c").to_str() == "a.**.c"
+    assert CfgPath("a.**.*.c").to_str() == "a.**.c"
+    assert CfgPath("a[*].**.c").to_str() == "a.**.c"
+    assert CfgPath("**.c").to_str() == "**.c"
     assert CfgPath("*.c").to_str() == "*.c"
 
-    # CfgPath __eq__ is able to compare against strings
-    assert CfgPath("a[1].b") == "a[1].b"
 
 def test_sequence():
     assert len(CfgPath("a[1].b")) == 3

@@ -196,25 +196,25 @@ def test_deep_getter_2():
     }
 
     getter = MyConfig()
-    assert getter.get_path(cfg, "..a") == ("a",)
-    assert getter.get_path(cfg, "..bbb") == ("b", "bb", "bbb")
-    assert getter.get_path(cfg, "b..bbb") == ("b", "bb", "bbb")
-    assert getter.get_path(cfg, "b..bb..bbb") == ("b", "bb", "bbb")
-    assert getter.get_path(cfg, "c..c4b") == ("c", 3, "c4b")
+    assert getter.get_path(cfg, "**.a") == ("a",)
+    assert getter.get_path(cfg, "**.bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(cfg, "b.**.bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(cfg, "b.**.bb.**.bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(cfg, "c.**.c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path(cfg, "b..xxx")
+        getter.get_path(cfg, "b.**.xxx")
 
-    assert getter.get(cfg, "..a") == "aa"
-    assert getter.get(cfg, "..bbb") == 33
-    assert getter.get(cfg, "b..bbb") == 33
-    assert getter.get(cfg, "b..bb..bbb") == 33
-    assert getter.get(cfg, "c..c4b") == 55
+    assert getter.get(cfg, "**.a") == "aa"
+    assert getter.get(cfg, "**.bbb") == 33
+    assert getter.get(cfg, "b.**.bbb") == 33
+    assert getter.get(cfg, "b.**.bb.**.bbb") == 33
+    assert getter.get(cfg, "c.**.c4b") == 55
 
     with pytest.raises(ConfigException):
-        getter.get(cfg, "b..xxx")
+        getter.get(cfg, "b.**.xxx")
 
-    assert getter.get(cfg, "b..xxx", 99) == 99
+    assert getter.get(cfg, "b.**.xxx", 99) == 99
 
 
 def test_deep_getter_3():

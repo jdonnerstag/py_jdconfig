@@ -28,7 +28,7 @@ class CfgPath(Sequence):
 
     PAT_ANY_KEY = "*"
     PAT_ANY_IDX = "%"
-    PAT_DEEP = ""
+    PAT_DEEP = "**"
 
     SEARCH_PATTERN = (PAT_ANY_KEY, PAT_ANY_IDX, PAT_DEEP)
 
@@ -125,6 +125,9 @@ class CfgPath(Sequence):
         rtn = []
         pat = re.compile(r"\s*([^\[\]]*)\s*((?:\[\s*(\d+|\*)\s*\]\s*)*)")
         for elem in cls.flatten_and_split_path(path, sep):
+            if elem != 0 and not elem:
+                raise ConfigException(f"Invalid config path: empty element: '{path}'")
+
             if isinstance(elem, int):
                 rtn.append(elem)
                 continue

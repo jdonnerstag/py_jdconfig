@@ -113,3 +113,4 @@ Done:
   Abondaned the idea, now that we have much improve logging (debug)
 - Allow the env overlays to be in a different directory.
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
+- Replaced "a..b" search pattern with "a.**.b"
