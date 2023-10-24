@@ -80,7 +80,7 @@ def test_jdconfig_1_placeholders(monkeypatch):
 
 
 def test_load_jdconfig_4():
-    # config-4 is is about simple {import:}, {ref:} and {global:}
+    # config-4 is about simple {import:}, {ref:} and {global:}
 
     cfg = JDConfig(ini_file=None)
     cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
@@ -384,3 +384,73 @@ def test_separate_env_dir():
     assert data.obj.file_1.parts[-1] == "config-2.yaml"
     assert data.obj.file_2 is None
     assert data.obj.data  # The dict or ChainMap holdeing the data in ConfigFile
+
+
+def test_path_separator():
+    # Validate it is still working in main config level
+    # config-4 is about simple {import:}, {ref:} and {global:}
+
+    cfg = JDConfig(ini_file=None)
+    cfg.ini["env"] = None  # Make sure, we are not even trying to load an env file
+    cfg.ini["config_dir"] = data_dir("configs-4")  # configure the directory for imports
+    data = cfg.load("config.yaml")
+    assert data
+
+    # Default: "."
+    assert cfg.get("a") == "aa"
+    assert cfg.get("b") == "aa"
+    assert cfg.get("c")
+    assert cfg.get("c.a") == "2aa"
+    assert cfg.get("c.b") == "2aa"
+    assert cfg.get("c.c") == "aa"
+    assert cfg.get("c.d") == "2aa"
+    assert cfg.get("c.e") == "aa"
+    assert cfg.get("c.f") == "aa"
+    assert cfg.get("d") == "2aa"
+    assert cfg.get("e") == "2aa"
+    assert cfg.get("f") == "aa"
+
+    # Default: "."
+    assert data.get(cfg.normalize_path("a")) == "aa"
+    assert data.get(cfg.normalize_path("b")) == "aa"
+    assert data.get(cfg.normalize_path("c"))
+    assert data.get(cfg.normalize_path("c.a")) == "2aa"
+    assert data.get(cfg.normalize_path("c.b")) == "2aa"
+    assert data.get(cfg.normalize_path("c.c")) == "aa"
+    assert data.get(cfg.normalize_path("c.d")) == "2aa"
+    assert data.get(cfg.normalize_path("c.e")) == "aa"
+    assert data.get(cfg.normalize_path("c.f")) == "aa"
+    assert data.get(cfg.normalize_path("d")) == "2aa"
+    assert data.get(cfg.normalize_path("e")) == "2aa"
+    assert data.get(cfg.normalize_path("f")) == "aa"
+
+    # Explicit: "."
+    sep = "."
+    assert data.get(cfg.normalize_path("a", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("b", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("c", sep=sep))
+    assert data.get(cfg.normalize_path("c.a", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("c.b", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("c.c", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("c.d", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("c.e", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("c.f", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("d", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("e", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("f", sep=sep)) == "aa"
+
+    # Explicit: "/"
+    # Note: this does not apply to {ref:..} which still use default "."
+    sep = "/"
+    assert data.get(cfg.normalize_path("a", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("b", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("c", sep=sep))
+    assert data.get(cfg.normalize_path("c/a", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("c/b", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("c/c", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("c/d", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("c/e", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("c/f", sep=sep)) == "aa"
+    assert data.get(cfg.normalize_path("d", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("e", sep=sep)) == "2aa"
+    assert data.get(cfg.normalize_path("f", sep=sep)) == "aa"

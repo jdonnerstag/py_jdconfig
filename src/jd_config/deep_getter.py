@@ -166,11 +166,11 @@ class DeepGetter:
         trace = new_trace(ctx)
         raise ConfigException(f"Config not found: {ctx.cur_path()}", trace=trace)
 
-    def normalize_path(self, path: PathType) -> tuple[str | int]:
+    def normalize_path(self, path: PathType, sep: str = ".") -> tuple[str | int, ...]:
         """Normalize a path. See `ConfigPath`for details."""
 
         # TODO Need a version without search pattern support
-        return tuple(ConfigPath.normalize_path(path))
+        return tuple(ConfigPath.normalize_path(path, sep=sep))
 
     def get_path(self, data: ContainerType, path: PathType) -> list[str | int]:
         """Determine the real path.

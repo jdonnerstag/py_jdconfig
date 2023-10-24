@@ -104,9 +104,23 @@ class JDConfig(ConfigIniMixin):
         """The list of files loaded so far"""
         return self.config_file_loader.files_loaded
 
-    def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
+    def get(
+        self,
+        path: PathType,
+        default: Any = DEFAULT,
+        resolve: bool = True,
+    ) -> Any:
         """Get a config value (or node)"""
         return self.data.get(path, default=default, resolve=resolve)
+
+    def normalize_path(self, path: PathType, sep: str = ".") -> tuple[str | int, ...]:
+        """Normalize a config path
+
+        Most functions do not expose the path separator argument, but 'normalize_path()'
+        does. Normalize a path before invoking any of the other functions to apply
+        another separator.
+        """
+        return self.getter.normalize_path(path, sep=sep)
 
     def walk(
         self,
@@ -211,7 +225,7 @@ class JDConfig(ConfigIniMixin):
         config_dir: Optional[Path] = None,
         env: str | None = None,
         cache: bool = True,
-    ) -> ContainerType:
+    ) -> DeepDict:
         """Main entry point to load configs"
 
         The filename can be relativ or absolute. If relativ, it will be loaded

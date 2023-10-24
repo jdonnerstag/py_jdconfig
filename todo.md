@@ -1,6 +1,5 @@
 # Todos / Requirements
 
-- I like structured configs with dataclass and pydantic
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??
 - Env placeholders could be resolved early. We need a generic approach, that allows
@@ -12,6 +11,23 @@
   injected.
 - Add {delete:} to allow env files to remove a node
 - Config from remote: How should the config.ini look like, and the plugin config, to retrieve such configs
+- We regularly are asked to support relative refs as in {ref:../../abc}?
+  Was thinking about "..[2]" == "../.." but I don't like it. Too unusual.
+  "...a.b" == "../a/b" => No. How should "../../a" then look like?
+  Mixing multiple sep as in "../a.b" => No, only creating confusion
+  {ref:a/b/c, sep="/"} to make it explicit?
+  Can we auto-detect whether it is "a/b/c" or "a.b.c" ?
+- Validate that "/" is still working, e.g. "a/b/c" instead of "a.b.c", in all main entry points
+- should {a.b.c} or {:a.b.c } == {ref:a.b.c} with {ref:} as default?
+  Is "{:" allow at all right now? May be that is an easy fix
+- Evaluate further get("..") vs cfg.a.b.c.  I still prefer get("..") which avoids confusions IMHO.
+- struct configs => configs are mostly readonly; dataclasses; pydantic; support to read
+  configs (subsections) into a dataclass (logging, ETL, other modules and their configs). Every
+  app consists of other modules. Don't want to redo structured config for every module all the
+  time => Modules responsible for details. E.g. cfg.get(path, into=type or instance) which
+  retrieves the config for path, and loads the data into type.
+- Make ConfigPath a class that holds the path, not just the conversion. Replace
+  tuple(str|int, ...) with this class, which is more explicit
 
 Done:
 
