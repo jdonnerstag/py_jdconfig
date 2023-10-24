@@ -8,7 +8,7 @@ Normalize config paths such as "a.b.c", "a.b[2].c", "a..c", "a.*.c", "a.b[*].c",
 
 import logging
 import re
-from typing import Iterable, Iterator, Sequence, Union
+from typing import Iterable, Iterator, Optional, Sequence, Union
 
 from .utils import ConfigException
 
@@ -24,11 +24,15 @@ class CfgPath(Sequence):
     """
 
     # Allows to change the global default
-    DEFAULT_SEP = "."
+    # Test in the sequence provided
+    # Because of "../a", "." should always be last
+    DEFAULT_SEP: str = "/."
 
-    PAT_ANY_KEY = "*"
-    PAT_ANY_IDX = "%"
-    PAT_DEEP = "**"
+    PAT_ANY_KEY: str = "*"
+    PAT_ANY_IDX: str = "%"
+    PAT_DEEP: str = "**"
+
+    PARENT_DIR: str = ".."
 
     SEARCH_PATTERN = (PAT_ANY_KEY, PAT_ANY_IDX, PAT_DEEP)
 
@@ -46,15 +50,36 @@ class CfgPath(Sequence):
             yield path
 
     @classmethod
+    def split_path(cls, path: str, sep: str) -> list[str]:
+        """Split the path by the first separator char found
+
+        E.g. 'split_path("a.b.c", "/.")' => ["a", "b", "c"]
+        """
+
+        if not isinstance(path, str) or len(sep) == 0:
+            return [path]
+
+        if len(sep) == 1:
+            return path.split(sep)
+
+        for elem in sep:
+            if elem == "." and cls.PARENT_DIR in path:
+                continue
+
+            if elem in path:
+                return path.split(elem)
+
+        return [path]
+
+    @classmethod
     def flatten_and_split_path(cls, path: PathType, sep: str) -> Iterable[str | int]:
         """Flatten a list of list, and further split the str elements by a separator"""
 
         for elem in cls.flatten(path):
-            if isinstance(elem, str):
-                for elem_2 in elem.split(sep):
-                    yield elem_2
-            else:
-                yield elem
+            data = cls.split_path(elem, sep)
+
+            for elem_2 in data:
+                yield elem_2
 
     @classmethod
     def _append_to_path_str(cls, path: str, elem: str | int, sep: str) -> str:
@@ -72,8 +97,17 @@ class CfgPath(Sequence):
 
         return path
 
-    def to_str(self, sep: str = DEFAULT_SEP) -> str:
+    def to_str(self, sep: Optional[str] = None) -> str:
         """Convert a normalized path into a string"""
+
+        if sep is None:
+            for i in reversed(self.DEFAULT_SEP):
+                found = any(isinstance(elem, str) and i in elem for elem in self.path)
+                if not found:
+                    sep = i
+                    break
+            else:
+                sep = "."
 
         rtn = ""
         for elem in self.path:
@@ -131,10 +165,16 @@ class CfgPath(Sequence):
             if isinstance(elem, int):
                 rtn.append(elem)
                 continue
+
             if isinstance(elem, str):
+                if (elem != cls.PARENT_DIR) and (cls.PARENT_DIR in elem):
+                    raise ConfigException(
+                        f"Invalid config path: misplaced '..': '{path}'"
+                    )
+
                 match = pat.fullmatch(elem)
                 if match:
-                    cls._normalize_path_elem(match.group(1), match.group(2), rtn)
+                    cls._normalize_path_elem(match.group(1), match.group(2), rtn, path)
                     continue
 
             raise ConfigException(
@@ -142,7 +182,7 @@ class CfgPath(Sequence):
             )
 
         cleaned = cls._cleanup_path(rtn)
-        if cleaned and cleaned[-1] in [cls.PAT_DEEP, cls.PAT_ANY_KEY]:
+        if cls._ends_with_invalid_search_key(cleaned):
             raise ConfigException(
                 f"Config path must not end with with a selector: '{path}'"
             )
@@ -150,14 +190,27 @@ class CfgPath(Sequence):
         return tuple(cleaned)
 
     @classmethod
-    def _normalize_path_elem(cls, key, index, rtn: list):
-        if key == cls.PAT_ANY_KEY:
-            rtn.append(cls.PAT_ANY_KEY)
-        elif not key:
-            if not index:
-                rtn.append(cls.PAT_DEEP)
-        elif key:
+    def _ends_with_invalid_search_key(cls, cleaned):
+        if not cleaned:
+            return cleaned
+
+        last = len(cleaned) - 1
+        while last >= 0:
+            if cleaned[last] != cls.PARENT_DIR:
+                break
+
+            last -= 1
+
+        return cleaned[last] in [cls.PAT_DEEP, cls.PAT_ANY_KEY]
+
+    @classmethod
+    def _normalize_path_elem(cls, key, index, rtn: list, path):
+        if key:
             rtn.append(key)
+        elif rtn:
+            raise ConfigException(
+                f"Invalid config path: Expected 'name[key]', but found: '{path}'"
+            )
 
         if index:
             index = index[1:-1]
@@ -178,6 +231,13 @@ class CfgPath(Sequence):
             if last is None:
                 last = elem
                 cleaned.append(elem)
+            elif elem == cls.PARENT_DIR:
+                if not cleaned or last == cls.PAT_DEEP:
+                    last = elem
+                    cleaned.append(elem)
+                else:
+                    last = elem
+                    cleaned.pop()
             elif elem not in [cls.PAT_DEEP, cls.PAT_ANY_KEY, cls.PAT_ANY_IDX]:
                 last = elem
                 cleaned.append(elem)

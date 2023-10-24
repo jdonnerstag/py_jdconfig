@@ -46,11 +46,34 @@ def test_path():
     assert CfgPath("*.c") == ["*", "c"]
     assert CfgPath("a*.c") == ["a*", "c"]  # only "*" and "**" have special meanings
     assert CfgPath("a.*c") == ["a", "*c"]
+    assert CfgPath("a/../b") == ["b"]
+    assert CfgPath("../b") == ["..", "b"]
+    assert CfgPath("a/b/..") == ["a"]
+    assert CfgPath("a/*/..") == ["a"]
+    assert CfgPath("..") == [".."]
+    assert CfgPath("../../a") == ["..", "..", "a"]
+    assert CfgPath("a/**/../b") == ["a", "**", "..", "b"]
 
 
 @pytest.mark.parametrize(
     "path",
-    ["a[1", "a[a]", "a]1]", "a[1[", "a[", "a]", "a[]", "a..b", "a..", "a.*", "a.**"],
+    [
+        "a[1",
+        "a[a]",
+        "a]1]",
+        "a[1[",
+        "a[",
+        "a]",
+        "a[]",
+        "a..b",
+        "a../b",
+        "a/..b",
+        "a..",
+        "a.*",
+        "a.**",
+        "a.[1]",
+        "a/**/.."
+    ],
 )
 def test_should_fail(path):
     with pytest.raises(ConfigException):
@@ -83,6 +106,13 @@ def test_to_str():
     assert CfgPath("a[*].**.c").to_str() == "a.**.c"
     assert CfgPath("**.c").to_str() == "**.c"
     assert CfgPath("*.c").to_str() == "*.c"
+    assert CfgPath("a/../b").to_str() == "b"
+    assert CfgPath("../b").to_str() == "../b"
+    assert CfgPath("a/b/..") == "a/b/.."
+    assert CfgPath("a/*/..") == "a"
+    assert CfgPath("..") == ".."
+    assert CfgPath("../../a") == "../../a"
+    assert CfgPath("a/**/../b") == "a/**/../b"
 
 
 def test_sequence():
@@ -93,3 +123,35 @@ def test_sequence():
 
     # Test iterator
     assert list(CfgPath("a[1].b")) == ["a", 1, "b"]
+
+
+def test_auto_detect():
+    cfg = CfgPath()
+    assert cfg == []
+    assert CfgPath("") == []
+    assert CfgPath("a") == ["a"]
+    assert CfgPath(["a"]) == ["a"]
+    assert CfgPath(["a[1]"]) == ["a", 1]
+    assert CfgPath(["a[1][2]"]) == ["a", 1, 2]
+    assert CfgPath("a.b.c") == ["a", "b", "c"]  # detect "."
+    assert CfgPath("a[1].b") == ["a", 1, "b"]  # detect "."
+    assert CfgPath("a/b/c") == ["a", "b", "c"]  # detect "/"
+    assert CfgPath("a/b[1]/c") == ["a", "b", 1, "c"]  # detect "/"
+    assert CfgPath(["a", "b", "c"]) == ["a", "b", "c"]
+    assert CfgPath(("a", "b.c")) == ["a", "b", "c"]
+    assert CfgPath(("a", ("b", "c"))) == ["a", "b", "c"]
+    assert CfgPath(("a", ("b.c"))) == ["a", "b", "c"]
+    assert CfgPath("[1]") == [1]
+    assert CfgPath("222[1]") == ["222", 1]
+    assert CfgPath("a.*.c") == ["a", "*", "c"]
+    assert CfgPath("a.b[*].c") == ["a", "b", "%", "c"]
+    assert CfgPath("a.**.c") == ["a", "**", "c"]
+    assert CfgPath("a.**.**.c") == ["a", "**", "c"]
+    assert CfgPath("a.*.*.c") == ["a", "*", "*", "c"]
+    assert CfgPath("a.*.**.c") == ["a", "**", "c"]  # same as "a.**.c"
+    assert CfgPath("a.**.*.c") == ["a", "**", "c"]  # same as "a.**.c"
+    assert CfgPath("a[*].**.c") == ["a", "**", "c"]  # same as "a.**.c"
+    assert CfgPath("**.c") == ["**", "c"]
+    assert CfgPath("*.c") == ["*", "c"]
+    assert CfgPath("a*.c") == ["a*", "c"]  # only "*" and "**" have special meanings
+    assert CfgPath("a.*c") == ["a", "*c"]
