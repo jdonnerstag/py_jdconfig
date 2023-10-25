@@ -173,7 +173,7 @@ class DeepGetter:
         trace = new_trace(ctx)
         raise ConfigException(f"Config not found: {ctx.cur_path()}", trace=trace)
 
-    def get_path(self, data: ContainerType, path: PathType) -> list[str | int]:
+    def get_path(self, ctx: GetterContext, path: PathType) -> list[str | int]:
         """Determine the real path.
 
         The base implementation just returns the normalized path, without
@@ -186,8 +186,6 @@ class DeepGetter:
         :return: the normalized path
         """
 
-        ctx = self.new_context(data)
-
         try:
             for ctx in self.walk_path(ctx, path):
                 ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
@@ -199,35 +197,7 @@ class DeepGetter:
 
         return ctx.path
 
-    def get(
-        self,
-        data: ContainerType | None,
-        path: PathType,
-        default: Any = DEFAULT,
-        *,
-        on_missing: Optional[OnMissing] = None,
-        ctx: Optional[GetterContext] = None,
-    ) -> Any:
-        """The main entry point: walk the provided path and return whatever the
-        value at that end of that path is.
-
-        :param path: A user provided (config) path like object, e.g. `a.b[2].c`
-        :param default: Optional default value, if the value was not found
-        """
-
-        if ctx is None:
-            ctx = self.new_context(data)
-        elif data is not None:
-            ctx.data = data
-
-        if on_missing is not None:
-            ctx.on_missing = on_missing
-
-        return self.get_with_ctx(ctx, path, default=default)
-
-    def get_with_ctx(
-        self, ctx: GetterContext, path: PathType, *, default: Any = DEFAULT
-    ) -> Any:
+    def get(self, ctx: GetterContext, path: PathType, default: Any = DEFAULT) -> Any:
         """Walk the provided path and return whatever the value at that
         end of that path is.
 

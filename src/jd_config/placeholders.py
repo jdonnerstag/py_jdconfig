@@ -119,7 +119,7 @@ class RefPlaceholder(Placeholder):
         self, getter, parent_ctx: "GetterContext", ctx: "GetterContext", path
     ):
         try:
-            obj = getter.get_with_ctx(ctx, path)
+            obj = getter.get(ctx, path)
             return obj
         except (
             KeyError,

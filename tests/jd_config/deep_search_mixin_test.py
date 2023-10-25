@@ -7,7 +7,7 @@ import logging
 
 import pytest
 
-from jd_config import ConfigException, DeepGetter, DeepSearchMixin
+from jd_config import ConfigException, DeepGetter, DeepSearchMixin, GetterContext
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +29,13 @@ def test_simple():
     }
 
     getter = MyConfig()
-    assert getter.get_path(cfg, "a") == ("a",)
-    assert getter.get_path(cfg, "b") == ("b",)
-    assert getter.get_path(cfg, "b.ba") == ("b", "ba")
-    assert getter.get_path(cfg, "c[3].c4b") == ("c", 3, "c4b")
+    assert getter.get_path(GetterContext(cfg), "a") == ("a",)
+    assert getter.get_path(GetterContext(cfg), "b") == ("b",)
+    assert getter.get_path(GetterContext(cfg), "b.ba") == ("b", "ba")
+    assert getter.get_path(GetterContext(cfg), "c[3].c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path(cfg, "xxx")
+        getter.get_path(GetterContext(cfg), "xxx")
 
 
 def test_deep():
@@ -46,25 +46,25 @@ def test_deep():
     }
 
     getter = MyConfig()
-    assert getter.get_path(cfg, "**.a") == ("a",)
-    assert getter.get_path(cfg, "**.bbb") == ("b", "bb", "bbb")
-    assert getter.get_path(cfg, "b.**.bbb") == ("b", "bb", "bbb")
-    assert getter.get_path(cfg, "b.**.bb.**.bbb") == ("b", "bb", "bbb")
-    assert getter.get_path(cfg, "c.**.c4b") == ("c", 3, "c4b")
+    assert getter.get_path(GetterContext(cfg), "**.a") == ("a",)
+    assert getter.get_path(GetterContext(cfg), "**.bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(GetterContext(cfg), "b.**.bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(GetterContext(cfg), "b.**.bb.**.bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(GetterContext(cfg), "c.**.c4b") == ("c", 3, "c4b")
 
     with pytest.raises(ConfigException):
-        getter.get_path(cfg, "b.**.xxx")
+        getter.get_path(GetterContext(cfg), "b.**.xxx")
 
-    assert getter.get(cfg, "**.a") == "aa"
-    assert getter.get(cfg, "**.bbb") == 33
-    assert getter.get(cfg, "b.**.bbb") == 33
-    assert getter.get(cfg, "b.**.bb.**.bbb") == 33
-    assert getter.get(cfg, "c.**.c4b") == 55
+    assert getter.get(GetterContext(cfg), "**.a") == "aa"
+    assert getter.get(GetterContext(cfg), "**.bbb") == 33
+    assert getter.get(GetterContext(cfg), "b.**.bbb") == 33
+    assert getter.get(GetterContext(cfg), "b.**.bb.**.bbb") == 33
+    assert getter.get(GetterContext(cfg), "c.**.c4b") == 55
 
     with pytest.raises(ConfigException):
-        getter.get(cfg, "b.**.xxx")
+        getter.get(GetterContext(cfg), "b.**.xxx")
 
-    assert getter.get(cfg, "b.**.xxx", 99) == 99
+    assert getter.get(GetterContext(cfg), "b.**.xxx", 99) == 99
 
 
 def test_any_key_or_index():
@@ -75,11 +75,11 @@ def test_any_key_or_index():
     }
 
     getter = MyConfig()
-    assert getter.get(cfg, "b.*.bbb") == 33
-    assert getter.get(cfg, "b.*.ba", None) is None
-    assert getter.get(cfg, "c[*].c4b", None) == 55
-    assert getter.get(cfg, "c.*.c4b", None) is None
-    assert getter.get(cfg, "*.ba") == 11
-    assert getter.get(cfg, "*.*.bbb") == 33
+    assert getter.get(GetterContext(cfg), "b.*.bbb") == 33
+    assert getter.get(GetterContext(cfg), "b.*.ba", None) is None
+    assert getter.get(GetterContext(cfg), "c[*].c4b", None) == 55
+    assert getter.get(GetterContext(cfg), "c.*.c4b", None) is None
+    assert getter.get(GetterContext(cfg), "*.ba") == 11
+    assert getter.get(GetterContext(cfg), "*.*.bbb") == 33
 
-    assert getter.get_path(cfg, "*.*.bbb") == ("b", "bb", "bbb")
+    assert getter.get_path(GetterContext(cfg), "*.*.bbb") == ("b", "bb", "bbb")

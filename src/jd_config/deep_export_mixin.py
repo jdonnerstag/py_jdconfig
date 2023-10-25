@@ -41,8 +41,7 @@ class DeepExportMixin(DeepSearchMixin):
         """
 
         ctx = self.new_context(data, current_file=data, skip_resolver=not resolve)
-
-        ctx.data = self.get(data, path)
+        ctx.data = self.get(ctx, path)
         cur: Mapping | Sequence = {}
         stack = [cur]
 

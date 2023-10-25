@@ -115,12 +115,17 @@ class DeepDict(Mapping, DeepUpdateMixin):
         :return: The value determined
         """
 
-        getter = self.getter
-        ctx = getter.new_context(
-            self.obj, current_file=self.root, skip_resolver=not resolve
-        )
         path = CfgPath(path)
-        rtn = getter.get(self.obj, path, default=default, ctx=ctx)
+
+        ctx = GetterContext(
+            current_file=self.root,
+            data=self.obj,
+            path=path,
+            args={"skip_resolver": not resolve},
+            on_missing=self.getter.on_missing,
+        )
+
+        rtn = self.getter.get(ctx, path, default=default)
 
         if isinstance(rtn, ContainerType):
             rtn = self.clone(rtn, self.path + path)
@@ -130,6 +135,12 @@ class DeepDict(Mapping, DeepUpdateMixin):
     def _check_read_only(self, path):
         if self.read_only:
             raise ConfigException(f"DeepDict instance is read_only: 'path={path}'")
+
+    @classmethod
+    def dismantle(cls, data: Any) -> Any:
+        """If DeepDict return the wrapped object"""
+
+        return data.obj if isinstance(data, DeepDict) else data
 
     def delete(self, path: PathType, *, exception: bool = True) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
@@ -142,12 +153,14 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
         old_data = None
         try:
-            data = self.getter.get(self.obj, path)
+            data = self.get(path, resolve=True)
 
             try:
-                old_data = data[key]
+                old_data = self.dismantle(data[key])
             except:  # pylint: disable=bare-except
                 pass
+
+            data = self.dismantle(data)
 
             if isinstance(data, Mapping) and isinstance(key, str):
                 del data[key]
@@ -311,6 +324,9 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
     def __setitem__(self, key: Any, item: Any) -> None:
         self.set(key, item)
+
+    def __delitem__(self, key: Any) -> None:
+        self.delete(key, exception=True)
 
     def __len__(self) -> int:
         return self.obj.__len__()
