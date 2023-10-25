@@ -33,6 +33,7 @@ class CfgPath(Sequence):
     PAT_DEEP: str = "**"
 
     PARENT_DIR: str = ".."
+    CURRENT_DIR: str = "."
 
     SEARCH_PATTERN = (PAT_ANY_KEY, PAT_ANY_IDX, PAT_DEEP)
 
@@ -61,6 +62,9 @@ class CfgPath(Sequence):
 
         if len(sep) == 1:
             return path.split(sep)
+
+        if path in [cls.PARENT_DIR, cls.CURRENT_DIR]:
+            return [path]
 
         for elem in sep:
             if elem == "." and cls.PARENT_DIR in path:
@@ -238,6 +242,12 @@ class CfgPath(Sequence):
                 else:
                     last = elem
                     cleaned.pop()
+            elif elem == cls.CURRENT_DIR:
+                if not cleaned:
+                    last = elem
+                    cleaned.append(elem)
+                else:
+                    pass  # Nothing to do
             elif elem not in [cls.PAT_DEEP, cls.PAT_ANY_KEY, cls.PAT_ANY_IDX]:
                 last = elem
                 cleaned.append(elem)
@@ -253,6 +263,9 @@ class CfgPath(Sequence):
                 last = elem
                 cleaned.pop()
                 cleaned.append(elem)
+
+        if len(cleaned) == 1 and cleaned[0] == cls.CURRENT_DIR:
+            cleaned.pop()
 
         return cleaned
 

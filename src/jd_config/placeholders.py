@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
+from .config_path import CfgPath
 from .file_loader import ConfigFile
 from .utils import DEFAULT, ConfigException, ContainerType, Trace
 
@@ -107,12 +108,18 @@ class RefPlaceholder(Placeholder):
         assert self.path
 
     def resolve(self, getter, ctx: "GetterContext"):
-        new_ctx = dataclasses.replace(ctx)
-        return self._resolve_inner(getter, ctx, new_ctx)
+        new_ctx = dataclasses.replace(ctx, data=ctx.current_file)
+        path = CfgPath(self.path)
+        if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
+            path = ctx.parent_path(0) + path
 
-    def _resolve_inner(self, getter, parent_ctx: "GetterContext", ctx: "GetterContext"):
+        return self._resolve_inner(getter, ctx, new_ctx, path)
+
+    def _resolve_inner(
+        self, getter, parent_ctx: "GetterContext", ctx: "GetterContext", path
+    ):
         try:
-            obj = getter.get(ctx.current_file, self.path, ctx=ctx)
+            obj = getter.get_with_ctx(ctx, path)
             return obj
         except (
             KeyError,
@@ -147,8 +154,16 @@ class GlobalRefPlaceholder(RefPlaceholder):
     root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
     def resolve(self, getter, ctx: "GetterContext"):
-        new_ctx = dataclasses.replace(ctx, current_file=ctx.global_file)
-        return self._resolve_inner(getter, ctx, new_ctx)
+        path = CfgPath(self.path)
+        if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
+            raise ConfigException(
+                f"Relativ config paths are not allowed with global refs: '{path}'"
+            )
+
+        new_ctx = dataclasses.replace(
+            ctx, data=ctx.global_file, current_file=ctx.global_file
+        )
+        return self._resolve_inner(getter, ctx, new_ctx, self.path)
 
 
 class EnvvarConfigException(ConfigException):

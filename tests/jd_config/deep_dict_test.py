@@ -191,3 +191,19 @@ def test_read_only():
     data.read_only = True
     with pytest.raises(ConfigException):
         data.set("a", "aa")
+
+def test_parent_dir():
+    cfg = {
+        "a": "aa",
+        "b": {"ba": 11, "bb": {"bba": 22, "bbb": "{ref:../ba}", "bbc": "{ref:./bba}"}},
+        "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
+    }
+
+    data = DeepDict(cfg)
+    assert data.get("b/..") == cfg
+    assert data.get("b.bb.bbb") == 11
+    assert data.get("b.bb.bbc") == 22
+
+    with pytest.raises(ConfigException):
+        # We are already at the root element
+        data.get("../a")

@@ -67,3 +67,4 @@ def test_manual_context():
 
     getter = DeepGetter(on_missing=on_missing)
     assert getter.get(cfg, "xxx") == "not found"
+

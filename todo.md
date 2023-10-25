@@ -17,6 +17,7 @@
   Mixing multiple sep as in "../a.b" => No, only creating confusion
   {ref:a/b/c, sep="/"} to make it explicit?
   Can we auto-detect whether it is "a/b/c" or "a.b.c" ?
+  If we do parent (../), we also need current container (./)
 - Validate that "/" is still working, e.g. "a/b/c" instead of "a.b.c", in all main entry points
 - should {a.b.c} or {:a.b.c } == {ref:a.b.c} with {ref:} as default?
   Is "{:" allow at all right now? May be that is an easy fix
@@ -28,6 +29,7 @@
   retrieves the config for path, and loads the data into type.
 - Make ConfigPath a class that holds the path, not just the conversion. Replace
   tuple(str|int, ...) with this class, which is more explicit
+- Separate CfgPath into Base and Extended
 
 Done:
 

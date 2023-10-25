@@ -46,6 +46,8 @@ def test_path():
     assert CfgPath("*.c") == ["*", "c"]
     assert CfgPath("a*.c") == ["a*", "c"]  # only "*" and "**" have special meanings
     assert CfgPath("a.*c") == ["a", "*c"]
+
+def test_parent_dir():
     assert CfgPath("a/../b") == ["b"]
     assert CfgPath("../b") == ["..", "b"]
     assert CfgPath("a/b/..") == ["a"]
@@ -53,6 +55,14 @@ def test_path():
     assert CfgPath("..") == [".."]
     assert CfgPath("../../a") == ["..", "..", "a"]
     assert CfgPath("a/**/../b") == ["a", "**", "..", "b"]
+
+def test_current_dir():
+    assert CfgPath("a/./b") == ["a", "b"]
+    assert CfgPath("./b") == [".", "b"]
+    assert CfgPath("a/b/.") == ["a", "b"]
+    assert CfgPath(".") == []
+    assert CfgPath("././a") == [".", "a"]
+    assert CfgPath("a/**/./b") == ["a", "**", "b"]
 
 
 @pytest.mark.parametrize(
@@ -72,7 +82,8 @@ def test_path():
         "a.*",
         "a.**",
         "a.[1]",
-        "a/**/.."
+        "a/**/..",
+        "a/*/." # Same as "a/*", which is invalid
     ],
 )
 def test_should_fail(path):

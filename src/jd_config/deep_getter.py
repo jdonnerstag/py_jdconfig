@@ -84,13 +84,17 @@ class GetterContext:
         """While walking, the path to the current parent element"""
         return CfgPath(self.path[: self.idx] + (self.key,))
 
+    def parent_path(self, offset: int) -> CfgPath:
+        """While walking, the path to the current parent element"""
+        return CfgPath(self.path[: self.idx - offset])
+
     def path_replace(self, replace, count=1) -> CfgPath:
         """Replace the path element(s) at the current position (idx), with
         the new ones provided.
         """
         if isinstance(replace, CfgPath):
             replace = replace.path
-            
+
         if not isinstance(replace, tuple):
             replace = (replace,)
 
@@ -197,7 +201,7 @@ class DeepGetter:
 
     def get(
         self,
-        data: ContainerType,
+        data: ContainerType | None,
         path: PathType,
         default: Any = DEFAULT,
         *,
@@ -205,7 +209,27 @@ class DeepGetter:
         ctx: Optional[GetterContext] = None,
     ) -> Any:
         """The main entry point: walk the provided path and return whatever the
-        value at that end of that path will be.
+        value at that end of that path is.
+
+        :param path: A user provided (config) path like object, e.g. `a.b[2].c`
+        :param default: Optional default value, if the value was not found
+        """
+
+        if ctx is None:
+            ctx = self.new_context(data)
+        elif data is not None:
+            ctx.data = data
+
+        if on_missing is not None:
+            ctx.on_missing = on_missing
+
+        return self.get_with_ctx(ctx, path, default=default)
+
+    def get_with_ctx(
+        self, ctx: GetterContext, path: PathType, *, default: Any = DEFAULT
+    ) -> Any:
+        """Walk the provided path and return whatever the value at that
+        end of that path is.
 
         :param path: A user provided (config) path like object, e.g. `a.b[2].c`
         :param default: Optional default value, if the value was not found
@@ -213,10 +237,7 @@ class DeepGetter:
 
         path = CfgPath(path)
         logger.debug("Config get(path=%s)", path)
-        if ctx is None:
-            ctx = self.new_context(data)
-        else:
-            ctx.data = data
+        assert isinstance(ctx, GetterContext)
 
         recursions = []
 
@@ -235,9 +256,7 @@ class DeepGetter:
                 if default is not DEFAULT:
                     return default
 
-                if callable(on_missing):
-                    ctx.data = on_missing(ctx, exc)
-                elif callable(ctx.on_missing):
+                if callable(ctx.on_missing):
                     ctx.data = ctx.on_missing(ctx, exc)
                 else:
                     ctx.data = self.on_missing(ctx, exc)
