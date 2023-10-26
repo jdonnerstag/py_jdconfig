@@ -40,7 +40,7 @@ class ProviderPlugin(ABC):
 
 
 class YamlFileProviderPlugin(ProviderPlugin):
-    """Abstract base class for config providers"""
+    """The default yaml file and bytes loader"""
 
     name: str = "Yaml files"
 
@@ -54,13 +54,13 @@ class YamlFileProviderPlugin(ProviderPlugin):
         provider does not know how to handle this URL/file
         """
 
-        fname = self.app.config_file if name is None else name
-        config_dir = kvargs.get("config_dir", None) or self.app.config_dir
-        env = kvargs.get("env", None) or self.app.env
+        fname = self.app.ini.config_file if name is None else name
+        config_dir = kvargs.get("config_dir", None) or self.app.ini.config_dir
+        env = kvargs.get("env", None) or self.app.ini.env
         cache = kvargs.get("cache", True)
         add_env_dirs = self.app.ini.add_env_dirs
 
-        # Might as well be an StreamIO.
+        # Might as well be a StreamIO.
         if isinstance(fname, str):
             fname = Path(fname)
 

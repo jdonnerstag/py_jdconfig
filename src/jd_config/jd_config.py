@@ -53,7 +53,9 @@ class JDConfig(ConfigIniMixin):
         """
         ConfigIniMixin.__init__(self, ini_file=ini_file)
 
-        # Utils to load the config file(s)
+        # Providers are plugins, which can easily be added. By default,
+        # only a yaml config file loader is available. Additional ones,
+        # may leverage VFS, etcd, git, web-servers, AWS parameter stores, etc..
         self.provider_registry = ProviderRegistry(self)
 
         # We want access to the placeholder registry which is maintained by ValueReader.
@@ -77,11 +79,7 @@ class JDConfig(ConfigIniMixin):
         # The global config root object
         self.data = None
 
-        # Providers are plugins, which can easily be added. By default,
-        # only a yaml config file loaded is available. Additional ones,
-        # may leverage VFS, etcd, git, web-servers, AWS parameter stores, etc..
-        self.provider_registery: dict[str, Mapping] = {}
-
+        # Files loaded by the yaml file loader
         self.files_loaded: list[str | Path] = []
 
     def config(self) -> ContainerType:
@@ -188,7 +186,7 @@ class JDConfig(ConfigIniMixin):
 
     def load_import(
         self,
-        fname: Optional[Path | StringIO] = None,
+        fname: Path | StringIO,
         config_dir: Optional[Path] = None,
         env: str | None = None,
         cache: bool = True,
@@ -233,6 +231,9 @@ class JDConfig(ConfigIniMixin):
         use self.config_dir (see config.ini)
         :param env: environment name (optional)
         """
+
+        if fname is None:
+            fname = self.ini.config_file
 
         file = self.load_import(fname, config_dir, env, cache)
 
