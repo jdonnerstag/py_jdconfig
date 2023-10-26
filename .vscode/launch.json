@@ -16,14 +16,13 @@
             "name": "Config CLI",
             "type": "python",
             "request": "launch",
-            "program": "./src/jd_config/config_cli.py",
+            "program": "./src/jd_config/bin/config_cli.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--cfg_dir",
                 "tests/jd_config/data/configs-4",
-                "--set",
-                "a=new"
+                "--print"
             ]
         }
     ]

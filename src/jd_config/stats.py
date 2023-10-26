@@ -11,14 +11,14 @@
 
 """
 
+import json
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Mapping
 
-from .config_path import PathType
+from .objwalk import NewMappingEvent, NewSequenceEvent, NodeEvent, objwalk
 from .placeholders import EnvPlaceholder
-from .objwalk import objwalk, NewMappingEvent, NewSequenceEvent, NodeEvent
 
 if TYPE_CHECKING:
     from .jd_config import JDConfig
@@ -53,15 +53,12 @@ class ConfigStats:
         self.env_name: str | None = None
         # from config_ini_mixin
         self.ini_file: Path | None = None
-        # from config_ini_mixin
-        self.ini_env_var: str | None = None
 
     def create(self, cfg: "JDConfig"):
         """Create the stats"""
 
         self.env_name = cfg.env
         self.ini_file = cfg.ini_file
-        self.ini_env_var = cfg.ini_env_var
 
         self.files = cfg.files_loaded
 
@@ -116,3 +113,21 @@ class ConfigStats:
                     envvars.add(elem.env_var)
 
         return count
+
+    def __str__(self) -> str:
+        data = vars(self)
+        rtn = json.dumps(data, cls=SetEncoder, indent=4)
+        return rtn
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({str(self)})"
+
+
+class SetEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, Path):
+            return str(obj)
+
+        return json.JSONEncoder.default(self, obj)

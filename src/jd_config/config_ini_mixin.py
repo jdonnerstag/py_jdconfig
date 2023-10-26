@@ -37,7 +37,6 @@ class IniData:
     default_env: str | None = None
     env: str | None = None
     add_env_dirs: list[Path] | None = None
-    resolve_eagerly: bool = False
 
 
 # pylint: disable=too-few-public-methods
@@ -61,7 +60,6 @@ class ConfigIniMixin:
         config_file = config.yaml
         env_var =
         default_env = prod
-        resolve_eagerly = False
         ```
 
         Some of the JDConfig configs determine where to find the user
@@ -71,9 +69,6 @@ class ConfigIniMixin:
         :param ini_file: Path to JDConfig config file. Default: 'config.ini'
         """
 
-        self.ini_file = ini_file
-        self.ini_env_var = ini_env
-
         config = configparser.ConfigParser(
             interpolation=EnvInterpolation(), allow_no_value=True
         )
@@ -81,9 +76,13 @@ class ConfigIniMixin:
         if ini_env and not ini_file:
             ini_file = os.environ.get(ini_env, None)
 
+        self.ini_file = ini_file
+        self.ini_env_var = ini_env
+
         if ini_file:
             logger.debug("Config: Load ini-file: '%s'", relative_to_cwd(ini_file))
             try:
+                self.ini_file = ini_file = Path(ini_file).resolve()
                 config.read(ini_file)
             except FileNotFoundError as exc:
                 raise ConfigException(f"Ini-file not found: '{ini_file}'") from exc
@@ -98,9 +97,6 @@ class ConfigIniMixin:
             self.ini.default_env = config.get("default_env", None)
             self.ini.env = config.get("env", self.ini.default_env)
             add_env_dirs = config.get("add_env_dirs", None)
-
-            x = config.get("resolve_eagerly", "False")
-            self.ini.resolve_eagerly = StringConverterMixin.convert_bool(x)
 
             if self.ini.env and self.ini.env.startswith("$"):
                 logger.debug(

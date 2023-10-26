@@ -241,7 +241,4 @@ class JDConfig(ConfigIniMixin):
 
         self.data = DeepDict(file, getter=self.getter)
 
-        if self.ini.resolve_eagerly:
-            self.data = self.resolve_all()
-
         return self.data

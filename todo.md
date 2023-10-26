@@ -20,9 +20,8 @@
   app consists of other modules. Don't want to redo structured config for every module all the
   time => Modules responsible for details. E.g. cfg.get(path, into=type or instance) which
   retrieves the config for path, and loads the data into type.
-- A little cli to dump (resolved) configs, list stats, find keys or values
-- resolve_eagerly still adding value? Use jdconfig.resolve_all() instead
-- the env overlay should allow "a.b.c: 10" instead of "a: {b: {c: 10}}". Should we?
+- the env overlay should allow "a.b.c: 10" instead of "a: {b: {c: 10}}". Or may be not?
+- CLI: add more reasonable default log formatting
 
 Done:
 
@@ -119,3 +118,5 @@ Done:
 - Make ConfigPath a class that holds the path, not just the conversion. Replace
   tuple(str|int, ...) with this class, which is more explicit
 - Separate CfgPath into Base and Extended
+- A little cli to dump (resolved) configs, list stats, find keys or values
+- resolve_eagerly still adding value? Use jdconfig.resolve_all() instead

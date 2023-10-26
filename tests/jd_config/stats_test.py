@@ -46,7 +46,6 @@ def test_simple_stats(monkeypatch):
     assert stats.value_count == 8
     assert stats.max_depth == 4
     assert stats.env_name is None
-    assert stats.ini_env_var is None
     assert stats.ini_file is None
     assert stats.envvars == {"DB_USER"}
     assert len(stats.files) == 1
@@ -74,7 +73,6 @@ def test_load_jdconfig_1(monkeypatch):
     assert stats.value_count == 9
     assert stats.max_depth == 2
     assert stats.env_name is None
-    assert stats.ini_env_var is None
     assert stats.ini_file is None
     assert stats.envvars == {"DB_USER", "DB_PASS", "DB_NAME"}
     assert len(stats.files) == 1
@@ -104,7 +102,6 @@ def test_load_jdconfig_2(monkeypatch):
     assert stats.value_count == 33
     assert stats.max_depth == 4
     assert stats.env_name is None
-    assert stats.ini_env_var is None
     assert stats.ini_file is None
     assert stats.envvars == {"DB_USER", "DB_PASS", "DB_NAME"}
     assert len(stats.files) == 4
@@ -135,7 +132,6 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert stats.value_count == 27
     assert stats.max_depth == 4
     assert stats.env_name == "jd_dev"
-    assert stats.ini_env_var is None
     assert stats.ini_file is None
     assert stats.envvars == set()
     assert len(stats.files) == 6
@@ -164,7 +160,6 @@ def test_load_jdconfig_4(monkeypatch):
     assert stats.value_count == 11
     assert stats.max_depth == 2
     assert stats.env_name is None
-    assert stats.ini_env_var is None
     assert stats.ini_file is None
     assert stats.envvars == set()
     assert len(stats.files) == 2
@@ -200,7 +195,6 @@ def test_add_placeholder():
     assert stats.value_count == 3
     assert stats.max_depth == 1
     assert stats.env_name is None
-    assert stats.ini_env_var is None
     assert stats.ini_file is None
     assert stats.envvars == set()
     assert len(stats.files) == 1
