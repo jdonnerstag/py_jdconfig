@@ -82,11 +82,11 @@ class GetterContext:
 
     def cur_path(self) -> CfgPath:
         """While walking, the path to the current parent element"""
-        return CfgPath(self.path[: self.idx] + (self.key,))
+        return type(self.path)(self.path[: self.idx] + (self.key,))
 
     def parent_path(self, offset: int) -> CfgPath:
         """While walking, the path to the current parent element"""
-        return CfgPath(self.path[: self.idx - offset])
+        return type(self.path)(self.path[: self.idx - offset])
 
     def path_replace(self, replace, count=1) -> CfgPath:
         """Replace the path element(s) at the current position (idx), with
@@ -98,7 +98,9 @@ class GetterContext:
         if not isinstance(replace, tuple):
             replace = (replace,)
 
-        return CfgPath(self.path[: self.idx] + replace + self.path[self.idx + count :])
+        return type(self.path)(
+            self.path[: self.idx] + replace + self.path[self.idx + count :]
+        )
 
     def add_memo(self, placeholder: Placeholder) -> None:
         """Identify recursions"""
@@ -125,6 +127,10 @@ class DeepGetter:
         self.on_missing = self.on_missing_default
         if callable(on_missing):
             self.on_missing = on_missing
+
+        # Allows to easily change and e.g. use ExtendedCfgPath with deep
+        # search support
+        self.cfg_path_type = CfgPath
 
     def new_context(
         self,
@@ -205,7 +211,7 @@ class DeepGetter:
         :param default: Optional default value, if the value was not found
         """
 
-        path = CfgPath(path)
+        path = self.cfg_path_type(path)
         logger.debug("Config get(path=%s)", path)
         assert isinstance(ctx, GetterContext)
 
@@ -254,7 +260,7 @@ class DeepGetter:
            retrieve the value easily
         """
 
-        ctx.path = CfgPath(path)
+        ctx.path = self.cfg_path_type(path)
         if not ctx.path:
             return
 

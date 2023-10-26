@@ -8,6 +8,7 @@ import logging
 import pytest
 
 from jd_config import ConfigException, DeepGetter, DeepSearchMixin, GetterContext
+from jd_config.config_path_extended import ExtendedCfgPath
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ def test_any_key_or_index():
     }
 
     getter = MyConfig()
+    getter.cfg_path_type = ExtendedCfgPath
     assert getter.get(GetterContext(cfg), "b.*.bbb") == 33
     assert getter.get(GetterContext(cfg), "b.*.ba", None) is None
     assert getter.get(GetterContext(cfg), "c[*].c4b", None) == 55

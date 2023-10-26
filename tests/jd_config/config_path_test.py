@@ -34,27 +34,15 @@ def test_path():
     assert CfgPath(("a", ("b.c"))) == ["a", "b", "c"]
     assert CfgPath("[1]") == [1]
     assert CfgPath("222[1]") == ["222", 1]
-    assert CfgPath("a.*.c") == ["a", "*", "c"]
-    assert CfgPath("a.b[*].c") == ["a", "b", "%", "c"]
-    assert CfgPath("a.**.c") == ["a", "**", "c"]
-    assert CfgPath("a.**.**.c") == ["a", "**", "c"]
-    assert CfgPath("a.*.*.c") == ["a", "*", "*", "c"]
-    assert CfgPath("a.*.**.c") == ["a", "**", "c"]  # same as "a.**.c"
-    assert CfgPath("a.**.*.c") == ["a", "**", "c"]  # same as "a.**.c"
-    assert CfgPath("a[*].**.c") == ["a", "**", "c"]  # same as "a.**.c"
-    assert CfgPath("**.c") == ["**", "c"]
-    assert CfgPath("*.c") == ["*", "c"]
-    assert CfgPath("a*.c") == ["a*", "c"]  # only "*" and "**" have special meanings
-    assert CfgPath("a.*c") == ["a", "*c"]
+
 
 def test_parent_dir():
     assert CfgPath("a/../b") == ["b"]
     assert CfgPath("../b") == ["..", "b"]
     assert CfgPath("a/b/..") == ["a"]
-    assert CfgPath("a/*/..") == ["a"]
     assert CfgPath("..") == [".."]
     assert CfgPath("../../a") == ["..", "..", "a"]
-    assert CfgPath("a/**/../b") == ["a", "**", "..", "b"]
+
 
 def test_current_dir():
     assert CfgPath("a/./b") == ["a", "b"]
@@ -62,7 +50,6 @@ def test_current_dir():
     assert CfgPath("a/b/.") == ["a", "b"]
     assert CfgPath(".") == []
     assert CfgPath("././a") == [".", "a"]
-    assert CfgPath("a/**/./b") == ["a", "**", "b"]
 
 
 @pytest.mark.parametrize(
@@ -79,11 +66,9 @@ def test_current_dir():
         "a../b",
         "a/..b",
         "a..",
-        "a.*",
-        "a.**",
         "a.[1]",
-        "a/**/..",
-        "a/*/." # Same as "a/*", which is invalid
+        "a[*]",  # Must be int
+        # "a.**.b",  # "**" considered a name
     ],
 )
 def test_should_fail(path):
@@ -107,23 +92,11 @@ def test_to_str():
     assert CfgPath(("a", ("b.c"))).to_str() == "a.b.c"
     assert CfgPath("[1]").to_str() == "[1]"
     assert CfgPath("222[1]").to_str() == "222[1]"
-    assert CfgPath("a.*.c").to_str() == "a.*.c"
-    assert CfgPath("a.b[*].c").to_str() == "a.b[*].c"
-    assert CfgPath("a.**.c").to_str() == "a.**.c"
-    assert CfgPath("a.**.**.c").to_str() == "a.**.c"
-    assert CfgPath("a.*.*.c").to_str() == "a.*.*.c"
-    assert CfgPath("a.*.**.c").to_str() == "a.**.c"
-    assert CfgPath("a.**.*.c").to_str() == "a.**.c"
-    assert CfgPath("a[*].**.c").to_str() == "a.**.c"
-    assert CfgPath("**.c").to_str() == "**.c"
-    assert CfgPath("*.c").to_str() == "*.c"
     assert CfgPath("a/../b").to_str() == "b"
     assert CfgPath("../b").to_str() == "../b"
     assert CfgPath("a/b/..") == "a/b/.."
-    assert CfgPath("a/*/..") == "a"
     assert CfgPath("..") == ".."
     assert CfgPath("../../a") == "../../a"
-    assert CfgPath("a/**/../b") == "a/**/../b"
 
 
 def test_sequence():
@@ -154,15 +127,3 @@ def test_auto_detect():
     assert CfgPath(("a", ("b.c"))) == ["a", "b", "c"]
     assert CfgPath("[1]") == [1]
     assert CfgPath("222[1]") == ["222", 1]
-    assert CfgPath("a.*.c") == ["a", "*", "c"]
-    assert CfgPath("a.b[*].c") == ["a", "b", "%", "c"]
-    assert CfgPath("a.**.c") == ["a", "**", "c"]
-    assert CfgPath("a.**.**.c") == ["a", "**", "c"]
-    assert CfgPath("a.*.*.c") == ["a", "*", "*", "c"]
-    assert CfgPath("a.*.**.c") == ["a", "**", "c"]  # same as "a.**.c"
-    assert CfgPath("a.**.*.c") == ["a", "**", "c"]  # same as "a.**.c"
-    assert CfgPath("a[*].**.c") == ["a", "**", "c"]  # same as "a.**.c"
-    assert CfgPath("**.c") == ["**", "c"]
-    assert CfgPath("*.c") == ["*", "c"]
-    assert CfgPath("a*.c") == ["a*", "c"]  # only "*" and "**" have special meanings
-    assert CfgPath("a.*c") == ["a", "*c"]

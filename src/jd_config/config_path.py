@@ -8,7 +8,7 @@ Normalize config paths such as "a.b.c", "a.b[2].c", "a..c", "a.*.c", "a.b[*].c",
 
 import logging
 import re
-from typing import Iterable, Iterator, Optional, Sequence, Union
+from typing import Any, Iterable, Iterator, Optional, Sequence, Union
 
 from .utils import ConfigException
 
@@ -28,14 +28,8 @@ class CfgPath(Sequence):
     # Because of "../a", "." should always be last
     DEFAULT_SEP: str = "/."
 
-    PAT_ANY_KEY: str = "*"
-    PAT_ANY_IDX: str = "%"
-    PAT_DEEP: str = "**"
-
     PARENT_DIR: str = ".."
     CURRENT_DIR: str = "."
-
-    SEARCH_PATTERN = (PAT_ANY_KEY, PAT_ANY_IDX, PAT_DEEP)
 
     def __init__(self, path: PathType = (), sep: str = DEFAULT_SEP) -> None:
         self.path = self.normalize(path, sep=sep)
@@ -67,9 +61,6 @@ class CfgPath(Sequence):
             return [path]
 
         for elem in sep:
-            if elem == "." and cls.PARENT_DIR in path:
-                continue
-
             if elem in path:
                 return path.split(elem)
 
@@ -91,8 +82,6 @@ class CfgPath(Sequence):
 
         if isinstance(elem, int):
             path += f"[{str(elem)}]"
-        elif elem == cls.PAT_ANY_IDX:
-            path += "[*]"
         else:
             if path or elem == "":
                 path += sep
@@ -118,20 +107,6 @@ class CfgPath(Sequence):
             rtn = self._append_to_path_str(rtn, elem, sep)
 
         return rtn
-
-    @classmethod
-    def is_search_pattern(cls, elem: str | int) -> bool:
-        """Check whether path has pattern like "c..c32", "c.c2[*].c32", "c.*.c32" """
-
-        if not isinstance(elem, str):
-            return False
-
-        return elem in cls.SEARCH_PATTERN
-
-    def has_search_pattern(self) -> bool:
-        """Check whether path has pattern like "c..c32", "c.c2[*].c32", "c.*.c32" """
-
-        return any(self.is_search_pattern(x) for x in self.path)
 
     @classmethod
     def normalize(
@@ -186,26 +161,7 @@ class CfgPath(Sequence):
             )
 
         cleaned = cls._cleanup_path(rtn)
-        if cls._ends_with_invalid_search_key(cleaned):
-            raise ConfigException(
-                f"Config path must not end with with a selector: '{path}'"
-            )
-
         return tuple(cleaned)
-
-    @classmethod
-    def _ends_with_invalid_search_key(cls, cleaned):
-        if not cleaned:
-            return cleaned
-
-        last = len(cleaned) - 1
-        while last >= 0:
-            if cleaned[last] != cls.PARENT_DIR:
-                break
-
-            last -= 1
-
-        return cleaned[last] in [cls.PAT_DEEP, cls.PAT_ANY_KEY]
 
     @classmethod
     def _normalize_path_elem(cls, key, index, rtn: list, path):
@@ -220,48 +176,33 @@ class CfgPath(Sequence):
             index = index[1:-1]
             index = re.split(r"\s*\]\s*\[\s*", index)
             for cleaned in index:
-                if cleaned == "*":
-                    rtn.append(cls.PAT_ANY_IDX)
-                elif cleaned is not None:
-                    rtn.append(int(cleaned))
+                try:
+                    cleaned = cls._on_index(cleaned)
+                    if cleaned is not None:
+                        rtn.append(cleaned)
+
+                except ValueError as exc:
+                    raise ConfigException(
+                        f"Invalid config index: Expected 'name[key]', but found: '{path}'"
+                    ) from exc
 
         return rtn
 
     @classmethod
+    def _on_index(cls, text) -> Any:
+        return int(text) if text is not None else None
+
+    @classmethod
     def _cleanup_path(cls, rtn: list):
         cleaned = []
-        last = None
         for elem in rtn:
-            if last is None:
-                last = elem
+            if not cleaned:
                 cleaned.append(elem)
             elif elem == cls.PARENT_DIR:
-                if not cleaned or last == cls.PAT_DEEP:
-                    last = elem
-                    cleaned.append(elem)
-                else:
-                    last = elem
-                    cleaned.pop()
-            elif elem == cls.CURRENT_DIR:
-                if not cleaned:
-                    last = elem
-                    cleaned.append(elem)
-                else:
-                    pass  # Nothing to do
-            elif elem not in [cls.PAT_DEEP, cls.PAT_ANY_KEY, cls.PAT_ANY_IDX]:
-                last = elem
-                cleaned.append(elem)
-            elif last not in [cls.PAT_DEEP, cls.PAT_ANY_KEY, cls.PAT_ANY_IDX]:
-                last = elem
-                cleaned.append(elem)
-            elif last == cls.PAT_DEEP:
-                pass
-            elif elem in [cls.PAT_ANY_KEY, cls.PAT_ANY_IDX]:
-                last = elem
-                cleaned.append(elem)
-            else:  # last == ANY_INDEX and elem in [RECURSIVE_KEY, ANY_INDEX]
-                last = elem
                 cleaned.pop()
+            elif elem == cls.CURRENT_DIR:
+                pass  # Nothing to do
+            else:
                 cleaned.append(elem)
 
         if len(cleaned) == 1 and cleaned[0] == cls.CURRENT_DIR:
@@ -281,35 +222,7 @@ class CfgPath(Sequence):
         if not isinstance(other, CfgPath):
             return False
 
-        path_1 = self.path
-        path_2 = other.path
-
-        i_1 = 0
-        i_2 = 0
-        while i_1 < len(path_1):
-            elem_1 = path_1[i_1]
-            elem_2 = path_2[i_2]
-            i_1 += 1
-
-            if elem_2 in [self.PAT_ANY_KEY, self.PAT_ANY_IDX]:
-                i_2 += 1
-                if i_1 < len(path_1) and isinstance(path_1[i_1], int):
-                    i_1 += 1
-            elif elem_2 == self.PAT_DEEP:
-                if elem_1 != path_2[i_2 + 1]:
-                    continue
-
-                i_2 += 2
-            else:
-                if elem_1 != elem_2:
-                    return False
-
-                i_2 += 1
-
-            if i_2 >= len(path_2):
-                return True
-
-        return False
+        return self.path == other.path
 
     def __getitem__(self, key):
         return self.path[key]
@@ -327,11 +240,13 @@ class CfgPath(Sequence):
         return False
 
     def append(self, value: PathType) -> "CfgPath":
+        """Append 'value'"""
         value = CfgPath(value)
         self.path = self.path + value.path
         return self
 
     def pop(self) -> "CfgPath":
+        """Pop the last elem from the path"""
         self.path = self.path[:-1]
         return self
 

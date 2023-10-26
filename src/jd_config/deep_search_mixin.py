@@ -11,6 +11,7 @@ from dataclasses import replace
 from typing import Any, Iterator, Mapping
 
 from .config_path import CfgPath
+from .config_path_extended import ExtendedCfgPath
 from .deep_getter import GetterContext
 from .objwalk import WalkerEvent, objwalk
 from .placeholders import new_trace
@@ -30,11 +31,11 @@ class DeepSearchMixin:
 
         See DeepGetter.cb_get() for more details.
         """
-        if key == CfgPath.PAT_ANY_KEY:
+        if key == ExtendedCfgPath.PAT_ANY_KEY:
             return self._on_any_key(ctx)
-        if key == CfgPath.PAT_ANY_IDX:
+        if key == ExtendedCfgPath.PAT_ANY_IDX:
             return self._on_any_idx(ctx)
-        if key == CfgPath.PAT_DEEP:
+        if key == ExtendedCfgPath.PAT_DEEP:
             return self._on_any_deep(ctx)
 
         return super().cb_get(data, key, ctx)
@@ -79,7 +80,7 @@ class DeepSearchMixin:
         value = self.cb_get(ctx.data, ctx.key, ctx)
 
         # Test "*.*.b" use cases
-        if find_key == CfgPath.PAT_ANY_KEY and isinstance(value, ContainerType):
+        if find_key == ExtendedCfgPath.PAT_ANY_KEY and isinstance(value, ContainerType):
             ctx.data = value
             ctx.path = ctx.path_replace(key)
             ctx.idx += 1

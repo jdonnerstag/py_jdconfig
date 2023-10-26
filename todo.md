@@ -11,17 +11,10 @@
   injected.
 - Add {delete:} to allow env files to remove a node
 - Config from remote: How should the config.ini look like, and the plugin config, to retrieve such configs
-- We regularly are asked to support relative refs as in {ref:../../abc}?
-  Was thinking about "..[2]" == "../.." but I don't like it. Too unusual.
-  "...a.b" == "../a/b" => No. How should "../../a" then look like?
-  Mixing multiple sep as in "../a.b" => No, only creating confusion
-  {ref:a/b/c, sep="/"} to make it explicit?
-  Can we auto-detect whether it is "a/b/c" or "a.b.c" ?
-  If we do parent (../), we also need current container (./)
-- Validate that "/" is still working, e.g. "a/b/c" instead of "a.b.c", in all main entry points
 - should {a.b.c} or {:a.b.c } == {ref:a.b.c} with {ref:} as default?
   Is "{:" allow at all right now? May be that is an easy fix
-- Evaluate further get("..") vs cfg.a.b.c.  I still prefer get("..") which avoids confusions IMHO.
+- Evaluate further get("..") vs cfg.a.b.c.  I still prefer get("..") which avoids confusions IMHO, allow
+  "a.**.c", and "../ab" etc, which is not possible with x.a.b.c
 - struct configs => configs are mostly readonly; dataclasses; pydantic; support to read
   configs (subsections) into a dataclass (logging, ETL, other modules and their configs). Every
   app consists of other modules. Don't want to redo structured config for every module all the
@@ -30,6 +23,7 @@
 - Make ConfigPath a class that holds the path, not just the conversion. Replace
   tuple(str|int, ...) with this class, which is more explicit
 - Separate CfgPath into Base and Extended
+- A little cli to dump (resolved) configs, list stats, find keys or values
 
 Done:
 
@@ -116,3 +110,10 @@ Done:
 - Allow the env overlays to be in a different directory.
 - Support env sepcific yaml config files in working directory (not required to be in config dir)
 - Replaced "a..b" search pattern with "a.**.b"
+- Added support for relative references, e.g. {ref:../../abc} or {ref:./abc}, in contrast to
+  reference relative to the file root.
+  Was thinking about "..[2]" == "../.." but I don't like it. Too unusual.
+  "...a.b" == "../a/b" => No. How should "../../a" then look like?
+  Mixing multiple sep as in "../a.b" => No, only creating confusion
+  {ref:a/b/c, sep="/"} to make it explicit? => Not yet implemented. Still needed?
+  Can we auto-detect whether it is "a/b/c" or "a.b.c"? => we now do. precendence order: "/."
