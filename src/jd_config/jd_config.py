@@ -15,10 +15,11 @@ from .config_ini_mixin import ConfigIniMixin
 from .config_path import PathType, CfgPath
 from .deep_dict import DeepDict, DefaultConfigGetter
 from .deep_getter import GetterContext
-from .file_loader import ConfigFile, ConfigFileLoader
+from .file_loader import ConfigFile
 from .objwalk import WalkerEvent
 from .utils import DEFAULT, ContainerType
 from .value_reader import RegistryType, ValueReader
+from .provider_registry import ProviderRegistry
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -53,7 +54,7 @@ class JDConfig(ConfigIniMixin):
         ConfigIniMixin.__init__(self, ini_file=ini_file)
 
         # Utils to load the config file(s)
-        self.config_file_loader = ConfigFileLoader()
+        self.provider_registry = ProviderRegistry(self)
 
         # We want access to the placeholder registry which is maintained by ValueReader.
         self.value_reader = ValueReader()
@@ -75,6 +76,13 @@ class JDConfig(ConfigIniMixin):
 
         # The global config root object
         self.data = None
+
+        # Providers are plugins, which can easily be added. By default,
+        # only a yaml config file loaded is available. Additional ones,
+        # may leverage VFS, etcd, git, web-servers, AWS parameter stores, etc..
+        self.provider_registery: dict[str, Mapping] = {}
+
+        self.files_loaded: list[str | Path] = []
 
     def config(self) -> ContainerType:
         """Get the config object"""
@@ -99,11 +107,6 @@ class JDConfig(ConfigIniMixin):
     def placeholder_registry(self) -> RegistryType:
         """The registry of supported Placeholder handlers"""
         return self.value_reader.registry
-
-    @property
-    def files_loaded(self) -> list[Path]:
-        """The list of files loaded so far"""
-        return self.config_file_loader.files_loaded
 
     def get(
         self,
@@ -200,21 +203,15 @@ class JDConfig(ConfigIniMixin):
         :param env: environment name (optional)
         """
 
-        if fname is None:
-            fname = self.config_file
-
-        if isinstance(fname, str):
-            fname = Path(fname)
-
-        config_dir = Path(config_dir or self.config_dir)
-        env = env or self.env
-
-        # Load the file
-        file = self.config_file_loader.load(
-            fname, config_dir, env, cache, add_env_dirs=self.ini.add_env_dirs
+        data = self.provider_registry.load(
+            fname,
+            config_dir=config_dir,
+            env=env,
+            cache=cache,
+            add_env_dirs=self.ini.add_env_dirs,
         )
 
-        return file
+        return data
 
     def load(
         self,

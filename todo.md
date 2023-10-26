@@ -14,7 +14,7 @@
 - should {a.b.c} or {:a.b.c } == {ref:a.b.c} with {ref:} as default?
   Is "{:" allow at all right now? May be that is an easy fix
 - Evaluate further get("..") vs cfg.a.b.c.  I still prefer get("..") which avoids confusions IMHO, allow
-  "a.**.c", and "../ab" etc, which is not possible with x.a.b.c
+  "a.**.c", and "../ab" etc, which is not possible with x.a.b.c => Don't think that is correct!!
 - struct configs => configs are mostly readonly; dataclasses; pydantic; support to read
   configs (subsections) into a dataclass (logging, ETL, other modules and their configs). Every
   app consists of other modules. Don't want to redo structured config for every module all the

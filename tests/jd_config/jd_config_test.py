@@ -44,9 +44,10 @@ def test_load_jdconfig_1():
     data = cfg.load(file)
     assert data
 
-    # Provide a filename and a config_dir. All config imports, will be executed
-    # relativ to the config_dir provided.
-    # The config file might still be relativ or absolut.
+    # Provide a filename and a config_dir. Any config files imported, are
+    # still imported relativ to the config_dir configured (or preset) in
+    # config.ini. The config_dir parameter provided, will only be used for
+    # this one file. The config file might still be relativ or absolut.
     cfg = JDConfig(ini_file=None)
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
