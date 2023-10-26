@@ -6,13 +6,14 @@ Mixin to load "system" configs from config.ini
 """
 
 import configparser
-from dataclasses import dataclass
 import json
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
-from .utils import relative_to_cwd
+from .string_converter_mixin import StringConverterMixin
+from .utils import ConfigException, relative_to_cwd
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -82,7 +83,10 @@ class ConfigIniMixin:
 
         if ini_file:
             logger.debug("Config: Load ini-file: '%s'", relative_to_cwd(ini_file))
-            config.read(ini_file)
+            try:
+                config.read(ini_file)
+            except FileNotFoundError as exc:
+                raise ConfigException(f"Ini-file not found: '{ini_file}'") from exc
 
         self.ini = IniData()
 
@@ -94,7 +98,17 @@ class ConfigIniMixin:
             self.ini.default_env = config.get("default_env", None)
             self.ini.env = config.get("env", self.ini.default_env)
             add_env_dirs = config.get("add_env_dirs", None)
-            self.ini.resolve_eagerly = bool(config.get("resolve_eagerly", False))
+
+            x = config.get("resolve_eagerly", "False")
+            self.ini.resolve_eagerly = StringConverterMixin.convert_bool(x)
+
+            if self.ini.env and self.ini.env.startswith("$"):
+                logger.debug(
+                    "ENV variable not defined: '%s'. Applying default: '%s'",
+                    self.ini.env,
+                    self.ini.default_env,
+                )
+                self.ini.env = self.ini.default_env
 
             if add_env_dirs is not None:
                 self.ini.add_env_dirs = json.loads(add_env_dirs)

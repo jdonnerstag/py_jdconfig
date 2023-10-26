@@ -5,7 +5,6 @@
 Load yaml config files
 """
 
-from collections import ChainMap
 from dataclasses import dataclass
 import logging
 from io import StringIO
@@ -32,7 +31,7 @@ class ConfigFileLoggerMixin:
         rtn = super().cb_get(data, key, ctx)
 
         if isinstance(data, ConfigFile) and data.file_2 is not None:
-            if isinstance(data.data, ChainMap) and key in data.data.maps[0]:
+            if key in data.data_2:
                 if ctx.key is None:
                     ctx.key = key
 
@@ -49,25 +48,62 @@ class ConfigFileLoggerMixin:
 class ConfigFile(Mapping):
     """A config file and optional environment specifc overlay (dev, test, prod)"""
 
-    file_1: Path | None  # Main file
-    file_2: Path | None  # Env specific overlay
-    data: Mapping  # The actual data: either dict or ChainMap of both files
+    file_1: Path  # Main file
+    data_1: Mapping  # Data from main file
+
+    file_2: Optional[Path]  # Env specific overlay
+    data_2: Optional[Mapping]  # Data from overlay file
+
+    data_3: Optional[Mapping]  # CLI arguments
+
     env: str | None  # The env name
 
     def __getitem__(self, key: str) -> Any:
-        return self.data.__getitem__(key)
+        if self.data_3 is not None:
+            try:
+                return self.data_3[key]
+            except:  # pylint: disable=bare-except
+                pass
+
+        if self.data_2 is not None:
+            try:
+                return self.data_2[key]
+            except:  # pylint: disable=bare-except
+                pass
+
+        return self.data_1[key]
+
+    def merge(self) -> dict:
+        if not self.data_2 and not self.data_3:
+            return self.data_1
+
+        data = self.data_1.copy()
+        if self.data_2:
+            data.update(self.data_2)
+
+        if self.data_3:
+            data.update(self.data_3)
+
+        return data
 
     def __iter__(self) -> Iterator:
-        return self.data.__iter__()
+        return self.merge().__iter__()
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self.merge())
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, ConfigFile):
             return False
 
-        return self.file_1 == value.file_1 and self.file_2 == value.file_2
+        return (
+            self.file_1 == value.file_1
+            and self.file_2 == value.file_2
+            and self.data_3 == value.data_3
+        )
+
+    def add_cli_args(self, values: Mapping) -> None:
+        self.data_3 = values
 
 
 class ConfigFileLoader:
@@ -90,7 +126,7 @@ class ConfigFileLoader:
         self.cache.clear()
 
     def make_filename(
-        self, fname: Path, config_dir: str|Path, env: Optional[str] = None
+        self, fname: Path, config_dir: str | Path, env: Optional[str] = None
     ) -> tuple[Path, Path]:
         """Make a filename from the parts"""
 
@@ -133,7 +169,11 @@ class ConfigFileLoader:
         if isinstance(fname, Path):
             fname = self.make_filename(orig_fname, config_dir=config_dir, env=None)
 
-        data_1 = self.load_one_file(fname, cache=cache)
+        try:
+            data_1 = self.load_one_file(fname, cache=cache)
+        except FileNotFoundError as exc:
+            raise ConfigException(f"Config file not found: '{fname}'") from exc
+
         data_2 = None
         fname_1 = fname
         fname_2 = None
@@ -158,15 +198,12 @@ class ConfigFileLoader:
                 except FileNotFoundError:
                     pass  # This is perfectly ok. The file may not exist.
 
-        if data_2:
-            data = ChainMap(data_2, data_1)
-        else:
-            data = data_1
-
         return ConfigFile(
             file_1=fname_1,
             file_2=fname_2,
-            data=data,
+            data_1=data_1,
+            data_2=data_2,
+            data_3=None,
             env=env,
         )
 
@@ -183,6 +220,7 @@ class ConfigFileLoader:
 
         if isinstance(fname, Path):
             fname = fname.resolve(fname)
+
             if cache and fname in self.cache:
                 data = self.cache[fname]
             else:

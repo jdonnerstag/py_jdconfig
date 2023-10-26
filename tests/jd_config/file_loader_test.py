@@ -29,7 +29,7 @@ def test_load_jdconfig_1():
     assert data
     assert data.file_1.parts[-1] == "config.yaml"
     assert data.file_2 is None
-    assert data.data
+    assert data.data_1
 
     # With an absolute filename, the config_dir is ignored. Which however
     # only works as long as no {import: ..} placeholders are used.
@@ -57,7 +57,8 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config.yaml"
     assert data.file_2 is None
-    assert data.data
+    assert data.data_1
+    assert data.data_2 is None
 
     cfg_file = Path("config.yaml")
     env = "missing"
@@ -66,7 +67,8 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config.yaml"
     assert data.file_2 is None
-    assert data.data
+    assert data.data_1
+    assert data.data_2 is None
 
     cfg_file = Path("config.yaml")
     env = "dev"
@@ -75,7 +77,8 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config.yaml"
     assert data.file_2.parts[-1] == "config-dev.yaml"
-    assert data.data
+    assert data.data_1
+    assert data.data_2
 
     cfg_file = Path("config-2.yaml")
     env = "dev"
@@ -84,7 +87,8 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config-2.yaml"
     assert data.file_2 is None
-    assert data.data
+    assert data.data_1
+    assert data.data_2 is None
 
     cfg_file = Path("config-2.yaml")
     env = "qa"
@@ -93,7 +97,8 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config-2.yaml"
     assert data.file_2.parts[-1] == "config-2-qa.yaml"
-    assert data.data
+    assert data.data_1
+    assert data.data_2
 
     cfg_file = Path("config-2.yaml")
     env = "qa"
@@ -102,7 +107,8 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config-2.yaml"
     assert data.file_2.parts[-1] == "config-2-qa.yaml"
-    assert data.data
+    assert data.data_1
+    assert data.data_2
 
     cfg_file = Path("config-2.yaml")
     env = "dev-2"
@@ -111,7 +117,8 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config-2.yaml"
     assert data.file_2 is None
-    assert data.data
+    assert data.data_1
+    assert data.data_2 is None
 
     cfg_file = Path("config-2.yaml")
     env = "qa"
@@ -120,4 +127,5 @@ def test_separate_env_dir():
     assert data
     assert data.file_1.parts[-1] == "config-2.yaml"
     assert data.file_2.parts[-1] == "config-2-qa.yaml"
-    assert data.data
+    assert data.data_1
+    assert data.data_2

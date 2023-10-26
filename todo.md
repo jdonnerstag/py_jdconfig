@@ -20,10 +20,9 @@
   app consists of other modules. Don't want to redo structured config for every module all the
   time => Modules responsible for details. E.g. cfg.get(path, into=type or instance) which
   retrieves the config for path, and loads the data into type.
-- Make ConfigPath a class that holds the path, not just the conversion. Replace
-  tuple(str|int, ...) with this class, which is more explicit
-- Separate CfgPath into Base and Extended
 - A little cli to dump (resolved) configs, list stats, find keys or values
+- resolve_eagerly still adding value? Use jdconfig.resolve_all() instead
+- the env overlay should allow "a.b.c: 10" instead of "a: {b: {c: 10}}". Should we?
 
 Done:
 
@@ -117,3 +116,6 @@ Done:
   Mixing multiple sep as in "../a.b" => No, only creating confusion
   {ref:a/b/c, sep="/"} to make it explicit? => Not yet implemented. Still needed?
   Can we auto-detect whether it is "a/b/c" or "a.b.c"? => we now do. precendence order: "/."
+- Make ConfigPath a class that holds the path, not just the conversion. Replace
+  tuple(str|int, ...) with this class, which is more explicit
+- Separate CfgPath into Base and Extended

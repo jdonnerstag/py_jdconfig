@@ -136,6 +136,7 @@ class DeepSearchMixin:
 
             cur_ctx = ctx_stack[-1]
             cur_ctx.memo = None
+            cur_ctx.key = key
 
             return self.cb_get(data, key, ctx=cur_ctx)
 
