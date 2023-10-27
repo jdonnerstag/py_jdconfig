@@ -37,7 +37,8 @@ def config_cli(args):
 
     args = parse_cli_args(args)
 
-    logging.basicConfig(level=args.loglevel.upper())
+    fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    logging.basicConfig(level=args.loglevel.upper(), format=fmt)
 
     if args.ini_file == "None":
         args.ini_file = None

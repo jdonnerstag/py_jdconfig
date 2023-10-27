@@ -32,6 +32,7 @@ class EnvInterpolation(configparser.BasicInterpolation):
 class IniData:
     """[config] section in ini-file"""
 
+    config: configparser.SectionProxy | None = None
     config_dir: str = "."
     config_file: str = "config.yaml"
     default_env: str | None = None
@@ -90,7 +91,7 @@ class ConfigIniMixin:
         self.ini = IniData()
 
         try:
-            config = config["config"]
+            self.ini.config = config = config["config"]
 
             self.ini.config_dir = config.get("config_dir", ".")
             self.ini.config_file = config.get("config_file", "config.yaml")

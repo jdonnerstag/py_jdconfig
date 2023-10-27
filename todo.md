@@ -4,13 +4,12 @@
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??
 - Env placeholders could be resolved early. We need a generic approach, that allows
   the placeholder implementation to decide.
-- Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
-  Some may provide files, others leverage SDKs which provide a Mapping. We need to support both.
 - When dumping config, allow to add file, line, col as comment for debugging.
 - Make sure that {env:} results are not resolved any further. Else risky configs might be
   injected.
 - Add {delete:} to allow env files to remove a node
 - Config from remote: How should the config.ini look like, and the plugin config, to retrieve such configs
+  .e.g. providers = ["myproject.MyProvider"]
 - should {a.b.c} or {:a.b.c } == {ref:a.b.c} with {ref:} as default?
   Is "{:" allow at all right now? May be that is an easy fix
 - Evaluate further get("..") vs cfg.a.b.c.  I still prefer get("..") which avoids confusions IMHO, allow
@@ -20,8 +19,6 @@
   app consists of other modules. Don't want to redo structured config for every module all the
   time => Modules responsible for details. E.g. cfg.get(path, into=type or instance) which
   retrieves the config for path, and loads the data into type.
-- the env overlay should allow "a.b.c: 10" instead of "a: {b: {c: 10}}". Or may be not?
-- CLI: add more reasonable default log formatting
 
 Done:
 
@@ -120,3 +117,8 @@ Done:
 - Separate CfgPath into Base and Extended
 - A little cli to dump (resolved) configs, list stats, find keys or values
 - resolve_eagerly still adding value? Use jdconfig.resolve_all() instead
+- Allow {import: https://} or {import: git://} or redis:// or custom => registry wit supported protocols
+  Some may provide files, others leverage SDKs which provide a Mapping. We need to support both.
+  => see provider registry
+- the env overlay should allow "a.b.c: 10" instead of "a: {b: {c: 10}}". Or may be not? => Not
+- CLI: add more reasonable default log formatting
