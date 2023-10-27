@@ -1,0 +1,12 @@
+app_meta:
+  version: 0.6.0
+  contact: peter.pan@neverland.com
+  git_repo: https://github.com/peter.pan/myapp
+
+app:
+  input_directory: "./user_data"
+  crm_database: "xyz@postgres"
+  logging: "{ref:logging}"
+
+logging:
+  xyz: abc

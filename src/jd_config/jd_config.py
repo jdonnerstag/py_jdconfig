@@ -9,7 +9,9 @@ import logging
 from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Optional
+from typing import Any, Iterator, Mapping, Optional, Type
+
+from pydantic import BaseModel
 
 from .config_ini_mixin import ConfigIniMixin
 from .config_path import PathType, CfgPath
@@ -17,7 +19,7 @@ from .deep_dict import DeepDict, DefaultConfigGetter
 from .deep_getter import GetterContext
 from .file_loader import ConfigFile
 from .objwalk import WalkerEvent
-from .utils import DEFAULT, ContainerType
+from .utils import DEFAULT, ConfigException, ContainerType
 from .value_reader import RegistryType, ValueReader
 from .provider_registry import ProviderRegistry
 
@@ -106,18 +108,35 @@ class JDConfig(ConfigIniMixin):
         """The registry of supported Placeholder handlers"""
         return self.value_reader.registry
 
-    def get(
-        self,
-        path: PathType,
-        default: Any = DEFAULT,
-        resolve: bool = True,
-    ) -> Any:
+    def get_into(self, path: PathType, into: Optional[Type]) -> Any:
         """Get a config value (or node)
 
         In case path requires a special separator, use e.g.
         'CfgPath(path, sep="/")' to create the path.
         """
-        return self.data.get(path, default=default, resolve=resolve)
+
+        if isinstance(into, type):
+            if not issubclass(into, BaseModel):
+                raise ConfigException(
+                    f"Expected a class subclassed from pydantic.BaseModel: '{into.__name__}'"
+                )
+        else:
+            raise ConfigException(
+                f"Expected a class, not an instance of a class: '{into}'"
+            )
+
+        rtn = self.data.get(path, resolve=True)
+        rtn = into(**rtn)
+        return rtn
+
+    def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
+        """Get a config value (or node)
+
+        In case path requires a special separator, use e.g.
+        'CfgPath(path, sep="/")' to create the path.
+        """
+        rtn = self.data.get(path, default=default, resolve=resolve)
+        return rtn
 
     def walk(
         self,
@@ -125,7 +144,7 @@ class JDConfig(ConfigIniMixin):
         *,
         nodes_only: bool = False,
         resolve: bool = True,
-        ctx: Optional[GetterContext] = None
+        ctx: Optional[GetterContext] = None,
     ) -> Iterator[WalkerEvent]:
         """Walk a subtree, with lazily resolving node values"""
 
