@@ -6,7 +6,7 @@
 import logging
 import os
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from jd_config import JDConfig
 
@@ -21,24 +21,39 @@ def data_dir(*args) -> Path:
 
 
 class AppMetaConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     version: str  # TODO define type that matches 0.6.0
     contact: str  # TODO define email type
     git_repo: str  # TODO define github repo type
 
 
-class AppConfig(BaseModel):
-    input_directory: str
-    crm_database: str
-    logging: "LoggingConfig"
-
-
 class LoggingConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     xyz: str
 
 
+class AppConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    input_directory: str
+    crm_database: str
+    logging: LoggingConfig
+
+
 class MyConfig(BaseModel):
+    # model_config = ConfigDict(extra="forbid")
+
     app_meta: AppMetaConfig
     app: AppConfig
+
+    # TODO Note: it does not report on values in config but not in BaseModel, e.g. 'logging'
+    # Which in this specific test case is what I want, because it is referenced from
+    # app.logging = "{ref:logging}"
+    # It would really be cool to have something that could detect that the value is in fact
+    # being used, even though not directly part of a BaseModel. Warnings about configs truely
+    # not used, would be really nice.
 
 
 def test_load_structured_from_7():
