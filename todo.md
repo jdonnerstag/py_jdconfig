@@ -1,5 +1,18 @@
 # Todos / Requirements
 
+- Pydantic challenges:
+  - to support {ref:} and {global:} we need to pass meta data to each BaseModel subclass,
+    e.g. parent: ConfigBaseModel | None, data: ContainerType, file: ConfigFile, root: ConfigFile
+    Even though pydantic has private keys, I do not know how to pass the meta data,
+    when a config is loaded and pydantic creates models. I found create_model(), but it doesn't
+    provide me the parent (caller). Does BaseModel has a method (overwrite) to create a submodel?
+    Validate "before" is a classmethods. Only "after" is an instance method.
+    validate "wrap" example: https://stackoverflow.com/questions/77007885/pydantic-v2-model-validatormode-wrap-how-to-use-modelwrapvalidatorhandl
+  - I'd like to remember the original value, e.g. "{ref:a}" or "{import:./{ref:db}/abc.yaml}",
+    to dynamically resolve the value (always running the validator). Because I want to be able
+    to change "db" and node importing data, will AUTOMATICALLY be updated.
+
+
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??
 - Env placeholders could be resolved early. We need a generic approach, that allows
