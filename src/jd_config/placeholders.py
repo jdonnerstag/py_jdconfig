@@ -17,9 +17,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, Type
 
-from jd_config.config_base_model import ConfigBaseModel, ConfigMeta
+from jd_config.config_base_model import ConfigBaseModel, ConfigFile as CfgFile
 
 from .config_path import CfgPath
 from .file_loader import ConfigFile
@@ -54,7 +54,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, meta: ConfigMeta):
+    def resolve(self, model: ConfigBaseModel, expected_type: Type):
         """Resolve the placeholder"""
 
     def memo_relevant(self) -> bool:
@@ -83,18 +83,17 @@ class ImportPlaceholder(Placeholder):
         """Not relevant for Placeholder recursion detection"""
         return False
 
-    def resolve(self, meta: ConfigMeta):
-        if hasattr(getter, "resolve") and callable(getter.resolve):
-            file = getter.resolve(self.file, ctx)
-        else:
-            logger.warning("ImportPlaceholder: No resolver configured")
+    def resolve(self, model: ConfigBaseModel, expected_type: Type):
+        assert model.__cfg_meta__.app
+        app = model.__cfg_meta__.app
+        assert app.load_import
+        assert callable(app.load_import)
 
-        assert (
-            self.loader is not None
-        ), "ImportPlaceholder: Bug. No file 'loader' configured"
-
-        rtn = self.loader.load_import(file, cache=self.cache)
-        ctx.current_file = rtn
+        rtn = app.load_import(Path(self.file), cache=self.cache)
+        rtn = model.validate_before(None, rtn, expected_type)
+        if isinstance(rtn, ConfigBaseModel):
+            file = CfgFile(fname=Path(self.file), data=rtn, obj=rtn)
+            rtn.__cfg_meta__ = dataclasses.replace(rtn.__cfg_meta__, file=file)
 
         return rtn
 
@@ -109,7 +108,7 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, model: ConfigBaseModel):
+    def resolve(self, model: ConfigBaseModel, expected_type: Type):
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
             while path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
@@ -151,21 +150,11 @@ class GlobalRefPlaceholder(RefPlaceholder):
     against is different.
     """
 
-    # The order of the arguments is: all the attributes from the parent(s)
-    # class(es) first then those of the child class.
-    root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
-
-    def resolve(self, meta: ConfigMeta):
+    def resolve(self, model: ConfigBaseModel, expected_type: Type):
         path = CfgPath(self.path)
-        if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
-            raise ConfigException(
-                f"Relativ config paths are not allowed with global refs: '{path}'"
-            )
+        model = model.__cfg_meta__.root.obj
 
-        new_ctx = dataclasses.replace(
-            ctx, data=ctx.global_file, current_file=ctx.global_file
-        )
-        return self._resolve_inner(getter, ctx, new_ctx, self.path)
+        return self._resolve_inner(model, path)
 
 
 class EnvvarConfigException(ConfigException):
@@ -182,13 +171,10 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, meta: ConfigMeta):
+    def resolve(self, model: ConfigBaseModel, expected_type: Type):
         value = os.environ.get(self.env_var, self.default_val)
         if value is DEFAULT:
-            raise EnvvarConfigException(
-                f"Environment does not exist: '{self.env_var}'",
-                trace=new_trace(ctx=ctx, placeholder=self),
-            )
+            raise EnvvarConfigException(f"ENV var does not exist: '{self.env_var}'")
 
         return value
 
@@ -202,7 +188,7 @@ class TimestampPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.format
 
-    def resolve(self, meta: ConfigMeta):
+    def resolve(self, model: ConfigBaseModel, expected_type: Type):
         now = datetime.now()
         value = now.strftime(self.format)
         return value

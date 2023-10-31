@@ -121,7 +121,8 @@ class ConfigBaseModel:
                 if match:
                     break
 
-            value = self.validate_before(key, value, expected_type)
+            if not self.is_default_value_a_descriptor(key):
+                value = self.validate_before(key, value, expected_type)
 
             keys_set.append(key)
             setattr(self, key, value)
@@ -129,6 +130,15 @@ class ConfigBaseModel:
         self.validate_defaults(user_vars, keys_set)
         self.validate_extra_keys(self.extra_keys)
         return self
+
+    def is_default_value_a_descriptor(self, key) -> bool:
+        """If configured default value is a Descriptor"""
+        def_value = self.__class__.__dict__.get(key, None)
+        if def_value is not None:
+            if hasattr(def_value, "__set__") and hasattr(def_value, "__get__"):
+                return True
+
+        return False
 
     def pre_process(self, key, value, expected_type):
         # We first process Annotated[..] types
@@ -163,20 +173,20 @@ class ConfigBaseModel:
         if expected_type is Any:
             return value
 
-        if issubclass(expected_type, ConfigBaseModel):
-            return expected_type(value, self)
-
         # Lists etc.
         if isinstance(expected_type, GenericAlias):
             return value
 
+        if issubclass(expected_type, ConfigBaseModel):
+            return expected_type(value, self)
+
         if not isinstance(value, expected_type):
             value = self.convert(value, expected_type)
 
-        if not isinstance(value, expected_type):
-            raise ConfigException(f"Types don't match: '{expected_type}' != '{value}'")
+        if isinstance(value, expected_type):
+            return value
 
-        return value
+        raise ConfigException(f"Types don't match: '{expected_type}' != '{value}'")
 
     def convert(self, value, expected_type) -> Any:
         """Some types can be automatically onverted"""

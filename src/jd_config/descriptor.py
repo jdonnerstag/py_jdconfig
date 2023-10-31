@@ -56,7 +56,7 @@ class ConfigDescriptor:
 
     def analyze(self, key, value, expected_type):
         while isinstance(value, str) and value.find("{") != -1:
-            value = self.resolve(value)
+            value = self.resolve(value, expected_type)
 
         if value == "???":
             raise MissingConfigException(f"Mandatory config value missing: '{key}'")
@@ -64,7 +64,7 @@ class ConfigDescriptor:
         value, expected_type = self.model.pre_process(key, value, expected_type)
         return value
 
-    def resolve(self, value: Any) -> Any:
+    def resolve(self, value: Any, expected_type:Type) -> Any:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -84,10 +84,10 @@ class ConfigDescriptor:
             placeholder = value
             # if placeholder.memo_relevant():
             #    ctx.add_memo(placeholder)
-            value = placeholder.resolve(self.model)
+            value = placeholder.resolve(self.model, expected_type)
 
         if isinstance(value, list):
-            value = [self.resolve(x) for x in value]
+            value = [self.resolve(x, expected_type) for x in value]
             value = "".join(value)
             return value
 
