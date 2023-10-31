@@ -14,9 +14,10 @@ from typing import Annotated, Any, ForwardRef
 
 import pytest
 
-from jd_config.cfg_pydantic_jd import ConfigBaseModel
+from jd_config.config_base_model import ConfigBaseModel
 from jd_config.utils import ConfigException
 from jd_config.cfg_types import EmailType, ExistingDirectoryType, ExistingFileType
+from jd_config.validators import String, OneOf, Number
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,7 @@ class MyEnum(Enum):
 
 
 class VariousConfig(ConfigBaseModel):
+    myany: Any
     myenum: MyEnum
     std_dict_no_types: dict
     std_dict: dict[str, Any]
@@ -99,6 +101,9 @@ class VariousConfig(ConfigBaseModel):
     # TODO mytuple_str_int: tuple(str, int)
     # TODO mytuple_str_list: tuple(str, ...)
     # TODO myurl: Url #  See the email example and use a public validator package
+    name: str = String(minsize=3, maxsize=10, predicate=str.isupper)
+    kind: str = OneOf("wood", "metal", "plastic")
+    quantity: int = Number(minvalue=0)
 
 
 def test_load_simple():
@@ -108,7 +113,7 @@ def test_load_simple():
         git_repo="http://github.com/jdonnerstag/my_repo",
     )
 
-    app = AppMetaConfig(data, None)
+    app = AppMetaConfig(data)
     assert app
     assert app.version == "0.0.1"
     assert app.contact == "xyz@me.com"
@@ -120,7 +125,7 @@ def test_load_deep():
         input_directory=".", crm_database="postgres", logging=dict(format="ascii")
     )
 
-    app = AppConfig(data, None)
+    app = AppConfig(data)
     assert app
     assert app.input_directory == "."
     assert app.crm_database == "postgres"
@@ -134,7 +139,7 @@ def test_load_fail_missing():
 
     # 'number' has not default and is not provided via data
     with pytest.raises(ConfigException):
-        FailConfig(data, None)
+        FailConfig(data)
 
 
 def test_load_app():
@@ -149,7 +154,7 @@ def test_load_app():
         ),
     )
 
-    cfg = MyConfig(data, None)
+    cfg = MyConfig(data)
     assert cfg
     assert cfg.app_meta.version == "0.0.1"
     assert cfg.app_meta.contact == "xyz@me.com"
@@ -167,7 +172,7 @@ def test_extra_key():
         me="test",
     )
 
-    app = AppConfig(data, None)
+    app = AppConfig(data)
     assert app
     assert app.input_directory == "."
     assert app.crm_database == "postgres"
@@ -180,7 +185,7 @@ def test_extra_key():
 def test_list():
     data = dict(xlist=[{"format": 1}, {"format": 2}, {"format": 3}])
 
-    app = ListConfig(data, None)
+    app = ListConfig(data)
     assert app
     assert app.xlist[0].format == "1"  # Converted to string as per class definition
     assert app.xlist[1].format == "2"  # Converted to string as per class definition
@@ -190,13 +195,14 @@ def test_list():
 def test_date():
     data = dict(modified="2023-10-11 12:32:00")
 
-    app = DateConfig(data, None)
+    app = DateConfig(data)
     assert app
     assert app.modified == datetime(2023, 10, 11, 12, 32, 00)
 
 
 def test_various():
     data = dict(
+        myany=datetime(2023, 1, 1),
         myenum="LAST",
         std_dict_no_types={"a": "aa"},
         std_dict={"a": 11},
@@ -205,10 +211,14 @@ def test_various():
         myemail="juergen.donnerstag@neverland.de",
         existing_file="readme.md",
         existing_dir=".",
+        name="TEST",
+        kind="metal",
+        quantity=99,
     )
 
-    app = VariousConfig(data, None)
+    app = VariousConfig(data)
     assert app
+    assert app.myany == datetime(2023, 1, 1)
     assert app.myenum == MyEnum.LAST
     assert app.std_dict_no_types == {"a": "aa"}
     assert app.std_dict == {"a": 11}
@@ -217,3 +227,6 @@ def test_various():
     assert app.myemail == "juergen.donnerstag@neverland.de"
     assert app.existing_file == Path("readme.md")
     assert app.existing_dir == Path(".")
+    assert app.name == "TEST"
+    assert app.kind == "metal"
+    assert app.quantity == 99

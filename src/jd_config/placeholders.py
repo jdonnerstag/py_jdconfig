@@ -19,6 +19,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
 
+from jd_config.config_base_model import ConfigBaseModel, ConfigMeta
+
 from .config_path import CfgPath
 from .file_loader import ConfigFile
 from .utils import DEFAULT, ConfigException, ContainerType, Trace
@@ -52,7 +54,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, getter, ctx: "GetterContext"):
+    def resolve(self, meta: ConfigMeta):
         """Resolve the placeholder"""
 
     def memo_relevant(self) -> bool:
@@ -81,7 +83,7 @@ class ImportPlaceholder(Placeholder):
         """Not relevant for Placeholder recursion detection"""
         return False
 
-    def resolve(self, getter, ctx: "GetterContext"):
+    def resolve(self, meta: ConfigMeta):
         if hasattr(getter, "resolve") and callable(getter.resolve):
             file = getter.resolve(self.file, ctx)
         else:
@@ -107,31 +109,31 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, getter, ctx: "GetterContext"):
-        new_ctx = dataclasses.replace(ctx, data=ctx.current_file)
+    def resolve(self, model: ConfigBaseModel):
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
-            path = ctx.parent_path(0) + path
+            while path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
+                if path[0] == CfgPath.PARENT_DIR:
+                    model = model.__cfg_meta__.parent
 
-        return self._resolve_inner(getter, ctx, new_ctx, path)
+                path = path[1:]
+        else:
+            model = model.__cfg_meta__.file.obj
 
-    def _resolve_inner(
-        self, getter, parent_ctx: "GetterContext", ctx: "GetterContext", path
-    ):
+        return self._resolve_inner(model, path)
+
+    def _resolve_inner(self, model, path):
         try:
-            obj = getter.get(ctx, path)
+            obj = model
+            for elem in path:
+                obj = getattr(obj, elem)
             return obj
         except (
             KeyError,
             IndexError,
-            ConfigException,
         ) as exc:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:
                 return obj
-
-            if isinstance(exc, ConfigException):
-                exc.trace.insert(0, new_trace(parent_ctx, self))
-                raise exc
 
             raise PlaceholderException(
                 f"Failed to resolve RefPlaceholder: '{self.path}'"
@@ -153,7 +155,7 @@ class GlobalRefPlaceholder(RefPlaceholder):
     # class(es) first then those of the child class.
     root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
-    def resolve(self, getter, ctx: "GetterContext"):
+    def resolve(self, meta: ConfigMeta):
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
             raise ConfigException(
@@ -180,7 +182,7 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, _getter, ctx) -> str:
+    def resolve(self, meta: ConfigMeta):
         value = os.environ.get(self.env_var, self.default_val)
         if value is DEFAULT:
             raise EnvvarConfigException(
@@ -200,7 +202,7 @@ class TimestampPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.format
 
-    def resolve(self, *_, **__) -> str:
+    def resolve(self, meta: ConfigMeta):
         now = datetime.now()
         value = now.strftime(self.format)
         return value

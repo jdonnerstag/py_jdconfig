@@ -4,15 +4,16 @@
 """
 """
 
+import dataclasses
+from dataclasses import dataclass
 from decimal import Decimal
 import sys
-from dataclasses import dataclass
-import dataclasses
 import logging
 from pathlib import Path
 from types import GenericAlias
 from typing import Any, Mapping, Self, ForwardRef, get_type_hints
 from typing_extensions import _AnnotatedAlias
+from jd_config.config_path import CfgPath
 
 from jd_config.utils import ConfigException, ContainerType, NonStrSequence
 from jd_config import handler
@@ -26,19 +27,25 @@ ConfigBaseModel = ForwardRef("ConfigBaseModel")
 @dataclass
 class ConfigFile:
     fname: Path | None  # E.g. StringIO does not have a file name.
-    data: Mapping
+    data: Mapping  # Raw data as loaded from file
+    obj: ConfigBaseModel | None  # The model associated with the root of the file
 
 
 @dataclass
 class ConfigMeta:
-    parent: ConfigBaseModel | None
-    data: ContainerType
-    file: ConfigFile
-    root: ConfigFile
+    data: ContainerType  # Current data as loaded from file
+    parent: ConfigBaseModel | None = None  # The parent model or None if its global root
+    path: CfgPath | None = None  # The current path in the raw data
+
+    file: ConfigFile | None = None  # Current file (e.g. imported)
+    root: ConfigFile | None = None  # Globale file
+
+    # Some subclasses require static helpers. They can be made available via 'app'
+    app: Any | None = None
 
     def __post_init__(self):
         if self.file is None:
-            self.file = ConfigFile(None, self.data)
+            self.file = ConfigFile(None, self.data, None)
 
         if self.root is None:
             self.root = self.file
@@ -51,27 +58,27 @@ class ConfigBaseModel:
 
     def __init__(
         self,
-        data: ContainerType,
-        parent: ConfigBaseModel | None,
+        data: ContainerType | None = None,
+        parent: ConfigBaseModel | None = None,
         *,
-        file: ConfigFile = None,
-        root: ConfigFile = None,
+        meta: ConfigMeta | None = None,
     ) -> None:
-        if parent is None:
-            self.__cfg_meta__ = ConfigMeta(parent=None, data=data, file=None, root=None)
-        else:
+        if parent is None and meta is None:
+            self.__cfg_meta__ = ConfigMeta(
+                app=None, parent=None, data=data, file=None, root=None
+            )
+        elif parent is not None:
             self.__cfg_meta__ = dataclasses.replace(
                 parent.__cfg_meta__, parent=parent, data=data
             )
+        elif meta is not None:
+            self.__cfg_meta__ = meta
 
-        if file is not None:
-            self.__cfg_meta__.file = file
-
-        if root is not None:
-            self.__cfg_meta__.root = root
+        if self.__cfg_meta__.file.obj is None:
+            self.__cfg_meta__.file.obj = self
 
         self.extra_keys = None
-        self.load(data)
+        self.load(self.__cfg_meta__.data)
 
     def load(self, data: ContainerType):
         if isinstance(data, Mapping):
@@ -81,14 +88,20 @@ class ConfigBaseModel:
 
         raise ConfigException(f"Expected a maps or list to load: '{data}'")
 
+    @classmethod
+    def type_hints(cls):
+        mod_globals = sys.modules[cls.__module__].__dict__
+        user_vars = get_type_hints(cls, include_extras=True, globalns=mod_globals)
+        user_vars = {k: v for k, v in user_vars.items() if not k.startswith("_")}
+        return user_vars
+
     def load_map(self, data: Mapping) -> Self:
         # The ConfigBaseModel is defined elsewhere. And if that subclass e.g. uses
         # a ForwardRef(), then get_type_hints() by default is not able to resolve it.
         # Hence: determine the module where the subclass (and ForwardRef) is defined,
         # and apply its globals() to be able to resolve ForwardRefs. Probably applies
         # to TypeVar, etc. as well.
-        mod_globals = sys.modules[self.__class__.__module__].__dict__
-        user_vars = get_type_hints(self, include_extras=True, globalns=mod_globals)
+        user_vars = self.type_hints()
 
         keys_set = []
         for key, value in data.items():  # TODO What about lists?
@@ -100,12 +113,7 @@ class ConfigBaseModel:
 
             expected_type = user_vars[key]
 
-            # We first process Annotated[..] types
-            if isinstance(expected_type, _AnnotatedAlias):
-                for proc in expected_type.__metadata__:
-                    value = proc(value)
-
-                expected_type = expected_type.__args__[0]
+            value, expected_type = self.pre_process(key, value, expected_type)
 
             # Then we apply the handler, until the first ones matches
             for entry in handler.global_registry:
@@ -121,6 +129,18 @@ class ConfigBaseModel:
         self.validate_defaults(user_vars, keys_set)
         self.validate_extra_keys(self.extra_keys)
         return self
+
+    def pre_process(self, key, value, expected_type):
+        # We first process Annotated[..] types
+        if not isinstance(expected_type, _AnnotatedAlias):
+            return value, expected_type
+
+        for proc in expected_type.__metadata__:
+            value = proc(value)
+
+        expected_type = expected_type.__args__[0]
+
+        return value, expected_type
 
     def validate_defaults(self, user_vars, keys_set):
         """Validate that all fields have received a value or have defaults defined."""
