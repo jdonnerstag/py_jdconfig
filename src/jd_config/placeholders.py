@@ -91,6 +91,9 @@ class ImportPlaceholder(Placeholder):
 
         rtn = app.load_import(Path(self.file), cache=self.cache)
         rtn = model.validate_before(None, rtn, expected_type)
+
+        # Make sure we update the "current file" to properly resolve
+        # {ref:} from within the file.
         if isinstance(rtn, ConfigBaseModel):
             file = CfgFile(fname=Path(self.file), data=rtn, obj=rtn)
             rtn.__cfg_meta__ = dataclasses.replace(rtn.__cfg_meta__, file=file)

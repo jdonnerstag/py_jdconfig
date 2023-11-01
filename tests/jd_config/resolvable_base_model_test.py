@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 from jd_config.config_base_model import ConfigMeta
-from jd_config.descriptor import ConfigDescriptor
 from jd_config.file_loader import ConfigFile, ConfigFileLoader
 
 from jd_config.resolvable_base_model import ResolvableBaseModel
@@ -28,9 +27,9 @@ def data_dir(*args) -> Path:
 
 
 class A(ResolvableBaseModel):
-    a: str = ConfigDescriptor()
-    b: str = ConfigDescriptor()
-    c: str = ConfigDescriptor()
+    a: str
+    b: str
+    c: str
 
 
 class App:
@@ -65,20 +64,21 @@ def test_simple():
 
 
 class Config4_2(ResolvableBaseModel):
-    a: str = ConfigDescriptor()
-    b: str = ConfigDescriptor()
-    c: str = ConfigDescriptor()
-    d: str = ConfigDescriptor()
-    e: str = ConfigDescriptor()
-    f: str = ConfigDescriptor()
+    a: str
+    b: str
+    c: str
+    d: str
+    e: str
+    f: str
+
 
 class Config4(ResolvableBaseModel):
-    a: str = ConfigDescriptor()
-    b: str = ConfigDescriptor()
-    c: Config4_2 = ConfigDescriptor()
-    d: str = ConfigDescriptor()
-    e: str = ConfigDescriptor()
-    f: str = ConfigDescriptor()
+    a: str
+    b: str
+    c: Config4_2
+    d: str
+    e: str
+    f: str
 
 
 def test_import():
@@ -99,7 +99,47 @@ def test_import():
     assert app.e == "2aa"
     assert app.f == "aa"
 
-    #app.a = "aa"
-    #assert app.a == "aa"
-    #assert app.b == "aa"
-    #assert app.c == "aa"
+    app.a = "AA"
+    assert app.a == "AA"
+    assert app.b == "AA"
+    assert app.c.a == "2aa"
+    assert app.c.b == "2aa"
+    assert app.c.c == "AA"
+    assert app.c.d == "2aa"
+    assert app.c.e == "AA"
+    assert app.c.f == "AA"
+    assert app.d == "2aa"
+    assert app.e == "2aa"
+    assert app.f == "AA"
+
+    app.b = "BB"
+    assert app.a == "AA"
+    assert app.b == "BB"
+    assert app.c.a == "2aa"
+    assert app.c.b == "2aa"
+    assert app.c.c == "AA"
+    assert app.c.d == "2aa"
+    assert app.c.e == "BB"
+    assert app.c.f == "AA"
+    assert app.d == "2aa"
+    assert app.e == "2aa"
+    assert app.f == "AA"
+
+
+class A2(ResolvableBaseModel):
+    a: str
+    b: str = "2"
+    c: str = 3  # It will auto-convert to str type
+
+
+def test_descriptor_with_default_value():
+    data = dict(
+        a="a",
+    )
+
+    meta = ConfigMeta(app=App(), data=data)
+    app = A2(meta=meta)
+    assert app
+    assert app.a == "a"
+    assert app.b == "2"
+    assert app.c == "3"  # auto-converted to str

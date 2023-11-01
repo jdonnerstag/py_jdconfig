@@ -11,7 +11,7 @@ import sys
 import logging
 from pathlib import Path
 from types import GenericAlias
-from typing import Any, Mapping, Self, ForwardRef, get_type_hints
+from typing import Any, Mapping, Optional, Self, ForwardRef, get_type_hints
 from typing_extensions import _AnnotatedAlias
 from jd_config.config_path import CfgPath
 
@@ -58,10 +58,10 @@ class ConfigBaseModel:
 
     def __init__(
         self,
-        data: ContainerType | None = None,
-        parent: ConfigBaseModel | None = None,
+        data: Optional[ContainerType] = None,
+        parent: Optional[ConfigBaseModel] = None,
         *,
-        meta: ConfigMeta | None = None,
+        meta: Optional[ConfigMeta] = None,
     ) -> None:
         if parent is None and meta is None:
             self.__cfg_meta__ = ConfigMeta(
@@ -121,24 +121,15 @@ class ConfigBaseModel:
                 if match:
                     break
 
-            if not self.is_default_value_a_descriptor(key):
-                value = self.validate_before(key, value, expected_type)
+            value = self.validate_before(key, value, expected_type)
 
             keys_set.append(key)
+
             setattr(self, key, value)
 
         self.validate_defaults(user_vars, keys_set)
         self.validate_extra_keys(self.extra_keys)
         return self
-
-    def is_default_value_a_descriptor(self, key) -> bool:
-        """If configured default value is a Descriptor"""
-        def_value = self.__class__.__dict__.get(key, None)
-        if def_value is not None:
-            if hasattr(def_value, "__set__") and hasattr(def_value, "__get__"):
-                return True
-
-        return False
 
     def pre_process(self, key, value, expected_type):
         # We first process Annotated[..] types
