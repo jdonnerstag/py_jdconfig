@@ -17,13 +17,16 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+import typing
 from typing import Any, Callable, Mapping, Optional, Type
 
-from jd_config.config_base_model import ConfigBaseModel, ConfigFile as CfgFile
-
+from .config_base_model import ConfigBaseModel, ConfigFile as CfgFile
 from .config_path import CfgPath
 from .file_loader import ConfigFile
 from .utils import DEFAULT, ConfigException, ContainerType, Trace
+
+if typing.TYPE_CHECKING:
+    from jd_config.resolvable_base_model import ResolvableBaseModel
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -51,7 +54,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, model: ConfigBaseModel, expected_type: Type):
+    def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         """Resolve the placeholder"""
 
     def memo_relevant(self) -> bool:
@@ -80,19 +83,21 @@ class ImportPlaceholder(Placeholder):
         """Not relevant for Placeholder recursion detection"""
         return False
 
-    def resolve(self, model: ConfigBaseModel, expected_type: Type):
+    def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         assert model.__cfg_meta__.app
         app = model.__cfg_meta__.app
         assert app.load_import
         assert callable(app.load_import)
 
-        rtn = app.load_import(Path(self.file), cache=self.cache)
+        file = model.resolve(self.file, str)
+        file = Path(file)
+        rtn = app.load_import(file, cache=self.cache)
         rtn = model.validate_before(None, rtn, expected_type)
 
         # Make sure we update the "current file" to properly resolve
         # {ref:} from within the file.
         if isinstance(rtn, ConfigBaseModel):
-            file = CfgFile(fname=Path(self.file), data=rtn, obj=rtn)
+            file = CfgFile(fname=file, data=rtn, obj=rtn)
             rtn.__cfg_meta__ = dataclasses.replace(rtn.__cfg_meta__, file=file)
 
         return rtn
@@ -108,7 +113,7 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, model: ConfigBaseModel, expected_type: Type):
+    def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
             while path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
@@ -150,7 +155,7 @@ class GlobalRefPlaceholder(RefPlaceholder):
     against is different.
     """
 
-    def resolve(self, model: ConfigBaseModel, expected_type: Type):
+    def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         path = CfgPath(self.path)
         model = model.__cfg_meta__.root.obj
 
@@ -171,7 +176,7 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, model: ConfigBaseModel, expected_type: Type):
+    def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         value = os.environ.get(self.env_var, self.default_val)
         if value is DEFAULT:
             raise EnvvarConfigException(f"ENV var does not exist: '{self.env_var}'")
@@ -188,7 +193,7 @@ class TimestampPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.format
 
-    def resolve(self, model: ConfigBaseModel, expected_type: Type):
+    def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         now = datetime.now()
         value = now.strftime(self.format)
         return value

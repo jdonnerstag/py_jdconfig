@@ -211,8 +211,7 @@ def test_load_jdconfig_2(monkeypatch):
 
     assert re.match(r"\d{8}-\d{6}", cfg.get("timestamp"))
     assert cfg.get("db") == "oracle"
-    # TODO we should cache the imported files
-    # TODO need to resolve DB_USER against the file it is in.
+    assert isinstance(cfg.get("database"), Config2Oracle)
     assert cfg.get("database.DB_USER") == "dbuser"
     assert cfg.get("database.DB_PASS") == "dbpass"
     assert cfg.get("database.DB_NAME") == "dbname"

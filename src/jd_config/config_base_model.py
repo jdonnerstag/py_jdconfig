@@ -10,7 +10,7 @@ import sys
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
-from types import GenericAlias
+from types import GenericAlias, UnionType
 from typing import Any, ForwardRef, Mapping, Optional, Self, get_type_hints
 
 from typing_extensions import _AnnotatedAlias
@@ -112,21 +112,22 @@ class ConfigBaseModel:
                 self.extra_keys.append(key)
                 continue
 
-            expected_type = user_vars[key]
+            types = user_vars[key]
+            types = self._expected_type_to_list(types)
+            for expected_type in types:
+                value, expected_type = self.pre_process(key, value, expected_type)
 
-            value, expected_type = self.pre_process(key, value, expected_type)
+                # Then we apply the handler, until the first ones matches
+                for entry in handler.global_registry:
+                    match, value = entry.evaluate(value, expected_type, self)
+                    if match:
+                        break
 
-            # Then we apply the handler, until the first ones matches
-            for entry in handler.global_registry:
-                match, value = entry.evaluate(value, expected_type, self)
-                if match:
-                    break
+                value = self.validate_before(key, value, expected_type)
 
-            value = self.validate_before(key, value, expected_type)
+                keys_set.append(key)
 
-            keys_set.append(key)
-
-            setattr(self, key, value)
+                setattr(self, key, value)
 
         self.validate_defaults(user_vars, keys_set)
         self.validate_extra_keys(self.extra_keys)
@@ -162,12 +163,26 @@ class ConfigBaseModel:
 
     def validate_before(self, key, value, expected_type, *, idx=None):
         """Parse and convert the value. Do any preprocessing necessary."""
+
         if expected_type is Any:
             return value
 
         # Lists etc.
         if isinstance(expected_type, GenericAlias):
             return value
+
+        # If UnionType, then return the first ones that does not fail with
+        # an exception
+        if isinstance(expected_type, UnionType):
+            for type_ in expected_type.__args__:
+                try:
+                    return self.validate_before(key, value, type_, idx=idx)
+                except:  # pylint: disable=bare-except
+                    pass
+
+            raise ConfigException(
+                f"None of the Union types does match: '{expected_type}' != '{value}'"
+            )
 
         if not isinstance(value, expected_type):
             value = self.convert(value, expected_type)
@@ -180,9 +195,14 @@ class ConfigBaseModel:
 
         raise ConfigException(f"Types don't match: '{expected_type}' != '{value}'")
 
+    def _expected_type_to_list(self, expected_type) -> tuple:
+        if isinstance(expected_type, UnionType):
+            return expected_type.__args__
+
+        return (expected_type,)
+
     def convert(self, value, expected_type) -> Any:
         """Some types can be automatically onverted"""
-
         if issubclass(expected_type, str):
             return str(value)
         if issubclass(expected_type, int):
