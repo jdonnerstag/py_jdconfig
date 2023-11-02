@@ -167,7 +167,7 @@ class JDConfig(ConfigIniMixin):
         path = CfgPath(path)
         rtn = self.data
         for elem in path:
-            if isinstance(elem, Mapping):
+            if isinstance(rtn, Mapping):
                 rtn = rtn[elem]
             else:
                 rtn = getattr(rtn, elem)

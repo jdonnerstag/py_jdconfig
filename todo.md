@@ -15,6 +15,9 @@
     Deep structures as well, AND with resolution.
     And support types, such as dict[str, str|int]
   - Support for Union types, with predicators to determine which type to apply.
+  - class name and yaml var name can be different
+  - add something that resolves all by replacing the "{..}" with actual values.
+    Why is that useful?
 
 
 - It happens regularly to me, that I forget to put quotes around {..}.

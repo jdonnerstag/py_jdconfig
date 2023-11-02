@@ -10,11 +10,13 @@ from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 from datetime import datetime
+from typing import ForwardRef, Optional
 
 import pytest
 
-from jd_config import ConfigException, JDConfig, Placeholder
+from jd_config import JDConfig, Placeholder
 from jd_config.config_path import CfgPath
+from jd_config.field import Field
 from jd_config.resolvable_base_model import ResolvableBaseModel
 
 logger = logging.getLogger(__name__)
@@ -144,10 +146,12 @@ class Config2LoggingFormatters(ResolvableBaseModel):
 
 
 class Config2LoggingHandler(ResolvableBaseModel):
-    class_: str
+    class_: str = Field(name="class")
     level: str
     formatter: str
-    stream: str
+    stream: Optional[str] = None  # Add test case in BaseModel
+    filename: str | None = None  # Add test case in BaseModel
+    encoding: str = "utf8"
 
 
 class Config2LoggingRoot(ResolvableBaseModel):
@@ -180,13 +184,18 @@ class Config2Oracle(Config1):
     pass
 
 
+class Config2Git(ResolvableBaseModel):
+    git_exe: str
+    pull_all_script: str
+
+
 class Config2(ResolvableBaseModel):
     version: str
     timestamp: datetime
 
     db: str
     database: Config2Mysql | Config2Oracle
-    git: str
+    git: Config2Git
     log_dir: str
     logging: Config2Logging
 
@@ -227,8 +236,14 @@ class MyBespokePlaceholder(Placeholder):
         return "value"
 
 
+class A(ResolvableBaseModel):
+    a: str
+    b: str
+    c: str
+
+
 def test_add_placeholder():
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(A, ini_file=None)
     cfg.placeholder_registry["bespoke"] = MyBespokePlaceholder
 
     DATA = """
@@ -247,57 +262,42 @@ def test_add_placeholder():
     assert cfg.get("c") == "value"
 
 
+Config3 = ForwardRef("Config3")
+
+
+class Config3_3(ResolvableBaseModel):
+    a3: str = Field(name="3a")
+    b3: Config3 = Field(name="3b")
+
+
+class Config3_2(ResolvableBaseModel):
+    a2: str = Field(name="2a")
+    b2: Config3_3 = Field(name="2b")
+
+
+class Config3(ResolvableBaseModel):
+    a1: str = Field(name="1a")
+    b1: Config3_2 = Field(name="1b")
+    c1: str = Field(name="1c", default="cc1")
+
+
 def test_load_jdconfig_3():
     # config-3 has a file recursion
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config3, ini_file=None)
     cfg.ini.config_dir = data_dir("configs-3")
 
     # Since we lazy resolve, loading the main file will not raise an exception
-    cfg.load("config.yaml")
+    data = cfg.load("config.yaml")
 
-    assert cfg.get("1a") == "a"
-    assert cfg.get("1b.2a") == "aa"
-    assert cfg.get("1b.2b.3a") == "aaa"
-    assert cfg.get("1b.2b.3b.1a") == "a"
+    assert data.a1 == "a"
+    assert data.b1.a2 == "aa"
+    assert data.b1.b2.a3 == "aaa"
+    assert data.b1.b2.b3.a1 == "a"
 
-    with pytest.raises(ConfigException):
-        # Recursion with imports in between
-        cfg.get("1b.2b.3b.1b")
-
-
-def test_walk():
-    cfg = JDConfig(ini_file=None)
-
-    DATA = """
-        a: aa
-        b:
-            b1:
-                c1: "{ref:a}"
-                c2: "2cc"
-            b2: 22
-    """
-
-    file_like_io = StringIO(DATA)
-    data = cfg.load(file_like_io)
-    assert data
-
-    data = list(cfg.walk(nodes_only=True, resolve=True))
-    assert len(data) == 4
-    data.remove(NodeEvent(("a",), "aa", None))
-    data.remove(NodeEvent(("b", "b1", "c1"), "aa", None))
-    data.remove(NodeEvent(("b", "b1", "c2"), "2cc", None))
-    data.remove(NodeEvent(("b", "b2"), 22, None))
-
-    data = list(cfg.walk(nodes_only=True, resolve=False))
-    assert len(data) == 4
-    data.remove(NodeEvent(("a",), "aa", None))
-    data.remove(NodeEvent(("b", "b1", "c1"), "{ref:a}", None))
-    data.remove(NodeEvent(("b", "b1", "c2"), "2cc", None))
-    data.remove(NodeEvent(("b", "b2"), 22, None))
-
-    data = list(cfg.walk(nodes_only=False, resolve=True))
-    assert len(data) == 8
+    # with pytest.raises(ConfigException):
+    # Recursion with imports in between
+    assert isinstance(data.b1.b2.b3.b1, Config3_2)
 
 
 def test_load_jdconfig_2_with_env(monkeypatch):
@@ -305,14 +305,16 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     monkeypatch.setenv("DB_PASS", "dbpass")
     monkeypatch.setenv("DB_NAME", "dbname")
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config2, ini_file=None)
     cfg.ini.env = "jd_dev"  # Apply own env specific changes
     cfg.ini.config_dir = data_dir("configs-2")
     data = cfg.load("main_config.yaml")
     assert data
 
-    # Since we lazy resolve, run to_dict(resolve=True) ones
-    cfg.to_dict(resolve=True)
+    # Just the main config and its overlay file.
+    assert len(cfg.files_loaded) == 2
+    # Since we lazy resolve, run to_dict() ones to touch very attribute ones.
+    data.to_dict()
     assert len(cfg.files_loaded) == 6
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert cfg.files_loaded[1].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")

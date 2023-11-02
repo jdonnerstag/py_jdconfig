@@ -47,11 +47,11 @@ class ResolvableBaseModel(ConfigBaseModel):
 
         return value
 
-    def validate_before(self, key, value, expected_type, *, idx=None):
+    def validate_before(self, key, value, expected_type, model_key=None, *, idx=None):
         if self.has_placeholder(value):
             return value
 
-        return super().validate_before(key, value, expected_type, idx=idx)
+        return super().validate_before(key, value, expected_type, model_key, idx=idx)
 
     def analyze(self, key, value, expected_type):
         while self.has_placeholder(value):

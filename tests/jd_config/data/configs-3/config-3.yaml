@@ -1,3 +1,2 @@
-
 3a: "aaa"
-3b: "{import: config.yaml}"   # Recursion
+3b: "{import: config.yaml}" # Recursion
