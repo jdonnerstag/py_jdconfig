@@ -8,12 +8,10 @@ import logging
 import os
 from pathlib import Path
 
-import pytest
 from jd_config.config_base_model import ConfigMeta
 from jd_config.file_loader import ConfigFile, ConfigFileLoader
 
 from jd_config.resolvable_base_model import ResolvableBaseModel
-from jd_config.utils import ConfigException
 from jd_config.value_reader import ValueReader
 
 logger = logging.getLogger(__name__)

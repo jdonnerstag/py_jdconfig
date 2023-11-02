@@ -17,7 +17,6 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Mapping
 
-from .objwalk import NewMappingEvent, NewSequenceEvent, NodeEvent, objwalk
 from .placeholders import EnvPlaceholder
 
 if TYPE_CHECKING:

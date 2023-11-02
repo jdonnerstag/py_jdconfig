@@ -11,6 +11,10 @@
   - I'd like to remember the original value, e.g. "{ref:a}" or "{import:./{ref:db}/abc.yaml}",
     to dynamically resolve the value (always running the validator). Because I want to be able
     to change "db" and node importing data, will AUTOMATICALLY be updated.
+  - How to still load into a dict?
+    Deep structures as well, AND with resolution.
+    And support types, such as dict[str, str|int]
+  - Support for Union types, with predicators to determine which type to apply.
 
 
 - It happens regularly to me, that I forget to put quotes around {..}.

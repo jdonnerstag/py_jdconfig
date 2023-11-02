@@ -9,11 +9,13 @@ import re
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 
-from jd_config import ConfigException, JDConfig, NodeEvent, Placeholder
+from jd_config import ConfigException, JDConfig, Placeholder
 from jd_config.config_path import CfgPath
+from jd_config.resolvable_base_model import ResolvableBaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +27,29 @@ def data_dir(*args) -> Path:
     return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
+class Config1Schemata(ResolvableBaseModel):
+    engine: str
+    maintenance: str
+    e2e: str
+
+
+class Config1(ResolvableBaseModel):
+    DB_USER: str
+    DB_PASS: str
+    DB_NAME: str
+
+    connection_string: str
+    db_job_name: str
+
+    batch_size: int
+
+    schematas: Config1Schemata
+
+
 def test_load_jdconfig_1():
     # config-1 contains a simple config file, with no imports.
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config1, ini_file=None)
     cfg.ini.config_dir = data_dir("configs-1")
     cfg.ini.config_file = "config.yaml"
     cfg.ini.default_env = "dev"
@@ -39,7 +60,7 @@ def test_load_jdconfig_1():
     # Provide the config file name. Note, that it'll not change or set the
     # config_dir. Any config files imported, are imported relativ to the
     # config_dir configured (or preset) in config.ini
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config1, ini_file=None)
     file = data_dir("configs-1", "config.yaml")
     data = cfg.load(file)
     assert data
@@ -48,7 +69,7 @@ def test_load_jdconfig_1():
     # still imported relativ to the config_dir configured (or preset) in
     # config.ini. The config_dir parameter provided, will only be used for
     # this one file. The config file might still be relativ or absolut.
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config1, ini_file=None)
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
     assert data
@@ -59,7 +80,7 @@ def test_load_jdconfig_1():
 
 
 def test_jdconfig_1_placeholders(monkeypatch):
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config1, ini_file=None)
     config_dir = data_dir("configs-1")
     data = cfg.load("config.yaml", config_dir)
     assert data
@@ -81,10 +102,19 @@ def test_jdconfig_1_placeholders(monkeypatch):
     assert cfg.get("schematas.e2e") == "xxx"
 
 
+class Config4(ResolvableBaseModel):
+    a: str
+    b: str
+    c: "Config4"
+    d: str
+    e: str
+    f: str
+
+
 def test_load_jdconfig_4():
     # config-4 is about simple {import:}, {ref:} and {global:}
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config4, ini_file=None)
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     cfg.ini.config_dir = data_dir("configs-4")  # configure the directory for imports
     data = cfg.load("config.yaml")
@@ -105,15 +135,69 @@ def test_load_jdconfig_4():
     assert cfg.get("e") == "2aa"
     assert cfg.get("f") == "aa"
 
-    with pytest.raises(ConfigException):
+    with pytest.raises(AttributeError):
         cfg.get("g")
+
+
+class Config2LoggingFormatters(ResolvableBaseModel):
+    format: str
+
+
+class Config2LoggingHandler(ResolvableBaseModel):
+    class_: str
+    level: str
+    formatter: str
+    stream: str
+
+
+class Config2LoggingRoot(ResolvableBaseModel):
+    level: str
+    handlers: list[str]
+
+
+class Config2Logging(ResolvableBaseModel):
+    version: int
+    disable_existing_loggers: bool
+    log_dir: str
+    timestamp: datetime
+
+    formatters: dict[str, Config2LoggingFormatters]
+    handlers: dict[str, Config2LoggingHandler]
+
+
+class Config2Debug(ResolvableBaseModel):
+    log_progress_after: int
+    stop_after: int = 99_999
+
+
+class Config2Mysql(ResolvableBaseModel):
+    driver: str
+    user: str
+    password: str
+
+
+class Config2Oracle(Config1):
+    pass
+
+
+class Config2(ResolvableBaseModel):
+    version: str
+    timestamp: datetime
+
+    db: str
+    database: Config2Mysql | Config2Oracle
+    git: str
+    log_dir: str
+    logging: Config2Logging
+
+    debug: Config2Debug
 
 
 def test_load_jdconfig_2(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config2, ini_file=None)
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     # config-2 has imports. Make sure, it is available for imports.
     cfg.ini.config_dir = data_dir("configs-2")

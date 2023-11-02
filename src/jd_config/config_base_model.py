@@ -3,20 +3,21 @@
 
 """
 """
-
+import yaml
 import dataclasses
+import logging
+import sys
 from dataclasses import dataclass
 from decimal import Decimal
-import sys
-import logging
 from pathlib import Path
 from types import GenericAlias
-from typing import Any, Mapping, Optional, Self, ForwardRef, get_type_hints
-from typing_extensions import _AnnotatedAlias
-from jd_config.config_path import CfgPath
+from typing import Any, ForwardRef, Mapping, Optional, Self, get_type_hints
 
-from jd_config.utils import ConfigException, ContainerType, NonStrSequence
+from typing_extensions import _AnnotatedAlias
+
 from jd_config import handler
+from jd_config.config_path import CfgPath
+from jd_config.utils import ConfigException, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -168,14 +169,14 @@ class ConfigBaseModel:
         if isinstance(expected_type, GenericAlias):
             return value
 
-        if issubclass(expected_type, ConfigBaseModel):
-            return expected_type(value, self)
-
         if not isinstance(value, expected_type):
             value = self.convert(value, expected_type)
 
         if isinstance(value, expected_type):
             return value
+
+        if issubclass(expected_type, ConfigBaseModel):
+            return expected_type(value, self)
 
         raise ConfigException(f"Types don't match: '{expected_type}' != '{value}'")
 
@@ -194,3 +195,23 @@ class ConfigBaseModel:
             return Path(value)
 
         return value
+
+    def to_dict(self) -> Mapping[str, Any]:
+        """Recursively create a dict from the model"""
+        rtn = {}
+        for key in getattr(self, "__annotations__").keys():
+            if key.startswith("_"):
+                continue
+
+            value = getattr(self, key)
+            if hasattr(value, "to_dict"):
+                value = value.to_dict()
+
+            rtn[key] = value
+
+        return rtn
+
+    def to_yaml(self, stream, **kvargs):
+        """Recursively export the model into a yaml"""
+        data = self.to_dict()
+        yaml.dump(data, stream, **kvargs)

@@ -12,7 +12,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from .string_converter_mixin import StringConverterMixin
 from .utils import ConfigException, relative_to_cwd
 
 __parent__name__ = __name__.rpartition(".")[0]

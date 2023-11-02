@@ -2,16 +2,18 @@
 # -*- coding: UTF-8 -*-
 
 """
+A collection of easy to use Type for config values.
+
+E.g. 'email: Email', or 'modified: Date["%Y-%m-%d"]'
 """
 
-import os
-from pathlib import Path
-import re
 import logging
+import os
+import re
+from pathlib import Path
 from typing import Annotated
 
 from jd_config.utils import ConfigException
-
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -52,3 +54,6 @@ def directory_existing(fname: str) -> Path:
 
 ExistingFileType = Annotated[Path, file_existing]
 ExistingDirectoryType = Annotated[Path, directory_existing]
+
+# TODO
+# DATE["%Y%m%d"]

@@ -3,34 +3,32 @@
 
 # pylint: disable=C
 
+import os
+from io import StringIO
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 
 from jd_config import (
     DEFAULT,
     ConfigException,
-    DeepGetter,
     EnvPlaceholder,
-    GetterContext,
     GlobalRefPlaceholder,
     ImportPlaceholder,
     Placeholder,
     RefPlaceholder,
-    ResolverMixin,
 )
+from jd_config.config_base_model import ConfigMeta
+from jd_config.file_loader import ConfigFile, ConfigFileLoader
+from jd_config.resolvable_base_model import MissingConfigException, ResolvableBaseModel
+from jd_config.value_reader import ValueReader
 
 logger = logging.getLogger(__name__)
 
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
-
-
-class MyConfig(ResolverMixin, DeepGetter):
-    def __init__(self) -> None:
-        DeepGetter.__init__(self)
-        ResolverMixin.__init__(self)
 
 
 def test_ImportPlaceholder():
@@ -73,9 +71,30 @@ def test_EnvPlaceholder(monkeypatch):
 
     monkeypatch.setenv("ENV", "this is a test")
 
-    resolver = ResolverMixin()
     env = EnvPlaceholder("ENV")
-    assert env.resolve(resolver, None) == "this is a test"
+    assert env.resolve(None, None) == "this is a test"
+
+
+class A(ResolvableBaseModel):
+    a: str
+    b: str
+    c: str = "cc"
+    d: str = "dd"
+
+
+def data_dir(*args) -> Path:
+    return Path(os.path.join(os.path.dirname(__file__), "data", *args))
+
+
+class App:
+    value_reader: ValueReader = ValueReader()
+
+    def load_import(
+        self,
+        fname: Path | StringIO,
+        cache: bool = True,
+    ) -> ConfigFile:
+        return ConfigFileLoader().load(fname, data_dir("configs-4"))
 
 
 def test_resolve():
@@ -86,28 +105,24 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    resolver = MyConfig()
-    ctx = GetterContext(cfg)
+    meta = ConfigMeta(app=App(), data=cfg)
+    model = A(meta=meta)
     ref = RefPlaceholder("a")
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(model, str) == "aa"
 
     ref = RefPlaceholder("b")
-    ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(model, str) == "aa"
 
     ref = RefPlaceholder("c")
-    ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(model, str) == "aa"
 
     ref = RefPlaceholder("d")
-    ctx = GetterContext(cfg)
-    with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+    with pytest.raises(AttributeError):
+        ref.resolve(model, str)
 
     ref = RefPlaceholder("xxx")
-    ctx = GetterContext(cfg)
-    with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+    with pytest.raises(AttributeError):
+        ref.resolve(model, str)
 
 
 def test_global_ref():
@@ -118,28 +133,24 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    resolver = MyConfig()
-    ctx = GetterContext(cfg)
+    meta = ConfigMeta(app=App(), data=cfg)
+    model = A(meta=meta)
     ref = GlobalRefPlaceholder("a")
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(model, str) == "aa"
 
     ref = GlobalRefPlaceholder("b")
-    ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(model, str) == "aa"
 
     ref = GlobalRefPlaceholder("c")
-    ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(model, str) == "aa"
 
     ref = GlobalRefPlaceholder("d")
-    ctx = GetterContext(cfg)
-    with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+    with pytest.raises(AttributeError):
+        ref.resolve(model, str)
 
     ref = GlobalRefPlaceholder("xxx")
-    ctx = GetterContext(cfg)
-    with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+    with pytest.raises(AttributeError):
+        ref.resolve(model, str)
 
 
 @dataclass
@@ -156,11 +167,12 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    resolver = MyConfig()
-    ctx = GetterContext(cfg)
-    resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    app = App()
+    app.value_reader.registry["bespoke"] = MyBespokePlaceholder
+    meta = ConfigMeta(app=app, data=cfg)
+    model = A(meta=meta)
     ref = RefPlaceholder("a")
-    assert ref.resolve(resolver, ctx) == "it's me"
+    assert ref.resolve(model, str) == "it's me"
 
 
 def test_mandatory_value():
@@ -169,16 +181,15 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    resolver = MyConfig()
-    ctx = GetterContext(cfg)
+    meta = ConfigMeta(app=App(), data=cfg)
+    model = A(meta=meta)
     ref = RefPlaceholder("a")
-    with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, ctx)
+    with pytest.raises(MissingConfigException):
+        assert ref.resolve(model, str)
 
     ref = RefPlaceholder("b")
-    ctx = GetterContext(cfg)
-    with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, ctx)
+    with pytest.raises(MissingConfigException):
+        assert ref.resolve(model, str)
 
 
 def test_detect_recursion():
@@ -188,8 +199,8 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    resolver = MyConfig()
-    ctx = GetterContext(cfg)
+    meta = ConfigMeta(app=App(), data=cfg)
+    model = A(meta=meta)
     ref = RefPlaceholder("a")
-    with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, ctx)
+    with pytest.raises(RecursionError):
+        assert ref.resolve(model, str)

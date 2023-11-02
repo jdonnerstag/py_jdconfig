@@ -8,11 +8,15 @@ import logging
 from typing import Any, Type
 from jd_config.config_base_model import ConfigBaseModel
 from jd_config.placeholders import Placeholder
-from jd_config.resolver_mixin import MissingConfigException
+from jd_config.utils import ConfigException
 
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+class MissingConfigException(ConfigException):
+    """'???' denotes a mandatory value. Must be defined in an overlay."""
 
 
 class ResolvableBaseModel(ConfigBaseModel):
@@ -37,7 +41,10 @@ class ResolvableBaseModel(ConfigBaseModel):
             value = self.analyze(key, value, expected_type)
         else:
             value = self.validate_before(key, value, expected_type)
-            
+
+        if value == "???":
+            raise MissingConfigException(f"Mandatory config value missing: '{key}'")
+
         return value
 
     def validate_before(self, key, value, expected_type, *, idx=None):
@@ -49,9 +56,6 @@ class ResolvableBaseModel(ConfigBaseModel):
     def analyze(self, key, value, expected_type):
         while self.has_placeholder(value):
             value = self.resolve(value, expected_type)
-
-        if value == "???":
-            raise MissingConfigException(f"Mandatory config value missing: '{key}'")
 
         # value, expected_type = self.model.pre_process(key, value, expected_type)
         return value
@@ -82,7 +86,10 @@ class ResolvableBaseModel(ConfigBaseModel):
             logger.debug("resolve(%s)", value)
             placeholder = value
             # if placeholder.memo_relevant():
-            #    ctx.add_memo(placeholder)
+            #    if placeholder in memo:
+            #        raise ConfigException("Recursion ...")
+            #
+            #    memo.append(placeholder)
             value = placeholder.resolve(self, expected_type)
 
         if isinstance(value, list):

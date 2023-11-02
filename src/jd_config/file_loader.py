@@ -5,18 +5,15 @@
 Load yaml config files
 """
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Optional, TYPE_CHECKING, Sequence
+from typing import Any, Iterator, Mapping, Optional, Sequence
 
 import yaml
 
 from .utils import ConfigException, ContainerType, relative_to_cwd
-
-if TYPE_CHECKING:
-    from .deep_getter import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

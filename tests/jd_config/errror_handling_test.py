@@ -7,7 +7,7 @@ import logging
 import os
 from pathlib import Path
 
-from jd_config import ConfigException, DeepDict, JDConfig
+from jd_config import ConfigException, JDConfig
 
 logger = logging.getLogger(__name__)
 

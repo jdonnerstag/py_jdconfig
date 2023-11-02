@@ -15,14 +15,11 @@ from jd_config import (
     JDConfig,
     DEFAULT,
     ConfigException,
-    DeepGetter,
     EnvPlaceholder,
-    GetterContext,
     GlobalRefPlaceholder,
     ImportPlaceholder,
     Placeholder,
     RefPlaceholder,
-    ResolverMixin,
 )
 from jd_config.provider_registry import ProviderPlugin
 

@@ -17,16 +17,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional, Type
+from typing import Any, Callable, Mapping, Optional, Type
 
 from jd_config.config_base_model import ConfigBaseModel, ConfigFile as CfgFile
 
 from .config_path import CfgPath
 from .file_loader import ConfigFile
 from .utils import DEFAULT, ConfigException, ContainerType, Trace
-
-if TYPE_CHECKING:
-    from .deep_getter import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

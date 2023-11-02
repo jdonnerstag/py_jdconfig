@@ -7,7 +7,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 import logging
-from types import GenericAlias
+from types import GenericAlias, UnionType
 from typing import Any, Type
 
 from jd_config.utils import ConfigException
@@ -82,11 +82,19 @@ class GenericDictHandler(Handler):
 
 class EnumTypeHandler(Handler):
     def evaluate(self, value: Any, expected_type: Type, model) -> tuple[bool, Any]:
-        if issubclass(expected_type, Enum):
-            value = expected_type[value]
-            return True, value
+        args = (
+            expected_type.__args__
+            if isinstance(expected_type, UnionType)
+            else (expected_type,)
+        )
+
+        for _type in args:
+            if issubclass(_type, Enum):
+                value = _type[value]
+                return True, value
 
         return False, value
+
 
 global_registry: list[Handler] = [
     GenericListHandler(),
