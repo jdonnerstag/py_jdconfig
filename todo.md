@@ -18,6 +18,7 @@
   - class name and yaml var name can be different
   - add something that resolves all by replacing the "{..}" with actual values.
     Why is that useful?
+  - min_len, max_len, func, etc. to Field
 
 
 - It happens regularly to me, that I forget to put quotes around {..}.

@@ -10,7 +10,7 @@ import logging
 import os
 from pathlib import Path
 
-from typing import Annotated, Any, ForwardRef
+from typing import Annotated, Any, ForwardRef, Optional
 
 import pytest
 
@@ -18,6 +18,7 @@ from jd_config.config_base_model import ConfigBaseModel
 from jd_config.utils import ConfigException
 from jd_config.cfg_types import EmailType, ExistingDirectoryType, ExistingFileType
 from jd_config.validators import String, OneOf, Number
+from jd_config.field import Field
 
 logger = logging.getLogger(__name__)
 
@@ -29,117 +30,266 @@ def data_dir(*args) -> Path:
     return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
-LoggingConfig = ForwardRef("LoggingConfig")
+class A(ConfigBaseModel):
+    a: str
+    b: str
+    c: str = "default cc"
 
 
-class AppMetaConfig(ConfigBaseModel):
-    version: str  # TODO define type that matches 0.6.0
-    contact: str  # TODO define email type
-    git_repo: str  # TODO define github repo type
-
-
-class AppConfig(ConfigBaseModel):
-    input_directory: str
-    crm_database: str
-    logging: LoggingConfig
-    number: int = 99
-    xfloat: float = 1.1
-
-
-class LoggingConfig(ConfigBaseModel):
-    format: str
-
-
-class MyConfig(ConfigBaseModel):
-    app_meta: AppMetaConfig
-    app: AppConfig
-
-
-class FailConfig(ConfigBaseModel):
-    input_directory: str
-    crm_database: str
-    logging: LoggingConfig
-    number: int  # Default not defined
-    xfloat: float = 1.1
-
-
-class ListConfig(ConfigBaseModel):
-    xlist: list[LoggingConfig]
-
-
-def my_strptime(fmt):
-    def inner_strptime(text):
-        return datetime.strptime(text, fmt)
-
-    return inner_strptime
-
-
-class DateConfig(ConfigBaseModel):
-    modified: Annotated[date, my_strptime("%Y-%m-%d %H:%M:%S")]
-    # TODO DATE["%Y-%m-%d %H:%M:%S"] => A GenericAlias with [T] == the format
-
-
-class MyEnum(Enum):
-    FIRST = auto()
-    NEXT = auto()
-    LAST = auto()
-
-
-class VariousConfig(ConfigBaseModel):
-    myany: Any
-    myenum: MyEnum
-    std_dict_no_types: dict
-    std_dict: dict[str, Any]
-    mypath: Path
-    mydecimal: Decimal
-    myemail: EmailType
-    existing_file: ExistingFileType
-    existing_dir: ExistingDirectoryType
-    # TODO dates: list[Annotated[date, my_strptime("%Y-%m-%d %H:%M:%S")]]
-    # TODO typed_dict: TypedDict[str, int] # Not sure it is urgent to support it
-    # TODO mytuple: tuple
-    # TODO mytuple_str_int: tuple(str, int)
-    # TODO mytuple_str_list: tuple(str, ...)
-    # TODO myurl: Url #  See the email example and use a public validator package
-    name: str = String(minsize=3, maxsize=10, predicate=str.isupper)
-    kind: str = OneOf("wood", "metal", "plastic")
-    quantity: int = Number(minvalue=0)
-
-
-def test_load_simple():
+def test_load_simple_str():
     data = dict(
-        version="0.0.1",
-        contact="xyz@me.com",
-        git_repo="http://github.com/jdonnerstag/my_repo",
+        a="aa",
+        b="bb",
+        c="cc",
     )
 
-    app = AppMetaConfig(data)
+    app = A(data)
     assert app
-    assert app.version == "0.0.1"
-    assert app.contact == "xyz@me.com"
-    assert app.git_repo == "http://github.com/jdonnerstag/my_repo"
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "cc"
+
+    data = dict(
+        a="aa",
+        b="bb",
+    )
+
+    app = A(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "default cc"
+
+
+class B(ConfigBaseModel):
+    a: str
+    b: int
+    c: Decimal
+    d: Path
+
+
+def test_load_simple_converter():
+    data = dict(a=1, b="99", c="1.1", d=str(Path.cwd()))
+
+    app = B(data)
+    assert app
+    assert app.a == "1"
+    assert app.b == 99
+    assert app.c == Decimal("1.1")
+    assert app.d == Path.cwd()
+
+
+class C(ConfigBaseModel):
+    a: str
+    b: A
 
 
 def test_load_deep():
-    data = dict(
-        input_directory=".", crm_database="postgres", logging=dict(format="ascii")
-    )
+    data = dict(a="aa", b=dict(a="aaa", b="bb", c="cc"))
 
-    app = AppConfig(data)
+    app = C(data)
     assert app
-    assert app.input_directory == "."
-    assert app.crm_database == "postgres"
-    assert app.logging.format == "ascii"
+    assert isinstance(app, C)
+    assert app.a == "aa"
+    assert isinstance(app.b, A)
+    assert app.b.a == "aaa"
+    assert app.b.b == "bb"
+    assert app.b.c == "cc"
+
+
+class D(ConfigBaseModel):
+    a: list
+    b: dict
+    c: list = []  # TODO Why is this not a good idea? How to detect?
+
+
+def test_load_simple_container():
+    data = dict(a=["a1", 2], b=dict(b1="bb1", b2=3))
+
+    app = D(data)
+    assert app
+    assert app.a == ["a1", 2]
+    assert app.a[0] == "a1"
+    assert app.a[1] == 2
+    assert app.b == {"b1": "bb1", "b2": 3}
+    assert app.b["b1"] == "bb1"
+    assert app.b["b2"] == 3
+
+    data = dict(a="a1", b=dict(b1="bb1", b2=3))
+    with pytest.raises(ConfigException):
+        D(data)  # "a" is not a list
+
+    data = dict(a=["a1", 2], b="bb1")
+    with pytest.raises(ConfigException):
+        D(data)  # "b" is not a dict
+
+
+class E(ConfigBaseModel):
+    # The type is only used for validation, but not providing a default value
+    a: Optional[str] = None
+    b: str | None = None
+    c: str | int  # process left to right. Return the first that works
+    d: list[str] | None = None
+    e: list[int | str]  # process left to right. Return the first that works
+
+
+def test_load_optional_and_unions():
+    data = dict(a="aa", b="bb", c="cc", d=["dd"], e=["ee"])
+
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "cc"
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee"]
+    assert app.e[0] == "ee"
+
+    # Optional "a"
+    data = dict(b="bb", c="cc", d=["dd"], e=["ee"])
+    app = E(data)
+    assert app
+    assert app.a is None
+    assert app.b == "bb"
+    assert app.c == "cc"
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee"]
+    assert app.e[0] == "ee"
+
+    # Optional "b"
+    data = dict(a="aa", c="cc", d=["dd"], e=["ee"])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b is None
+    assert app.c == "cc"
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee"]
+    assert app.e[0] == "ee"
+
+    # "b" is None
+    data = dict(a="aa", b=None, c="cc", d=["dd"], e=["ee"])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b is None
+    assert app.c == "cc"
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee"]
+    assert app.e[0] == "ee"
+
+    # 'c' is an int
+    data = dict(a="aa", b="bb", c=99, d=["dd"], e=["ee"])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == 99
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee"]
+    assert app.e[0] == "ee"
+
+    # optional "d"
+    data = dict(a="aa", b="bb", c="cc", e=["ee"])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "cc"
+    assert app.d is None
+    assert app.e == ["ee"]
+    assert app.e[0] == "ee"
+
+    # list with same types
+    data = dict(a="aa", b="bb", c="cc", d=["dd"], e=["ee", "99"])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "cc"
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee", "99"]
+    assert app.e[0] == "ee"
+    assert app.e[1] == "99"
+
+    # list with same types
+    data = dict(a="aa", b="bb", c="cc", d=["dd"], e=["ee", 99])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "cc"
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee", 99]
+    assert app.e[0] == "ee"
+    assert app.e[1] == 99
+
+    # A float can be converted to str and int. We process left to right.
+    data = dict(a="aa", b="bb", c=99.11, d=["dd"], e=["ee", 99.11])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "99.11"  # str | int. First is str
+    assert app.d == ["dd"]
+    assert isinstance(app.d, list) and app.d[0] == "dd"
+    assert app.e == ["ee", 99]  # list[int|str]. First is int
+    assert app.e[0] == "ee"
+    assert app.e[1] == 99
+
+    # Empty lists
+    data = dict(a="aa", b="bb", c=99.11, d=[], e=[])
+    app = E(data)
+    assert app
+    assert app.a == "aa"
+    assert app.b == "bb"
+    assert app.c == "99.11"  # str | int. First is str
+    assert isinstance(app.d, list) and len(app.d) == 0
+    assert isinstance(app.e, list) and len(app.e) == 0
+
+    # 'd' is not a list
+    data = dict(a="aa", b="bb", c=99.11, d="xxx", e=["ee", 99.11])
+    with pytest.raises(ConfigException):
+        E(data)  # "b" is not a dict
+
+    # 'e' is not a list
+    data = dict(a="aa", b="bb", c=99.11, d=["dd"], e=11)
+    with pytest.raises(ConfigException):
+        E(data)  # "b" is not a dict
+
+
+class F(ConfigBaseModel):
+    c: list[str]
+    d: list[str | None]
+    c: list[Any]
+    e: dict[str, str]
+
+
+def test_generics():
+    data = dict(a="aa", b=dict(a="aaa", b="bb", c="cc"))
+
+
+class G(ConfigBaseModel):
+    c: str = Annotated[str, ...]
+
+
+class H(ConfigBaseModel):
+    c: str = Field(default="xx")
 
 
 def test_load_fail_missing():
-    data = dict(
-        input_directory=".", crm_database="postgres", logging=dict(format="ascii")
-    )
+    data = dict(a="aa", c="cc")
 
-    # 'number' has not default and is not provided via data
+    # 'b' has not default and is not provided via data
     with pytest.raises(ConfigException):
-        FailConfig(data)
+        A(data)
 
 
 def test_load_app():
@@ -230,3 +380,80 @@ def test_various():
     assert app.name == "TEST"
     assert app.kind == "metal"
     assert app.quantity == 99
+
+
+LoggingConfig = ForwardRef("LoggingConfig")
+
+
+class AppMetaConfig(ConfigBaseModel):
+    version: str  # TODO define type that matches 0.6.0
+    contact: str  # TODO define email type
+    git_repo: str  # TODO define github repo type
+
+
+class AppConfig(ConfigBaseModel):
+    input_directory: str
+    crm_database: str
+    logging: LoggingConfig
+    number: int = 99
+    xfloat: float = 1.1
+
+
+class LoggingConfig(ConfigBaseModel):
+    format: str
+
+
+class MyConfig(ConfigBaseModel):
+    app_meta: AppMetaConfig
+    app: AppConfig
+
+
+class FailConfig(ConfigBaseModel):
+    input_directory: str
+    crm_database: str
+    logging: LoggingConfig
+    number: int  # Default not defined
+    xfloat: float = 1.1
+
+
+class ListConfig(ConfigBaseModel):
+    xlist: list[LoggingConfig]
+
+
+def my_strptime(fmt):
+    def inner_strptime(text):
+        return datetime.strptime(text, fmt)
+
+    return inner_strptime
+
+
+class DateConfig(ConfigBaseModel):
+    modified: Annotated[date, my_strptime("%Y-%m-%d %H:%M:%S")]
+    # TODO DATE["%Y-%m-%d %H:%M:%S"] => A GenericAlias with [T] == the format
+
+
+class MyEnum(Enum):
+    FIRST = auto()
+    NEXT = auto()
+    LAST = auto()
+
+
+class VariousConfig(ConfigBaseModel):
+    myany: Any
+    myenum: MyEnum
+    std_dict_no_types: dict
+    std_dict: dict[str, Any]
+    mypath: Path
+    mydecimal: Decimal
+    myemail: EmailType
+    existing_file: ExistingFileType
+    existing_dir: ExistingDirectoryType
+    # TODO dates: list[Annotated[date, my_strptime("%Y-%m-%d %H:%M:%S")]]
+    # TODO typed_dict: TypedDict[str, int] # Not sure it is urgent to support it
+    # TODO mytuple: tuple
+    # TODO mytuple_str_int: tuple(str, int)
+    # TODO mytuple_str_list: tuple(str, ...)
+    # TODO myurl: Url #  See the email example and use a public validator package
+    name: str = String(minsize=3, maxsize=10, predicate=str.isupper)
+    kind: str = OneOf("wood", "metal", "plastic")
+    quantity: int = Number(minvalue=0)

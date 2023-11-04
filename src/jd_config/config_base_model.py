@@ -11,13 +11,13 @@ import sys
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
-from types import GenericAlias, UnionType
-from typing import Any, ForwardRef, Mapping, Optional, Self, get_type_hints
+from types import GenericAlias, NoneType, UnionType
+from typing import Any, ForwardRef, Mapping, Optional, Self, Type, get_type_hints
+from enum import Enum
 
 import yaml
 from typing_extensions import _AnnotatedAlias
 
-from jd_config import handler
 from jd_config.config_path import CfgPath
 from jd_config.field import Field
 from jd_config.utils import ConfigException, ContainerType, NonStrSequence
@@ -26,6 +26,10 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 ConfigBaseModel = ForwardRef("ConfigBaseModel")
+
+
+class ValidationException(ConfigException):
+    """Data do not conform with type"""
 
 
 @dataclass
@@ -100,6 +104,11 @@ class ConfigBaseModel:
     @classmethod
     def type_hints(cls):
         """Get the type hint all the user config attributes"""
+        # The ConfigBaseModel is defined elsewhere. And if that subclass e.g. uses
+        # a ForwardRef(), then get_type_hints() by default is not able to resolve it.
+        # Hence: determine the module where the subclass (and ForwardRef) is defined,
+        # and apply its globals() to be able to resolve ForwardRefs. Probably applies
+        # to TypeVar, etc. as well.
         mod_globals = sys.modules[cls.__module__].__dict__
         user_vars = get_type_hints(cls, include_extras=True, globalns=mod_globals)
         user_vars = {k: v for k, v in user_vars.items() if not k.startswith("_")}
@@ -122,11 +131,6 @@ class ConfigBaseModel:
     def load_map(self, data: Mapping) -> Self:
         """Load the config data from json-, yaml-files, whereever"""
 
-        # The ConfigBaseModel is defined elsewhere. And if that subclass e.g. uses
-        # a ForwardRef(), then get_type_hints() by default is not able to resolve it.
-        # Hence: determine the module where the subclass (and ForwardRef) is defined,
-        # and apply its globals() to be able to resolve ForwardRefs. Probably applies
-        # to TypeVar, etc. as well.
         user_vars = self.type_hints()
 
         keys_set = []
@@ -138,9 +142,8 @@ class ConfigBaseModel:
                 self.extra_keys.append(input_key)
                 continue
 
-            types = user_vars[model_key]
-            types = self._expected_type_to_list(types)
-            value = self.process_key(input_key, value, model_key, types)
+            expected_type = user_vars[model_key]
+            value = self.process_key(input_key, value, model_key, expected_type)
 
             keys_set.append(model_key)
             setattr(self, model_key, value)
@@ -149,33 +152,71 @@ class ConfigBaseModel:
         self.validate_extra_keys(self.extra_keys)
         return self
 
-    def process_key(self, key, value, model_key, types):
+    @classmethod
+    def is_none_type(cls, expected_type) -> bool:
+        """True, if is NoneType"""
+        return isinstance(expected_type, type) and issubclass(expected_type, NoneType)
+
+    def process_key(self, key, value, model_key, expected_type):
         """Process a single value"""
-        for expected_type in types:
-            value = self.process_key_and_type(key, value, expected_type, model_key)
-
-        return value
-
-    def process_key_and_type(self, key, value, expected_type, model_key):
-        """Process a single value and one of the expected types (if multiple)"""
 
         value, expected_type = self.process_annotations(model_key, value, expected_type)
 
-        # Then we apply the handlers
-        value = self.process_handlers(value, expected_type)
-
-        # All the standard type converters
         value = self.validate_before(key, value, expected_type, model_key)
-        return value
 
-    def process_handlers(self, value, expected_type):
-        """All the handlers to the value"""
-        for entry in handler.global_registry:
-            match, value = entry.evaluate(value, expected_type, self)
-            if match:
-                break
+        # Process containers, such as list and dict, by iterating over
+        # all their elements (and recursively deep), and check the elements
+        # against their (element) types. If not compliant, it'll raise an
+        # exception.
+        if isinstance(value, list):
+            try:
+                value = self.process_list_value(value, expected_type)
+                return value
+            except:  # pylint:disable=bare-except
+                pass
+        elif isinstance(value, dict):
+            try:
+                value = self.process_dict_value(value, expected_type)
+                return value
+            except:  # pylint:disable=bare-except
+                pass
 
-        return value
+        # If value matches any of the types, then we are done
+        if self.value_isinstance(value, expected_type):
+            return value
+
+        # Else, move left to right and try to convert. If successful, we are done
+        return self.try_to_convert(value, expected_type)
+
+    def value_isinstance(self, value, expected_type) -> bool:
+        # If value matches any of the types, then we are done
+        # Optional[x] is handled via __instanceof__. Unfortunately
+        # not many types have this dunder yet (python 3.11.2)
+
+        if expected_type is Any:
+            return True
+
+        try:
+            if isinstance(value, expected_type):
+                return True
+        except TypeError:
+            pass
+
+        return False
+
+    def try_to_convert(self, value, expected_type):
+        if isinstance(expected_type, type):
+            return self.convert(value, expected_type)
+
+        if isinstance(expected_type, UnionType):
+            for elem_type in expected_type.__args__:
+                try:
+                    value = self.convert(value, elem_type)
+                    return value
+                except:  # pylint: disable=bare-except
+                    pass
+
+        raise ValidationException(f"Types don't match: '{expected_type}' != '{value}'")
 
     def process_annotations(self, key, value, expected_type):
         """Process all annotated types"""
@@ -194,23 +235,28 @@ class ConfigBaseModel:
         """Validate that all fields have received a value or have defaults defined."""
         # Variables with defaults defined are available in self.__class__.dict
         # TODO Does this work with subclasses which both have attributes???
-        user_vars = self.type_hints()
-
         for key in user_vars.keys():
+            # Already assigned a value??
             if key in keys_set:
                 continue
 
             try:
+                # Does it have a default value?
                 # Should work for literal values as well as the Field descriptor
-                return self.__class__.__dict__[key]
-            except KeyError:
+                getattr(self, key)
+            except AttributeError:
                 # pylint: disable=raise-missing-from
-                raise ConfigException(f"No value imported for attribute: '{key}'")
+                raise ConfigException(
+                    f"No value imported and no default value for attribute: '{key}'"
+                )
 
     def validate_extra_keys(self, extra_keys):
         """Specify what to do with extra key/values available in the input, but
         don't have variables"""
+        # TODO test against Optional and "| None" types
         pass
+        # pylint: disable=raise-missing-from
+        # raise ConfigException(f"No value imported for attribute: '{key}'")
 
     def validate_before(self, key, value, expected_type, model_key=None, *, idx=None):
         """Parse and convert the value. Do any preprocessing necessary."""
@@ -218,42 +264,26 @@ class ConfigBaseModel:
         if expected_type is Any:
             return value
 
+        if value is None:
+            return value
+
         # Lists etc.
         if isinstance(expected_type, GenericAlias):
             return value
 
-        # If UnionType, then return the first ones that does not fail with
-        # an exception
-        if isinstance(expected_type, UnionType):
-            for type_ in expected_type.__args__:
-                try:
-                    return self.validate_before(key, value, type_, model_key, idx=idx)
-                except:  # pylint: disable=bare-except
-                    pass
+        # This also works with Optional[xyz]. See __instancecheck__
+        try:
+            if isinstance(value, expected_type):
+                return value
+        except TypeError:
+            pass
 
-            raise ConfigException(
-                f"None of the Union types does match: '{expected_type}' != '{value}'"
-            )
-
-        if isinstance(value, expected_type):
-            return value
-
-        if issubclass(expected_type, ConfigBaseModel):
+        if (isinstance(expected_type, type)) and (
+            issubclass(expected_type, ConfigBaseModel)
+        ):
             return expected_type(value, self)
 
-        if not isinstance(value, expected_type):
-            value = self.convert(value, expected_type)
-
-        if isinstance(value, expected_type):
-            return value
-
-        raise ConfigException(f"Types don't match: '{expected_type}' != '{value}'")
-
-    def _expected_type_to_list(self, expected_type) -> tuple:
-        if isinstance(expected_type, UnionType):
-            return expected_type.__args__
-
-        return (expected_type,)
+        return value
 
     def convert(self, value, expected_type) -> Any:
         """Some types can be automatically onverted"""
@@ -267,8 +297,84 @@ class ConfigBaseModel:
             return Decimal(value)
         if issubclass(expected_type, Path):
             return Path(value)
+        if issubclass(expected_type, Enum):
+            return expected_type[value]
 
-        return value
+        raise ValidationException(f"Types don't match: '{expected_type}' != '{value}'")
+
+    @classmethod
+    def is_generic(cls, expected_type: Type, origin: Type) -> bool:
+        if not isinstance(expected_type, GenericAlias):
+            return False
+
+        return issubclass(expected_type.__origin__, origin)
+
+    def process_list_value(self, value, expected_type):
+        if self.is_generic(expected_type, list):
+            elem_type = expected_type.__args__[0]
+        elif isinstance(expected_type, type) and issubclass(expected_type, list):
+            elem_type = Any
+        elif isinstance(expected_type, UnionType):
+            for elem_type in expected_type.__args__:
+                try:
+                    value = self.process_list_value(value, elem_type)
+                    return value
+                except:  # pylint: disable=bare-except
+                    pass
+
+            raise ValidationException(
+                f"Types don't match: '{expected_type}' != '{value}'"
+            )
+        else:
+            raise ValidationException(
+                f"Types don't match: '{expected_type}' != '{value}'"
+            )
+
+        if not isinstance(value, list):
+            raise ValidationException(f"Expected a list, but found: '{value}'")
+
+        rtn = []
+        for i, elem in enumerate(value):
+            elem = self.process_key(i, elem, i, elem_type)
+            rtn.append(elem)
+
+        return rtn
+
+    def process_dict_value(self, value, expected_type):
+        if self.is_generic(expected_type, dict):
+            key_type, elem_type = expected_type.__args__
+        elif isinstance(expected_type, type) and issubclass(expected_type, dict):
+            key_type, elem_type = Any, Any
+        elif isinstance(expected_type, UnionType):
+            for elem_type in expected_type.__args__:
+                try:
+                    value = self.process_dict_value(value, elem_type)
+                    return value
+                except:  # pylint: disable=bare-except
+                    pass
+
+            raise ValidationException(
+                f"Types don't match: '{expected_type}' != '{value}'"
+            )
+        else:
+            raise ValidationException(
+                f"Types don't match: '{expected_type}' != '{value}'"
+            )
+
+        if not isinstance(value, dict):
+            raise ValidationException(f"Expected a dict, but found: '{value}'")
+
+        rtn = {}
+        for key, elem in value.items():
+            if key_type is not Any and not isinstance(key, key_type):
+                raise ValidationException(
+                    f"Wrong type: expected '{key_type}', found '{key}'"
+                )
+
+            elem = self.process_key(key, elem, key, elem_type)
+            rtn[key] = elem
+
+        return rtn
 
     def to_dict(self) -> Mapping[str, Any]:
         """Recursively create a dict from the model"""
