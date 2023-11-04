@@ -164,12 +164,4 @@ class JDConfig(ConfigIniMixin):
         return self.data
 
     def get(self, path: PathType) -> Any:
-        path = CfgPath(path)
-        rtn = self.data
-        for elem in path:
-            if isinstance(rtn, Mapping):
-                rtn = rtn[elem]
-            else:
-                rtn = getattr(rtn, elem)
-
-        return rtn
+        return self.data.get(path)

@@ -2,7 +2,11 @@
 # -*- coding: UTF-8 -*-
 
 """
-Inspired by pydantic, a BaseModel for classes holding config data.
+Inspired by pydantic, a BaseModel to flexibly load config data
+into typed class attributes, and with validation.
+
+Please see the readme file for reasons why this is not (yet)
+build on top of pydantic.
 """
 
 import dataclasses
@@ -18,9 +22,9 @@ from enum import Enum
 import yaml
 from typing_extensions import _AnnotatedAlias
 
-from jd_config.config_path import CfgPath
+from jd_config.config_path import CfgPath, PathType
 from jd_config.field import Field
-from jd_config.utils import ConfigException, ContainerType, NonStrSequence
+from jd_config.utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -29,7 +33,7 @@ ConfigBaseModel = ForwardRef("ConfigBaseModel")
 
 
 class ValidationException(ConfigException):
-    """Data do not conform with type"""
+    """Data do not conform to a type"""
 
 
 @dataclass
@@ -375,6 +379,29 @@ class ConfigBaseModel:
             rtn[key] = elem
 
         return rtn
+
+    def __getitem__(self, key):
+        return self.get(key)
+
+    def get(self, path: PathType, default=DEFAULT) -> Any:
+        """Deep get an attribute"""
+        path = CfgPath(path)
+        rtn = self
+        try:
+            for elem in path:
+                if isinstance(rtn, Mapping):
+                    rtn = rtn[elem]
+                else:
+                    rtn = getattr(rtn, elem)
+
+            return rtn
+        except:  # pylint: disable=bare-except
+            pass
+
+        if default != DEFAULT:
+            return default
+
+        raise KeyError(f"Key not found: '{elem}' in '{path}'")
 
     def to_dict(self) -> Mapping[str, Any]:
         """Recursively create a dict from the model"""

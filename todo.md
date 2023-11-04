@@ -19,7 +19,8 @@
   - add something that resolves all by replacing the "{..}" with actual values.
     Why is that useful?
   - min_len, max_len, func, etc. to Field
-
+- improve error reporting and debugging as we did before
+- test case w/o any class, just dict
 
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??

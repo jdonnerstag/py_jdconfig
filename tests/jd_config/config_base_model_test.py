@@ -96,6 +96,22 @@ def test_load_deep():
     assert app.b.b == "bb"
     assert app.b.c == "cc"
 
+    # get
+    assert app.get("a") == "aa"
+    assert app.get("b.a") == "aaa"
+    assert app.get("b.b") == "bb"
+    assert app.get("b.c") == "cc"
+
+    # getitem
+    assert app["a"] == "aa"
+    assert app["b"]["a"] == "aaa"
+    assert app["b"]["b"] == "bb"
+    assert app["b"]["c"] == "cc"
+
+    assert app["b.a"] == "aaa"
+    assert app["b.b"] == "bb"
+    assert app["b.c"] == "cc"
+
 
 class D(ConfigBaseModel):
     a: list
@@ -142,6 +158,7 @@ def test_load_optional_and_unions():
     assert app.b == "bb"
     assert app.c == "cc"
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee"]
     assert app.e[0] == "ee"
@@ -154,6 +171,7 @@ def test_load_optional_and_unions():
     assert app.b == "bb"
     assert app.c == "cc"
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee"]
     assert app.e[0] == "ee"
@@ -166,6 +184,7 @@ def test_load_optional_and_unions():
     assert app.b is None
     assert app.c == "cc"
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee"]
     assert app.e[0] == "ee"
@@ -178,6 +197,7 @@ def test_load_optional_and_unions():
     assert app.b is None
     assert app.c == "cc"
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee"]
     assert app.e[0] == "ee"
@@ -190,6 +210,7 @@ def test_load_optional_and_unions():
     assert app.b == "bb"
     assert app.c == 99
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee"]
     assert app.e[0] == "ee"
@@ -213,6 +234,7 @@ def test_load_optional_and_unions():
     assert app.b == "bb"
     assert app.c == "cc"
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee", "99"]
     assert app.e[0] == "ee"
@@ -226,6 +248,7 @@ def test_load_optional_and_unions():
     assert app.b == "bb"
     assert app.c == "cc"
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee", 99]
     assert app.e[0] == "ee"
@@ -239,6 +262,7 @@ def test_load_optional_and_unions():
     assert app.b == "bb"
     assert app.c == "99.11"  # str | int. First is str
     assert app.d == ["dd"]
+    # pylint: disable=unsubscriptable-object
     assert isinstance(app.d, list) and app.d[0] == "dd"
     assert app.e == ["ee", 99]  # list[int|str]. First is int
     assert app.e[0] == "ee"
@@ -266,22 +290,61 @@ def test_load_optional_and_unions():
 
 
 class F(ConfigBaseModel):
-    c: list[str]
-    d: list[str | None]
-    c: list[Any]
-    e: dict[str, str]
+    a: list[Any]
+    b: dict[str, str]
+    c: dict[str, int | str]
+    d: dict[str, Any]
 
 
-def test_generics():
-    data = dict(a="aa", b=dict(a="aaa", b="bb", c="cc"))
+def test_generic_dicts():
+    data = dict(
+        a=["aa", 1, 1.1, Path("c:/temp"), ["a1", "a2"]],
+        b=dict(a="aaa", b="bbb"),
+        c=dict(a="a1", b=99.11),
+        d=dict(a=[1, 2, 3, 4]),
+    )
+
+    app = F(data)
+    assert app
+    assert app.a[0] == "aa"
+    assert app.a[1] == 1
+    assert app.a[2] == 1.1
+    assert app.a[3] == Path("c:/temp")
+    assert app.a[4] == ["a1", "a2"]
+    assert app.b["a"] == "aaa"
+    assert app.b["b"] == "bbb"
+    assert app.c["a"] == "a1"
+    assert app.c["b"] == 99
+    assert app.d["a"] == [1, 2, 3, 4]
 
 
 class G(ConfigBaseModel):
-    c: str = Annotated[str, ...]
+    a: Annotated[str, lambda x: x.upper()]
+
+
+def test_annotated():
+    data = dict(a="aa")
+
+    app = G(data)
+    assert app
+    assert app.a == "AA"
 
 
 class H(ConfigBaseModel):
-    c: str = Field(default="xx")
+    a: str = Field(default="xx")
+
+
+def test_field_descriptor():
+    app = H({})
+    assert app.a == "xx"
+
+    data = dict(a="aa")
+    app = H(data)
+    assert app.a == "aa"
+
+    data = dict()
+    app = H(data)
+    assert app.a == "xx"
 
 
 def test_load_fail_missing():
