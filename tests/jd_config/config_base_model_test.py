@@ -14,7 +14,7 @@ from typing import Annotated, Any, ForwardRef, Optional
 
 import pytest
 
-from jd_config.config_base_model import ConfigBaseModel
+from jd_config.config_base_model import BaseModel
 from jd_config.utils import ConfigException
 from jd_config.cfg_types import EmailType, ExistingDirectoryType, ExistingFileType
 from jd_config.validators import String, OneOf, Number
@@ -30,10 +30,17 @@ def data_dir(*args) -> Path:
     return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
-class A(ConfigBaseModel):
+class A(BaseModel):
     a: str
     b: str
     c: str = "default cc"
+
+
+def test_class_init():
+    data = dict(a="aa", b="bb", c="cc")
+    app = A(data)
+    assert app.__type_hints__ == dict(a=str, b=str, c=str)
+    assert app.__input_names_map__ == {}
 
 
 def test_load_simple_str():
@@ -61,7 +68,7 @@ def test_load_simple_str():
     assert app.c == "default cc"
 
 
-class B(ConfigBaseModel):
+class B(BaseModel):
     a: str
     b: int
     c: Decimal
@@ -79,7 +86,7 @@ def test_load_simple_converter():
     assert app.d == Path.cwd()
 
 
-class C(ConfigBaseModel):
+class C(BaseModel):
     a: str
     b: A
 
@@ -113,7 +120,7 @@ def test_load_deep():
     assert app["b.c"] == "cc"
 
 
-class D(ConfigBaseModel):
+class D(BaseModel):
     a: list
     b: dict
     c: list = []  # TODO Why is this not a good idea? How to detect?
@@ -140,7 +147,7 @@ def test_load_simple_container():
         D(data)  # "b" is not a dict
 
 
-class E(ConfigBaseModel):
+class E(BaseModel):
     # The type is only used for validation, but not providing a default value
     a: Optional[str] = None
     b: str | None = None
@@ -289,7 +296,7 @@ def test_load_optional_and_unions():
         E(data)  # "b" is not a dict
 
 
-class F(ConfigBaseModel):
+class F(BaseModel):
     a: list[Any]
     b: dict[str, str]
     c: dict[str, int | str]
@@ -318,7 +325,7 @@ def test_generic_dicts():
     assert app.d["a"] == [1, 2, 3, 4]
 
 
-class G(ConfigBaseModel):
+class G(BaseModel):
     a: Annotated[str, lambda x: x.upper()]
 
 
@@ -330,7 +337,7 @@ def test_annotated():
     assert app.a == "AA"
 
 
-class H(ConfigBaseModel):
+class H(BaseModel):
     a: str = Field(default="xx")
 
 
@@ -392,7 +399,7 @@ def test_extra_key():
     assert app.logging.format == "ascii"
 
     assert not hasattr(app, "me")
-    assert app.extra_keys == ["me"]
+    assert app.__extra_keys__ == ["me"]
 
 
 def test_list():
@@ -448,13 +455,13 @@ def test_various():
 LoggingConfig = ForwardRef("LoggingConfig")
 
 
-class AppMetaConfig(ConfigBaseModel):
+class AppMetaConfig(BaseModel):
     version: str  # TODO define type that matches 0.6.0
     contact: str  # TODO define email type
     git_repo: str  # TODO define github repo type
 
 
-class AppConfig(ConfigBaseModel):
+class AppConfig(BaseModel):
     input_directory: str
     crm_database: str
     logging: LoggingConfig
@@ -462,16 +469,16 @@ class AppConfig(ConfigBaseModel):
     xfloat: float = 1.1
 
 
-class LoggingConfig(ConfigBaseModel):
+class LoggingConfig(BaseModel):
     format: str
 
 
-class MyConfig(ConfigBaseModel):
+class MyConfig(BaseModel):
     app_meta: AppMetaConfig
     app: AppConfig
 
 
-class FailConfig(ConfigBaseModel):
+class FailConfig(BaseModel):
     input_directory: str
     crm_database: str
     logging: LoggingConfig
@@ -479,7 +486,7 @@ class FailConfig(ConfigBaseModel):
     xfloat: float = 1.1
 
 
-class ListConfig(ConfigBaseModel):
+class ListConfig(BaseModel):
     xlist: list[LoggingConfig]
 
 
@@ -490,7 +497,7 @@ def my_strptime(fmt):
     return inner_strptime
 
 
-class DateConfig(ConfigBaseModel):
+class DateConfig(BaseModel):
     modified: Annotated[date, my_strptime("%Y-%m-%d %H:%M:%S")]
     # TODO DATE["%Y-%m-%d %H:%M:%S"] => A GenericAlias with [T] == the format
 
@@ -501,7 +508,7 @@ class MyEnum(Enum):
     LAST = auto()
 
 
-class VariousConfig(ConfigBaseModel):
+class VariousConfig(BaseModel):
     myany: Any
     myenum: MyEnum
     std_dict_no_types: dict

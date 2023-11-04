@@ -21,6 +21,7 @@
   - min_len, max_len, func, etc. to Field
 - improve error reporting and debugging as we did before
 - test case w/o any class, just dict
+- test cases for subclasses with both having attributes
 
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??

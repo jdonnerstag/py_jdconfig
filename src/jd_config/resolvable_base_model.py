@@ -6,7 +6,7 @@
 
 import logging
 from typing import Any, Type
-from jd_config.config_base_model import ConfigBaseModel
+from jd_config.config_base_model import BaseModel
 from jd_config.placeholders import Placeholder
 from jd_config.utils import ConfigException
 
@@ -19,7 +19,7 @@ class MissingConfigException(ConfigException):
     """'???' denotes a mandatory value. Must be defined in an overlay."""
 
 
-class ResolvableBaseModel(ConfigBaseModel):
+class ResolvableBaseModel(BaseModel):
     """xxx"""
 
     @classmethod
@@ -34,7 +34,7 @@ class ResolvableBaseModel(ConfigBaseModel):
         if key not in self.__annotations__:
             return value
 
-        type_hints = self.type_hints()
+        type_hints = self._type_hints()
         expected_type = type_hints[key]
 
         if self.has_placeholder(value):
@@ -61,8 +61,8 @@ class ResolvableBaseModel(ConfigBaseModel):
         return value
 
     def parse_value(self, value):
-        assert self.__cfg_meta__.app
-        app = self.__cfg_meta__.app
+        assert self.__model_meta__.app
+        app = self.__model_meta__.app
 
         assert app.value_reader
         return list(app.value_reader.parse(value))

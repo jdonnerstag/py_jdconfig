@@ -8,7 +8,7 @@ import logging
 import os
 from pathlib import Path
 
-from jd_config.config_base_model import ConfigMeta
+from jd_config.config_base_model import ModelMeta
 from jd_config.file_loader import ConfigFile, ConfigFileLoader
 
 from jd_config.resolvable_base_model import ResolvableBaseModel
@@ -48,7 +48,7 @@ def test_simple():
         c="{ref:b}",
     )
 
-    meta = ConfigMeta(app=App(), data=data)
+    meta = ModelMeta(app=App(), data=data)
     app = A(meta=meta)
     assert app
     assert app.a == "a"
@@ -82,7 +82,7 @@ class Config4(ResolvableBaseModel):
 def test_import():
     app = App()
     data = app.load_import(Path("config.yaml"))
-    meta = ConfigMeta(app=app, data=data)
+    meta = ModelMeta(app=app, data=data)
     app = Config4(meta=meta)
     assert app
     assert app.a == "aa"
@@ -135,7 +135,7 @@ def test_descriptor_with_default_value():
         a="a",
     )
 
-    meta = ConfigMeta(app=App(), data=data)
+    meta = ModelMeta(app=App(), data=data)
     app = A2(meta=meta)
     assert app
     assert app.a == "a"

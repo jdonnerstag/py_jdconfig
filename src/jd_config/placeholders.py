@@ -20,7 +20,7 @@ from pathlib import Path
 import typing
 from typing import Any, Callable, Mapping, Optional, Type
 
-from .config_base_model import ConfigBaseModel, ConfigFile as CfgFile
+from .config_base_model import BaseModel, ModelFile as CfgFile
 from .config_path import CfgPath
 from .file_loader import ConfigFile
 from .utils import DEFAULT, ConfigException, ContainerType, Trace
@@ -84,8 +84,8 @@ class ImportPlaceholder(Placeholder):
         return False
 
     def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
-        assert model.__cfg_meta__.app
-        app = model.__cfg_meta__.app
+        assert model.__model_meta__.app
+        app = model.__model_meta__.app
         assert app.load_import
         assert callable(app.load_import)
 
@@ -96,9 +96,9 @@ class ImportPlaceholder(Placeholder):
 
         # Make sure we update the "current file" to properly resolve
         # {ref:} from within the file.
-        if isinstance(rtn, ConfigBaseModel):
-            file = CfgFile(fname=file, data=rtn, obj=rtn)
-            rtn.__cfg_meta__ = dataclasses.replace(rtn.__cfg_meta__, file=file)
+        if isinstance(rtn, BaseModel):
+            file = CfgFile(name=file, data=rtn, obj=rtn)
+            rtn.__model_meta__ = dataclasses.replace(rtn.__model_meta__, file=file)
 
         return rtn
 
@@ -118,11 +118,11 @@ class RefPlaceholder(Placeholder):
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
             while path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
                 if path[0] == CfgPath.PARENT_DIR:
-                    model = model.__cfg_meta__.parent
+                    model = model.__model_meta__.parent
 
                 path = path[1:]
         else:
-            model = model.__cfg_meta__.file.obj
+            model = model.__model_meta__.file.obj
 
         return self._resolve_inner(model, path)
 
@@ -157,7 +157,7 @@ class GlobalRefPlaceholder(RefPlaceholder):
 
     def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         path = CfgPath(self.path)
-        model = model.__cfg_meta__.root.obj
+        model = model.__model_meta__.root.obj
 
         return self._resolve_inner(model, path)
 

@@ -20,7 +20,7 @@ from jd_config import (
     Placeholder,
     RefPlaceholder,
 )
-from jd_config.config_base_model import ConfigMeta
+from jd_config.config_base_model import ModelMeta
 from jd_config.file_loader import ConfigFile, ConfigFileLoader
 from jd_config.resolvable_base_model import MissingConfigException, ResolvableBaseModel
 from jd_config.value_reader import ValueReader
@@ -105,7 +105,7 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    meta = ConfigMeta(app=App(), data=cfg)
+    meta = ModelMeta(app=App(), data=cfg)
     model = A(meta=meta)
     ref = RefPlaceholder("a")
     assert ref.resolve(model, str) == "aa"
@@ -133,7 +133,7 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    meta = ConfigMeta(app=App(), data=cfg)
+    meta = ModelMeta(app=App(), data=cfg)
     model = A(meta=meta)
     ref = GlobalRefPlaceholder("a")
     assert ref.resolve(model, str) == "aa"
@@ -169,7 +169,7 @@ def test_bespoke_placeholder():
 
     app = App()
     app.value_reader.registry["bespoke"] = MyBespokePlaceholder
-    meta = ConfigMeta(app=app, data=cfg)
+    meta = ModelMeta(app=app, data=cfg)
     model = A(meta=meta)
     ref = RefPlaceholder("a")
     assert ref.resolve(model, str) == "it's me"
@@ -181,7 +181,7 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    meta = ConfigMeta(app=App(), data=cfg)
+    meta = ModelMeta(app=App(), data=cfg)
     model = A(meta=meta)
     ref = RefPlaceholder("a")
     with pytest.raises(MissingConfigException):
@@ -199,7 +199,7 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    meta = ConfigMeta(app=App(), data=cfg)
+    meta = ModelMeta(app=App(), data=cfg)
     model = A(meta=meta)
     ref = RefPlaceholder("a")
     with pytest.raises(RecursionError):

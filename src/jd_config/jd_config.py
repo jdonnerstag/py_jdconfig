@@ -10,7 +10,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from jd_config.config_base_model import ConfigBaseModel, ConfigMeta
+from jd_config.config_base_model import BaseModel, ModelMeta
 
 
 from .resolvable_base_model import ResolvableBaseModel
@@ -138,7 +138,7 @@ class JDConfig(ConfigIniMixin):
         config_dir: Optional[Path] = None,
         env: str | None = None,
         cache: bool = True,
-    ) -> ConfigBaseModel:
+    ) -> BaseModel:
         """Main entry point to load configs"
 
         The filename can be relativ or absolute. If relativ, it will be loaded
@@ -158,7 +158,7 @@ class JDConfig(ConfigIniMixin):
 
         file = self.load_import(fname, config_dir, env, cache)
 
-        meta = ConfigMeta(app=self, data=file)
+        meta = ModelMeta(app=self, data=file)
         self.data = self.model_type(meta=meta)
 
         return self.data
