@@ -10,7 +10,6 @@ Placeholders can only occur in yaml values. They are not allowed in keys.
 And it must be a yaml *string* value, surrounded by quotes.
 """
 
-import dataclasses
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -20,7 +19,6 @@ from pathlib import Path
 import typing
 from typing import Any, Callable, Mapping, Optional, Type
 
-from .config_base_model import BaseModel, ModelFile as CfgFile
 from .config_path import CfgPath
 from .file_loader import ConfigFile
 from .utils import DEFAULT, ConfigException, ContainerType, Trace
@@ -92,15 +90,13 @@ class ImportPlaceholder(Placeholder):
         file = model.resolve(self.file, str)
         file = Path(file)
         rtn = app.load_import(file, cache=self.cache)
-        rtn = model.load_item(None, rtn, None, expected_type)
+        value = model.load_item(None, rtn, None, expected_type)
 
         # Make sure we update the "current file" to properly resolve
         # {ref:} from within the file.
-        if isinstance(rtn, BaseModel):
-            file = CfgFile(name=file, data=rtn, obj=rtn)
-            rtn.__model_meta__ = dataclasses.replace(rtn.__model_meta__, file=file)
+        model.new_meta(file, model_obj=value, data=rtn)
 
-        return rtn
+        return value
 
 
 @dataclass

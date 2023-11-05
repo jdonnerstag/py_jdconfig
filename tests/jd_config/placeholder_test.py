@@ -13,7 +13,6 @@ import pytest
 
 from jd_config import (
     DEFAULT,
-    ConfigException,
     EnvPlaceholder,
     GlobalRefPlaceholder,
     ImportPlaceholder,

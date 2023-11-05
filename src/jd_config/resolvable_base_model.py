@@ -6,9 +6,10 @@ An extension to the BaseModel that support lazily resolution of placeholders
 such as '{ref:db}' or '{import:myfile.yaml}'
 """
 
+import dataclasses
 import logging
 from typing import Any, Optional, Type
-from jd_config.config_base_model import BaseModel, ModelMeta
+from jd_config.config_base_model import BaseModel, ModelFile, ModelMeta
 from jd_config.placeholders import Placeholder
 from jd_config.utils import ConfigException, ContainerType
 
@@ -127,3 +128,13 @@ class ResolvableBaseModel(BaseModel):
             return value
 
         return value
+
+    def new_meta(self, fname, model_obj, data) -> None:
+        """On {import:} we need to adjust the (local) file on the models
+        objects meta data"""
+
+        if isinstance(model_obj, BaseModel):
+            file = ModelFile(name=fname, data=data, obj=model_obj)
+            model_obj.__model_meta__ = dataclasses.replace(
+                model_obj.__model_meta__, file=file
+            )
