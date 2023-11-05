@@ -354,6 +354,23 @@ def test_field_descriptor():
     assert app.a == "xx"
 
 
+class I(BaseModel):
+    a: str
+    b: str = "2"
+
+    # My VSCode pylint does not detect this mismatch???
+    c: str = 3  # It will auto-convert to str type.
+
+
+def test_default_values():
+    data = dict(a="a")
+    app = I(data)
+    assert app
+    assert app.a == "a"
+    assert app.b == "2"
+    assert app.c == "3"  # auto-converted to str.
+
+
 def test_load_fail_missing():
     data = dict(a="aa", c="cc")
 

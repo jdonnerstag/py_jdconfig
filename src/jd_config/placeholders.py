@@ -92,7 +92,7 @@ class ImportPlaceholder(Placeholder):
         file = model.resolve(self.file, str)
         file = Path(file)
         rtn = app.load_import(file, cache=self.cache)
-        rtn = model.validate_before(None, rtn, expected_type)
+        rtn = model.load_item(None, rtn, None, expected_type)
 
         # Make sure we update the "current file" to properly resolve
         # {ref:} from within the file.

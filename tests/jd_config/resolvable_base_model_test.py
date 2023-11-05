@@ -7,11 +7,13 @@ from io import StringIO
 import logging
 import os
 from pathlib import Path
+from typing import Optional
 
-from jd_config.config_base_model import ModelMeta
+from jd_config.config_base_model import BaseModel, ModelMeta
 from jd_config.file_loader import ConfigFile, ConfigFileLoader
 
 from jd_config.resolvable_base_model import ResolvableBaseModel
+from jd_config.utils import ContainerType
 from jd_config.value_reader import ValueReader
 
 logger = logging.getLogger(__name__)
@@ -128,16 +130,3 @@ class A2(ResolvableBaseModel):
     a: str
     b: str = "2"
     c: str = 3  # It will auto-convert to str type
-
-
-def test_descriptor_with_default_value():
-    data = dict(
-        a="a",
-    )
-
-    meta = ModelMeta(app=App(), data=data)
-    app = A2(meta=meta)
-    assert app
-    assert app.a == "a"
-    assert app.b == "2"
-    assert app.c == "3"  # auto-converted to str

@@ -2,13 +2,15 @@
 # -*- coding: UTF-8 -*-
 
 """
+An extension to the BaseModel that support lazily resolution of placeholders
+such as '{ref:db}' or '{import:myfile.yaml}'
 """
 
 import logging
-from typing import Any, Type
-from jd_config.config_base_model import BaseModel
+from typing import Any, Optional, Type
+from jd_config.config_base_model import BaseModel, ModelMeta
 from jd_config.placeholders import Placeholder
-from jd_config.utils import ConfigException
+from jd_config.utils import ConfigException, ContainerType
 
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -16,42 +18,69 @@ logger = logging.getLogger(__parent__name__)
 
 
 class MissingConfigException(ConfigException):
-    """'???' denotes a mandatory value. Must be defined in an overlay."""
+    """'???' denotes a mandatory value. Can either be defined in CLI or an overlay."""
 
 
 class ResolvableBaseModel(BaseModel):
-    """xxx"""
+    """An extension to the BaseModel that support lazily resolution of placeholders
+    such as '{ref:db}' or '{import:myfile.yaml}'
+    """
+
+    def __init__(
+        self,
+        data: Optional[ContainerType] = None,
+        parent: Optional[BaseModel] = None,
+        meta: Optional[ModelMeta] = None,
+    ) -> None:
+        super().__init__(data, parent, meta)
 
     @classmethod
     def has_placeholder(cls, value) -> bool:
+        """True if the input value contains a placeholder '{..}'"""
         return isinstance(value, str) and value.find("{") != -1
 
     def __getattribute__(self, key: str) -> Any:
+        # We want to lazily resolve placeholders. Upon loading data,
+        # we put the original string, e.g. '{ref:db}' into the attribute
+        # (which often does not match the expected type). Only when accessing
+        # the attribute, we resolve any optional placeholder. And only then
+        # we validate the type.
+        # Obviously lazily resolution can be slow, e.g. if the same attribute must
+        # be resolved many times. model.to_dict() can be used resolve all attributes.
+        # The resulting dict can again be used to load the model.
+
+        # __geattribute__ is a little tricky. It is very easy to create
+        # unwanted recursions, endlessly going in circles.
+
+        # Get the attribute. It must exist.
         value = super().__getattribute__(key)
+
+        # User attributes must not start with a '_'
         if key.startswith("_"):
             return value
 
-        if key not in self.__annotations__:
+        # We are only interested in "our" attributes
+        type_hints = type(self).__type_hints__
+        if key not in type_hints:  # pylint: disable=unsupported-membership-test
             return value
 
-        type_hints = self._type_hints()
+        # Determine the expected type
+        # pylint: disable=unsubscriptable-object
         expected_type = type_hints[key]
 
         if self.has_placeholder(value):
             value = self.analyze(key, value, expected_type)
-        else:
-            value = self.validate_before(key, value, expected_type)
 
         if value == "???":
             raise MissingConfigException(f"Mandatory config value missing: '{key}'")
 
         return value
 
-    def validate_before(self, key, value, expected_type, model_key=None, *, idx=None):
+    def load_item(self, key, value, model_key, expected_type) -> Any:
         if self.has_placeholder(value):
             return value
 
-        return super().validate_before(key, value, expected_type, model_key, idx=idx)
+        return super().load_item(key, value, model_key, expected_type)
 
     def analyze(self, key, value, expected_type):
         while self.has_placeholder(value):

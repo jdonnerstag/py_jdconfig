@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from types import GenericAlias, UnionType
+from types import GenericAlias, NoneType, UnionType
 from typing import (
     Any,
     ClassVar,
@@ -130,7 +130,6 @@ class BaseModel:
         self,
         data: Optional[ContainerType] = None,
         parent: Optional[BaseModel] = None,
-        *,
         meta: Optional[ModelMeta] = None,
     ) -> None:
         if parent is None and meta is None:
@@ -245,6 +244,16 @@ class BaseModel:
         except TypeError:
             pass
 
+        # Like Any, None is special in several ways
+        if value is None:
+            if expected_type is NoneType:
+                return True
+
+            if isinstance(expected_type, UnionType):
+                for elem_type in expected_type.__args__:
+                    if elem_type is NoneType:
+                        return True
+
         return False
 
     def process_annotations(self, value: Any, expected_type: _AnnotatedAlias) -> tuple:
@@ -274,7 +283,13 @@ class BaseModel:
             try:
                 # Does it have a default value?
                 # Should work for literal values as well as the Field descriptor
-                getattr(self, key)
+                value = getattr(self, key)
+
+                expected_type = type(self).__type_hints__[key]
+                if not self.value_isinstance(value, expected_type):
+                    value = self.try_to_convert(value, expected_type)
+                    setattr(self, key, value)
+
             except AttributeError:
                 # pylint: disable=raise-missing-from
                 raise ConfigException(
