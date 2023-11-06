@@ -10,7 +10,18 @@ from enum import Enum, auto
 import logging
 from pathlib import Path
 
-from typing import Annotated, Any, ForwardRef, List, Mapping, Sequence, TypedDict, Union
+from typing import (
+    Annotated,
+    Any,
+    ForwardRef,
+    List,
+    Mapping,
+    NewType,
+    Sequence,
+    TypeAlias,
+    TypedDict,
+    Union,
+)
 
 import pytest
 
@@ -187,8 +198,10 @@ def test_annotated_types():
     assert tc.instanceof(99, Annotated[str, str.upper]) == False
     assert tc.instanceof("a", Annotated[str, str.upper], True).value == "A"
 
+
 class B(TypedDict):
     a: str
+
 
 def test_typed_dict():
     tc = TypeChecker()
@@ -196,5 +209,21 @@ def test_typed_dict():
     assert tc.instanceof(dict(a=99), B) == False
 
 
+Factors: TypeAlias = list[int]
+
+
 def test_type_alias():
     tc = TypeChecker()
+    assert tc.instanceof([1, 2], Factors)
+    assert tc.instanceof(["a"], Factors) == False
+
+
+UID = NewType("UID", str)
+
+
+def test_new_type():
+    tc = TypeChecker()
+    assert tc.instanceof(UID("1234"), UID)
+    assert tc.instanceof("1234", UID)
+    assert tc.instanceof(UID("1234"), str)
+    assert tc.instanceof(1234, UID) == False

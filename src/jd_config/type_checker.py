@@ -15,6 +15,7 @@ from pathlib import Path
 from types import GenericAlias, NoneType, UnionType
 from typing import (
     Any,
+    NewType,
     Type,
     Callable,
     _UnionGenericAlias,
@@ -143,6 +144,16 @@ class TypeChecker:
                         return match
 
             return rtn
+
+        if isinstance(rtn.type_, NewType):
+            rtn.type_ = rtn.type_.__supertype__
+            
+            try:
+                if isinstance(rtn.value, rtn.type_):
+                    rtn.match = True
+                    return rtn
+            except TypeError:
+                pass
 
         try:
             if isinstance(rtn.value, rtn.type_):
