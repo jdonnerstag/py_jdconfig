@@ -3,19 +3,16 @@
 
 # pylint: disable=C
 
-import dataclasses
 from io import StringIO
 import logging
 import os
 from pathlib import Path
 import re
-from typing import Optional
 
-from jd_config.config_base_model import BaseModel, ModelMeta, ModelFile
+from jd_config.config_base_model import ModelMeta
 from jd_config.file_loader import ConfigFile, ConfigFileLoader
 
 from jd_config.resolvable_base_model import ResolvableBaseModel
-from jd_config.utils import ContainerType
 from jd_config.value_reader import ValueReader
 
 logger = logging.getLogger(__name__)

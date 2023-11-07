@@ -90,7 +90,7 @@ class ImportPlaceholder(Placeholder):
         file = model.resolve(self.file, str)
         file = Path(file)
         rtn = app.load_import(file, cache=self.cache)
-        value = model.load_item(None, rtn, None, expected_type)
+        value = model.load_item(rtn, expected_type)
 
         # Make sure we update the "current file" to properly resolve
         # {ref:} from within the file.

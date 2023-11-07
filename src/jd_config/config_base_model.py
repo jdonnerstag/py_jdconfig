@@ -241,25 +241,17 @@ class BaseModel(TypeChecker):
     # @override
     def convert(self, rtn: TypeCheckerResult) -> TypeCheckerResult:
         """Some types can be automatically onverted"""
-        expected_type = rtn.type_
-        value = rtn.value
 
-        if issubclass(expected_type, Enum):
-            rtn.value = expected_type[value]
-        elif issubclass(expected_type, BaseModel):
-            rtn.value = expected_type(value, self)
-        elif self.is_generic_type_of(rtn, list) and (
-            isinstance(value, (str, bytes))
-        ):
-            return rtn  # We are NOT converting strings into list of chars.
-        else:
-            try:
-                rtn.value = expected_type(value)
-            except:  # pylint: disable=bare-except
-                return rtn
+        if issubclass(rtn.type_, BaseModel):
+            rtn.value = rtn.type_(rtn.value, self)
+            rtn.match = True
+            return rtn
 
-        rtn.match = True
-        return rtn
+        # We are NOT converting strings into list of chars.
+        if self.is_generic_type_of(rtn, list) and isinstance(rtn.value, (str, bytes)):
+            return rtn
+
+        return super().convert(rtn)
 
     def __getitem__(self, key):
         # Allow to use model[key]

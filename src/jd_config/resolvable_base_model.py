@@ -23,7 +23,7 @@ class MissingConfigException(ConfigException):
 
 
 class ResolvableBaseModel(BaseModel):
-    """An extension to the BaseModel that support lazily resolution of placeholders
+    """An extension to the BaseModel that support lazy resolution of placeholders
     such as '{ref:db}' or '{import:myfile.yaml}'
     """
 
@@ -51,7 +51,8 @@ class ResolvableBaseModel(BaseModel):
         # The resulting dict can again be used to load the model.
 
         # __geattribute__ is a little tricky. It is very easy to create
-        # unwanted recursions, endlessly going in circles.
+        # unwanted recursions, endlessly going in circles. I wish, we would not
+        # need it.
 
         # Get the attribute. It must exist.
         value = super().__getattribute__(key)
@@ -77,20 +78,24 @@ class ResolvableBaseModel(BaseModel):
 
         return value
 
-    def load_item(self, key, value, model_key, expected_type) -> Any:
+    # @override
+    def load_item(self, value, expected_type) -> Any:
         if self.has_placeholder(value):
             return value
 
-        return super().load_item(key, value, model_key, expected_type)
+        return super().load_item(value, expected_type)
 
-    def analyze(self, key, value, expected_type):
+    def analyze(self, _key, value, expected_type):
+        """Upon accessing a user attribute, evaluate the stored value and
+        resolve any placeholders"""
+
         while self.has_placeholder(value):
             value = self.resolve(value, expected_type)
 
-        # value, expected_type = self.model.pre_process(key, value, expected_type)
         return value
 
     def parse_value(self, value):
+        """Parse placeholders such as '{ref:}"""
         assert self.__model_meta__.app
         app = self.__model_meta__.app
 
