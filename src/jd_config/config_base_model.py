@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
-from types import GenericAlias, NoneType, UnionType
 from typing import (
     Any,
     ClassVar,
@@ -24,15 +23,14 @@ from typing import (
     Mapping,
     Optional,
     Self,
-    Type,
     get_type_hints,
 )
 
 import yaml
-from typing_extensions import _AnnotatedAlias
 
-from jd_config.config_path import CfgPath, PathType
-from jd_config.utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
+from .config_path import CfgPath, PathType
+from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
+from .type_checker import TypeChecker, TypeCheckerException, TypeCheckerResult
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -106,7 +104,7 @@ def input_names_map(cls) -> dict:
     return rtn
 
 
-class BaseModel:
+class BaseModel(TypeChecker):
     """BaseModel: This is the core class, which makes most things possible.
 
     Example:
@@ -132,6 +130,8 @@ class BaseModel:
         parent: Optional[BaseModel] = None,
         meta: Optional[ModelMeta] = None,
     ) -> None:
+        TypeChecker.__init__(self)
+
         if parent is None and meta is None:
             meta = ModelMeta(app=None, parent=None, data=data, file=None, root=None)
         elif parent is not None:
@@ -185,7 +185,7 @@ class BaseModel:
                 continue
 
             expected_type = self.__type_hints__[model_key]
-            value = self.load_item(input_key, value, model_key, expected_type)
+            value = self.load_item(value, expected_type)
 
             keys_set.append(model_key)
             setattr(self, model_key, value)
@@ -194,81 +194,16 @@ class BaseModel:
         self.validate_extra_keys(self.__extra_keys__)
         return self
 
-    def load_item(self, key, value, model_key, expected_type) -> Any:
+    def load_item(self, value, expected_type) -> Any:
         """Process a single value from the input"""
 
-        if isinstance(expected_type, _AnnotatedAlias):
-            value, expected_type = self.process_annotations(value, expected_type)
+        res = self.instanceof(value, expected_type, converters=True)
+        if not res:
+            raise ValidationException(
+                f"Types don't match: '{expected_type}' != '{value}'"
+            )
 
-        # Allow subclasses to make preprocess the input value
-        value = self.validate_before(key, value, expected_type, model_key)
-
-        # Process containers, such as list and dict, by iterating over
-        # all their elements (and recursively deep), and check the elements
-        # against their (element) types. If not compliant, it'll raise an
-        # exception.
-        if isinstance(value, list):
-            try:
-                value = self.load_list_value(value, expected_type)
-                return value
-            except ValidationException:
-                pass
-        elif isinstance(value, dict):
-            try:
-                value = self.load_dict_value(value, expected_type)
-                return value
-            except ValidationException:
-                pass
-
-        # If value matches any of the expected types, then we are done
-        if self.value_isinstance(value, expected_type):
-            return value
-
-        # Else, iterate the expected types from left to right and try to
-        # convert the value. If successful, we are done. Else raise an exception
-        return self.try_to_convert(value, expected_type)
-
-    def value_isinstance(self, value, expected_type) -> bool:
-        """True, of value matches any of the expected types"""
-
-        # If value matches any of the types, then we are done
-        # Optional[x] is handled via __instanceof__. Unfortunately
-        # not many types have this dunder yet (python 3.11.2)
-
-        if expected_type is Any:
-            return True
-
-        try:
-            if isinstance(value, expected_type):
-                return True
-        except TypeError:
-            pass
-
-        # Like Any, None is special in several ways
-        if value is None:
-            if expected_type is NoneType:
-                return True
-
-            if isinstance(expected_type, UnionType):
-                for elem_type in expected_type.__args__:
-                    if elem_type is NoneType:
-                        return True
-
-        return False
-
-    def process_annotations(self, value: Any, expected_type: _AnnotatedAlias) -> tuple:
-        """Process all annotated types"""
-
-        # Assume
-        for proc in expected_type.__metadata__:
-            if not callable(proc):
-                raise AttributeError(f"Annotation metadata must be callable: {proc}")
-
-            value = proc(value)
-
-        expected_type = expected_type.__args__[0]
-
-        return value, expected_type
+        return res.value
 
     def validate_defaults(self, keys_set) -> None:
         """Validate that all fields have received a value or have defaults defined."""
@@ -286,9 +221,9 @@ class BaseModel:
                 value = getattr(self, key)
 
                 expected_type = type(self).__type_hints__[key]
-                if not self.value_isinstance(value, expected_type):
-                    value = self.try_to_convert(value, expected_type)
-                    setattr(self, key, value)
+                rtn = self.instanceof(value, expected_type, converters=True)
+                if rtn:
+                    setattr(self, key, rtn.value)
 
             except AttributeError:
                 # pylint: disable=raise-missing-from
@@ -303,120 +238,27 @@ class BaseModel:
         By default, we do nothing. It is ok, that not all inputs have attributes.
         """
 
-    def validate_before(
-        self, key: str, value: any, expected_type, model_key: str
-    ) -> Any:
-        """Subclass may process the input, if some special logic is needed"""
-
-        return value
-
-    def try_to_convert(self, value, expected_type) -> Any:
-        """Try to convert the value into any of the expected types"""
-        if isinstance(expected_type, type):
-            return self.convert(value, expected_type)
-
-        if isinstance(expected_type, UnionType):
-            for elem_type in expected_type.__args__:
-                try:
-                    value = self.convert(value, elem_type)
-                    return value
-                except:  # pylint: disable=bare-except
-                    pass
-
-        raise ValidationException(f"Types don't match: '{expected_type}' != '{value}'")
-
-    def convert(self, value, expected_type) -> Any:
+    # @override
+    def convert(self, rtn: TypeCheckerResult) -> TypeCheckerResult:
         """Some types can be automatically onverted"""
-        if issubclass(expected_type, str):
-            return str(value)
-        if issubclass(expected_type, int):
-            return int(value)
-        if issubclass(expected_type, float):
-            return float(value)
-        if issubclass(expected_type, Decimal):
-            return Decimal(value)
-        if issubclass(expected_type, Path):
-            return Path(value)
+        expected_type = rtn.type_
+        value = rtn.value
+
         if issubclass(expected_type, Enum):
-            return expected_type[value]
-        if issubclass(expected_type, BaseModel):
-            return expected_type(value, self)
-
-        raise ValidationException(f"Types don't match: '{expected_type}' != '{value}'")
-
-    @classmethod
-    def is_generic(cls, expected_type: Type, origin: Type) -> bool:
-        """True, if e.g. list[str], or dict[str, Any]"""
-        if not isinstance(expected_type, GenericAlias):
-            return False
-
-        return issubclass(expected_type.__origin__, origin)
-
-    def _get_container_type(self, value, expected_type, container_type, defaults):
-        if self.is_generic(expected_type, container_type):
-            rtn = expected_type.__args__[: len(defaults)]
-        elif isinstance(expected_type, type) and (
-            issubclass(expected_type, container_type)
+            rtn.value = expected_type[value]
+        elif issubclass(expected_type, BaseModel):
+            rtn.value = expected_type(value, self)
+        elif self.is_generic_type_of(rtn, list) and (
+            isinstance(value, (str, bytes))
         ):
-            rtn = defaults
+            return rtn  # We are NOT converting strings into list of chars.
         else:
-            raise ValidationException(
-                f"Types don't match: '{expected_type}' != '{value}'"
-            )
-
-        if not isinstance(value, container_type):
-            raise ValidationException(f"Expected a list, but found: '{value}'")
-
-        return rtn
-
-    def _iterate_union_type(self, value: Any, expected_type: UnionType) -> Any:
-        for elem_type in expected_type.__args__:
             try:
-                yield elem_type
+                rtn.value = expected_type(value)
             except:  # pylint: disable=bare-except
-                pass
+                return rtn
 
-        raise ValidationException(f"Types don't match: '{expected_type}' != '{value}'")
-
-    def load_list_value(self, value, expected_type) -> Any:
-        """Load input list values"""
-
-        if isinstance(expected_type, UnionType):
-            for elem_type in self._iterate_union_type(value, expected_type):
-                value = self.load_list_value(value, elem_type)
-                return value
-
-        (elem_type,) = self._get_container_type(value, expected_type, list, (Any,))
-
-        rtn = []
-        for i, elem in enumerate(value):
-            elem = self.load_item(i, elem, i, elem_type)
-            rtn.append(elem)
-
-        return rtn
-
-    def load_dict_value(self, value, expected_type) -> Any:
-        """Load input dict values"""
-
-        if isinstance(expected_type, UnionType):
-            for elem_type in self._iterate_union_type(value, expected_type):
-                value = self.load_dict_value(value, elem_type)
-                return value
-
-        key_type, elem_type = self._get_container_type(
-            value, expected_type, dict, (Any, Any)
-        )
-
-        rtn = {}
-        for key, elem in value.items():
-            if key_type is not Any and not isinstance(key, key_type):
-                raise ValidationException(
-                    f"Wrong type: expected '{key_type}', found '{key}'"
-                )
-
-            elem = self.load_item(key, elem, key, elem_type)
-            rtn[key] = elem
-
+        rtn.match = True
         return rtn
 
     def __getitem__(self, key):

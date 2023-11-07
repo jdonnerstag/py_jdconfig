@@ -3,17 +3,15 @@
 
 # pylint: disable=C
 
-from dataclasses import dataclass
-from datetime import date, datetime
-from decimal import Decimal
 from enum import Enum, auto
 import logging
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
-
 from typing import (
     Annotated,
     Any,
-    ForwardRef,
     List,
     Mapping,
     NewType,
@@ -108,60 +106,30 @@ def test_None():
     assert tc.instanceof([], None) == False
 
 
-def test_simple_union():
+@pytest.mark.parametrize(
+    "expected_type_1, expected_type_2",
+    [
+        (str | int, int | str),  # Using '|' operator
+        (Union[str, int], Union[int, str]),  # Using Union type
+        ((str, int), (int, str)),  # Using tuples
+    ],
+)
+def test_union(expected_type_1, expected_type_2):
     tc = TypeChecker()
-    assert tc.instanceof("a", str | int)
-    assert tc.instanceof("a", str | int).type_ == str
+    assert tc.instanceof("a", expected_type_1)
+    assert tc.instanceof("a", expected_type_1).type_ == str
 
-    assert tc.instanceof(99, str | int)
-    assert tc.instanceof(99, str | int).type_ == int
+    assert tc.instanceof(99, expected_type_1)
+    assert tc.instanceof(99, expected_type_1).type_ == int
 
-    assert tc.instanceof(None, str | int) == False
-    assert tc.instanceof(1.111, str | int) == False
-    assert tc.instanceof(1.111, str | int, True) == True  # will be auto-converted
+    assert tc.instanceof(None, expected_type_1) == False
+    assert tc.instanceof(1.111, expected_type_1) == False
+    assert tc.instanceof(1.111, expected_type_1, True) == True  # will be auto-converted
+    assert tc.instanceof(1.111, expected_type_1, True).value == "1.111"
     assert (
-        tc.instanceof(1.111, str | int, True).value == "1.111"
+        tc.instanceof(1.111, expected_type_2, True).value == 1
     )  # will be auto-converted
-    assert tc.instanceof(1.111, int | str, True).value == 1  # will be auto-converted
-    assert tc.instanceof(Path("c:/temp"), str | int) == False
-
-
-def test_union():
-    tc = TypeChecker()
-    assert tc.instanceof("a", Union[str, int])
-    assert tc.instanceof("a", Union[str, int]).type_ == str
-
-    assert tc.instanceof(99, Union[str, int])
-    assert tc.instanceof(99, Union[str, int]).type_ == int
-
-    assert tc.instanceof(None, Union[str, int]) == False
-    assert tc.instanceof(1.111, Union[str, int]) == False
-    assert tc.instanceof(1.111, Union[str, int], True) == True  # will be auto-converted
-    assert (
-        tc.instanceof(1.111, Union[str, int], True).value == "1.111"
-    )  # will be auto-converted
-    assert (
-        tc.instanceof(1.111, Union[int, str], True).value == 1
-    )  # will be auto-converted
-    assert tc.instanceof(Path("c:/temp"), Union[str, int]) == False
-
-
-def test_tuple_type_param():
-    tc = TypeChecker()
-    assert tc.instanceof("a", (str, int))
-    assert tc.instanceof("a", (str, int)).type_ == str
-
-    assert tc.instanceof(99, (str, int))
-    assert tc.instanceof(99, (str, int)).type_ == int
-
-    assert tc.instanceof(None, (str, int)) == False
-    assert tc.instanceof(1.111, (str, int)) == False
-    assert tc.instanceof(1.111, (str, int), True) == True  # will be auto-converted
-    assert (
-        tc.instanceof(1.111, (str, int), True).value == "1.111"
-    )  # will be auto-converted
-    assert tc.instanceof(1.111, (int, str), True).value == 1  # will be auto-converted
-    assert tc.instanceof(Path("c:/temp"), (str, int)) == False
+    assert tc.instanceof(Path("c:/temp"), expected_type_1) == False
 
 
 def test_generic_list():
@@ -169,8 +137,8 @@ def test_generic_list():
     assert tc.instanceof(["a"], list[str])
     assert tc.instanceof(["a"], list[int]) == False
     assert tc.instanceof(["a"], list[int | str])
-    # We evaluate the types adjust the type
-    # TODO assert tc.instanceof(["a"], list[int | str]).type_ == list[str]
+    # We evaluate the types
+    assert tc.instanceof(["a"], list[int | str]).type_ == list[str]
     assert tc.instanceof(["a", 99], list[int | str])
     assert tc.instanceof(["a"], list[Any])
     assert tc.instanceof(["a", 99], list[str], True).value == ["a", "99"]
@@ -227,3 +195,16 @@ def test_new_type():
     assert tc.instanceof("1234", UID)
     assert tc.instanceof(UID("1234"), str)
     assert tc.instanceof(1234, UID) == False
+
+
+class MyEnum(Enum):
+    FIRST = auto()
+    NEXT = auto()
+    LAST = auto()
+
+
+def test_enum():
+    tc = TypeChecker()
+    assert tc.instanceof("FIRST", MyEnum) == False  # disabled auto-converter
+    assert tc.instanceof("FIRST", MyEnum, True)
+    assert tc.instanceof("XXX", MyEnum, True) == False

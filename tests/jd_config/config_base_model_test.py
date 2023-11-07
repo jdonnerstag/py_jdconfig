@@ -288,12 +288,12 @@ def test_load_optional_and_unions():
     # 'd' is not a list
     data = dict(a="aa", b="bb", c=99.11, d="xxx", e=["ee", 99.11])
     with pytest.raises(ConfigException):
-        E(data)  # "b" is not a dict
+        E(data)
 
     # 'e' is not a list
     data = dict(a="aa", b="bb", c=99.11, d=["dd"], e=11)
     with pytest.raises(ConfigException):
-        E(data)  # "b" is not a dict
+        E(data) 
 
 
 class F(BaseModel):

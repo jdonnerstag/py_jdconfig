@@ -5,30 +5,25 @@
 A python runtime type checker.
 """
 
-from dataclasses import dataclass
 import dataclasses
 import inspect
 import logging
-from decimal import Decimal
+from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 from types import GenericAlias, NoneType, UnionType
 from typing import (
     Any,
+    Callable,
     NewType,
     Type,
-    Callable,
-    _UnionGenericAlias,
-    TypedDict,
-    Union,
+    _UnionGenericAlias,  # TODO Try to avoid/remove it
     get_args,
     get_origin,
 )
 
-from typing_extensions import _AnnotatedAlias
+from typing_extensions import _AnnotatedAlias  # TODO Try to avoid/remove it
 
-from jd_config.utils import ConfigException
-
+from .utils import ConfigException
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -38,16 +33,36 @@ class TypeCheckerException(ConfigException):
     """Data do not conform to a type"""
 
 
+# func(expected_type, value) -> <converted value or exception>
+ConverterFn = Callable[[Type, Any], Any]
+
+
 @dataclass
 class TypeCheckerResult:
-    match: bool
-    value: Any
-    type_: Type
-    converters: list[Callable] | None
+    """The TypeChecker result object"""
 
+    # True, if the value matches the type
+    match: bool
+
+    # isinstance(<value>, ..)
+    value: Any
+
+    # The evaluated type. In case of a Union, the first
+    # type that matched the value.
+    type_: Type
+
+    # TypeChecker supports converters. Converters are functions
+    # which upon execution receive the expected type and the value.
+    # The first converter that is successfully able to return a
+    # value with the expected type, will "win". They are executed
+    # in order of the list items.
+    converters: list[ConverterFn] | None
+
+    # Support constructs like 'if tc.isinstance(value, type_)'
     def __bool__(self) -> bool:
         return self.match
 
+    # Support constructs like 'if tc.isinstance(value, type_) == False'
     def __eq__(self, value: object) -> bool:
         if isinstance(value, bool):
             return self.match == value
@@ -55,15 +70,21 @@ class TypeCheckerResult:
         return False
 
 
-def convert_enum(expected_type, value):
+# ConverterFn
+def convert_enum(expected_type: Type, value: Any) -> Any:
+    """Create Enum from text (name)"""
     if issubclass(expected_type, Enum):
         return expected_type[value]
 
     raise TypeCheckerException()
 
 
-def convert_default(expected_type, value):
-    # E.g. int(value), Path(value), ...
+# ConverterFn
+def convert_default(expected_type: Type, value: Any) -> Any:
+    """Default converter
+
+    E.g. int(value), Path(value), ...
+    """
     return expected_type(value)
 
 
@@ -72,37 +93,60 @@ class TypeChecker:
     any type, but it doesn't.
 
     E.g. str, int, float, Decimal, list, dict, str|None, list[str]
-    dict[str, str|int], Any, Optional, Union, Annotated, TypedDict, MyClass,
-    and so on.
+    dict[str, str|int], Any, Optional, Union, Annotated, Enum,
+    TypedDict, MyClass, and so on.
 
-    Additionally, where types don't match, TypeChecker is able to convert
-    the type, str -> int, dict to BaseModel, etc..
+    Additionally, where types don't match, TypeChecker can optionally
+    try to convert the type, str -> int, dict to BaseModel, etc..
     """
 
     def __init__(self) -> None:
+        # Default converters. Users may prepend additional ones.
         self.converters = [convert_enum, convert_default]
 
-    def instanceof(self, value, types, converters=False) -> TypeCheckerResult:
+    def instanceof(
+        self,
+        value: Any,
+        types: Type | tuple[Type, ...],
+        converters: None | bool | list[ConverterFn] | ConverterFn = False,
+    ) -> TypeCheckerResult:
+        """An extended version of isinstance(), which aims to just work and do
+        what a user probably expects from a function with this name. It
+        tests (at runtime) a value against a type.
+
+        And optionally, tries to convert the value to the expected type,
+        applying converter functions.
+        """
         if converters is None or converters is False:
+            # Disable any converters
             converters = None
         elif converters is True:
+            # Enable the default converters
             converters = self.converters
         elif callable(converters):
+            # The converter provided, plus the default converters
             converters = [converters] + self.converters
         elif isinstance(converters, list):
+            # Use the provided converter list, ignoring the default list.
             pass
         else:
             raise TypeCheckerException(
                 f"Invalid 'converters' attribute: '{converters}'"
             )
 
+        rtn = TypeCheckerResult(False, value, types, converters)
+
+        # Like python default instanceof(), the 2nd argument can
+        # be a tuple of types. The value gets evaluated against
+        # all the types, until the first match is successfull.
         if isinstance(types, (list, tuple)):
             for elem_type in types:
                 match = self.instanceof(value, elem_type, converters)
                 if match:
                     return match
 
-        rtn = TypeCheckerResult(False, value, types, converters)
+            return rtn
+
         return self._value_isinstance(rtn)
 
     def _value_isinstance(self, rtn: TypeCheckerResult) -> TypeCheckerResult:
@@ -123,10 +167,6 @@ class TypeChecker:
             rtn.match = rtn.value is None
             return rtn
 
-        if rtn.value is None:
-            rtn.match = rtn.type_ is NoneType
-            return rtn
-
         if isinstance(rtn.type_, (UnionType, _UnionGenericAlias)):
             # 1st, without any Converter => exact match
             for elem_type in get_args(rtn.type_):
@@ -145,9 +185,14 @@ class TypeChecker:
 
             return rtn
 
+        # Must after evaluating Union
+        if rtn.value is None:
+            rtn.match = rtn.type_ is NoneType
+            return rtn
+
         if isinstance(rtn.type_, NewType):
             rtn.type_ = rtn.type_.__supertype__
-            
+
             try:
                 if isinstance(rtn.value, rtn.type_):
                     rtn.match = True
@@ -169,16 +214,21 @@ class TypeChecker:
         # all their elements (and recursively deep), and check the elements
         # against their (element) types. If not compliant, it'll raise an
         # exception.
-        if isinstance(rtn.value, list):
-            match = self.check_list_value(rtn)
-            if match:
-                return match
-        elif isinstance(rtn.value, dict):
-            match = self.check_dict_value(rtn)
-            if match:
-                return match
+        try:
+            if isinstance(rtn.value, list):
+                match = self.check_list_value(rtn)
+                if match:
+                    return match
+            elif isinstance(rtn.value, dict):
+                match = self.check_dict_value(rtn)
+                if match:
+                    return match
+        except TypeCheckerException:
+            pass  # list or dict can not be loaded in expected type
 
-        rtn = self.convert(rtn)
+        if rtn.converters:
+            rtn = self.convert(rtn)
+
         return rtn
 
     def _validate_annotation(self, rtn: TypeCheckerResult) -> TypeCheckerResult:
@@ -199,36 +249,26 @@ class TypeChecker:
         return self._value_isinstance(rtn)
 
     @classmethod
-    def is_generic(cls, expected_type: Type, origin: Type) -> bool:
-        """True, if e.g. list[str], or dict[str, Any]"""
-        if not isinstance(expected_type, GenericAlias):
-            return False
+    def is_generic_type_of(cls, tcr: TypeCheckerResult, container_type) -> bool:
+        """True, no matter whether it is list or list[T]"""
+        if isinstance(tcr.type_, GenericAlias):
+            origin = get_origin(tcr.type_)
+            return issubclass(origin, container_type)
 
-        return issubclass(get_origin(expected_type), origin)
+        return issubclass(tcr.type_, container_type)
 
     def _get_container_type(self, tcr: TypeCheckerResult, container_type, defaults):
-        if self.is_generic(tcr.type_, container_type):
-            rtn = get_args(tcr.type_)[: len(defaults)]
-        elif isinstance(tcr.type_, type) and (issubclass(tcr.type_, container_type)):
+        if not self.is_generic_type_of(tcr, container_type):
+            raise TypeCheckerException(f"Expected a '{container_type}', but found: '{tcr.type_}'")
+
+        rtn = get_args(tcr.type_)
+        if not rtn:
             rtn = defaults
-        else:
-            raise TypeCheckerException(
-                f"Types don't match: '{tcr.type_}' != '{tcr.value}'"
-            )
 
         if not isinstance(tcr.value, container_type):
-            raise TypeCheckerException(f"Expected a list, but found: '{tcr.value}'")
+            raise TypeCheckerException(f"Expected a '{container_type}', but found: '{tcr.value}'")
 
         return rtn
-
-    def _iterate_union_type(self, value: Any, expected_type: UnionType) -> Any:
-        for elem_type in get_args(expected_type):
-            try:
-                yield elem_type
-            except:  # pylint: disable=bare-except
-                pass
-
-        raise TypeCheckerException(f"Types don't match: '{expected_type}' != '{value}'")
 
     def check_list_value(self, rtn: TypeCheckerResult) -> TypeCheckerResult:
         """Load input list values"""
