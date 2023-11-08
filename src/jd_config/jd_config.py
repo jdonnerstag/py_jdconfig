@@ -156,7 +156,10 @@ class JDConfig(ConfigIniMixin):
 
         data = self.load_import(fname, config_dir, env, cache)
 
-        file = ModelFile(name=data.file_1, data=data, obj=None)
+        if hasattr(data, "file_1"):
+            fname = getattr(data, "file_1")
+
+        file = ModelFile(name=fname, data=data, obj=None)
         meta = ModelMeta(app=self, data=data, file=file)
         self.data = self.model_type(meta=meta)
 

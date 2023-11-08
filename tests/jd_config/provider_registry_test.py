@@ -3,25 +3,15 @@
 
 # pylint: disable=C
 
-from io import StringIO
-import os
 import logging
+import os
+from io import StringIO
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Mapping, Optional, Union
 
-import pytest
-
-from jd_config import (
-    JDConfig,
-    DEFAULT,
-    ConfigException,
-    EnvPlaceholder,
-    GlobalRefPlaceholder,
-    ImportPlaceholder,
-    Placeholder,
-    RefPlaceholder,
-)
+from jd_config import JDConfig
 from jd_config.provider_registry import ProviderPlugin
+from jd_config.resolvable_base_model import ResolvableBaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +28,7 @@ class DemoProviderPlugin(ProviderPlugin):
         """Load and return the data, or return None to indicate that the
         provider does not know how to handle this URL/file
         """
-        if name != "config-2.yaml":
+        if name != "config.yaml":
             return None
 
         data = {
@@ -57,10 +47,19 @@ def data_dir(*args) -> Path:
     return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
+class Config4(ResolvableBaseModel):
+    a: str
+    b: str
+    c: Union["Config4", str]
+    d: str
+    e: str
+    f: str
+
+
 def test_load_jdconfig_4():
     # config-4 is about simple {import:}, {ref:} and {global:}
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config4, ini_file=None)
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     cfg.ini.config_dir = data_dir("configs-4")  # configure the directory for imports
     data = cfg.load("config.yaml")
@@ -77,8 +76,9 @@ def test_load_jdconfig_4():
     data = cfg.load("config.yaml")
     assert data
 
-    assert cfg.get("c.a") == 1
-    assert cfg.get("c.c") == 3
-    assert cfg.get("d") == 1
-    assert cfg.get("e") == 2
-    assert cfg.get("f") == 3
+    assert cfg.get("a") == "1"
+    assert cfg.get("b") == "2"
+    assert cfg.get("c") == "3"
+    assert cfg.get("d") == "4"
+    assert cfg.get("e") == "5"
+    assert cfg.get("f") == "6"

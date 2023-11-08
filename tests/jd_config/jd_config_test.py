@@ -7,9 +7,9 @@ import logging
 import os
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
-from datetime import datetime
 from typing import ForwardRef, Optional
 
 import pytest
