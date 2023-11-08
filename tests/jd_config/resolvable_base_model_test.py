@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import re
 
-from jd_config.config_base_model import ModelMeta
+from jd_config.config_base_model import ModelFile, ModelMeta
 from jd_config.file_loader import ConfigFile, ConfigFileLoader
 
 from jd_config.resolvable_base_model import ResolvableBaseModel
@@ -147,7 +147,7 @@ def test_global_ref():
 
     # To test {global:} without {import:}, we need to tune the loaded
     # data a little, and fake that an import happened.
-    app.a.new_meta(None, model_obj=app.a, data=data["a"])
+    app.a.__model_meta__.file = ModelFile(name=None, data=data["a"], obj=app.a)
 
     assert app
     assert app.a.a == "aa"

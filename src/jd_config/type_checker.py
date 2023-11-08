@@ -102,7 +102,7 @@ class TypeChecker:
 
     def __init__(self) -> None:
         # Default converters. Users may prepend additional ones.
-        self.converters = [convert_enum, convert_default]
+        self.__converters__ = [convert_enum, convert_default]
 
     def instanceof(
         self,
@@ -122,10 +122,10 @@ class TypeChecker:
             converters = None
         elif converters is True:
             # Enable the default converters
-            converters = self.converters
+            converters = self.__converters__
         elif callable(converters):
             # The converter provided, plus the default converters
-            converters = [converters] + self.converters
+            converters = [converters] + self.__converters__
         elif isinstance(converters, list):
             # Use the provided converter list, ignoring the default list.
             pass
@@ -227,7 +227,10 @@ class TypeChecker:
             pass  # list or dict can not be loaded in expected type
 
         if rtn.converters:
-            rtn = self.convert(rtn)
+            try:
+                rtn = self.convert(rtn)
+            except:  # pylint: disable=bare-except
+                pass
 
         return rtn
 
@@ -259,14 +262,18 @@ class TypeChecker:
 
     def _get_container_type(self, tcr: TypeCheckerResult, container_type, defaults):
         if not self.is_generic_type_of(tcr, container_type):
-            raise TypeCheckerException(f"Expected a '{container_type}', but found: '{tcr.type_}'")
+            raise TypeCheckerException(
+                f"Expected a '{container_type}', but found: '{tcr.type_}'"
+            )
 
         rtn = get_args(tcr.type_)
         if not rtn:
             rtn = defaults
 
         if not isinstance(tcr.value, container_type):
-            raise TypeCheckerException(f"Expected a '{container_type}', but found: '{tcr.value}'")
+            raise TypeCheckerException(
+                f"Expected a '{container_type}', but found: '{tcr.value}'"
+            )
 
         return rtn
 

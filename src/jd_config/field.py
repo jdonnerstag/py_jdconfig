@@ -14,13 +14,6 @@ logger = logging.getLogger(__parent__name__)
 
 
 class Field:
-    # Dict key is the BaseModel, and if that object gets garbage collected,
-    # the respective dict entry can be removed. Not need to keep it.
-    # The class variable is needed because Fields are assigned to class
-    # variables in the BaseModel. Which means, they are only initialized
-    # ones per BaseModel class and not ones per BaseModel instance.
-    values = WeakKeyDictionary()
-
     def __init__(
         self,
         name: str = None,
@@ -32,6 +25,13 @@ class Field:
         self.model_name: str | None = None
         self.def_value: Any | None = default
         self.default_factory = default_factory
+
+        # Dict key is the BaseModel, and if that object gets garbage collected,
+        # the respective dict entry can be removed. Not need to keep it.
+        # Fields are assigned to class variables in the BaseModel. Which means,
+        # they are only initialized ones per BaseModel class and not ones per
+        # BaseModel instance.
+        self.values = WeakKeyDictionary()
 
     def __set_name__(self, owner, name):
         self.model_name = name

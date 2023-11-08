@@ -92,10 +92,6 @@ class ImportPlaceholder(Placeholder):
         rtn = app.load_import(file, cache=self.cache)
         value = model.load_item(rtn, expected_type)
 
-        # Make sure we update the "current file" to properly resolve
-        # {ref:} from within the file.
-        model.new_meta(file, model_obj=value, data=rtn)
-
         return value
 
 

@@ -137,7 +137,7 @@ def test_load_jdconfig_4():
     assert cfg.get("e") == "2aa"
     assert cfg.get("f") == "aa"
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(KeyError):
         cfg.get("g")
 
 
@@ -214,6 +214,7 @@ def test_load_jdconfig_2(monkeypatch):
     data = cfg.load("main_config.yaml")
     assert data
 
+    # After loading the data. It works because we lazy resolve placeholders
     monkeypatch.setenv("DB_USER", "dbuser")
     monkeypatch.setenv("DB_PASS", "dbpass")
     monkeypatch.setenv("DB_NAME", "dbname")
@@ -332,11 +333,132 @@ def test_load_jdconfig_2_with_env(monkeypatch):
     assert cfg.get("debug.log_progress_after") == 20_000
 
 
-def test_resolve_all(monkeypatch):
+class Config6(ResolvableBaseModel):
+    a: str
+    b: str
+    c: "Config6"
+    d: str
+    e: str
+    f: str
+
+
+def test_separate_env_dir():
+    # Config-6 is all about env specific overlay files.
+
+    cfg = JDConfig(Config6, ini_file=None)
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.config_dir = data_dir("configs-6")
+    assert cfg.ini.add_env_dirs == [Path.cwd()]
+
+    cfg_file = Path("config.yaml")
+
+    data = cfg.load(cfg_file)
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.file == data.__model_meta__.root
+    assert data.__model_meta__.data.file_1.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_2 is None
+
+    data = data.get("c")
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.root.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_1.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.data.file_2 is None
+    data = data.__model_meta__.parent.__model_meta__.data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2 is None
+
+    cfg.ini.env = "dev"
+    data = cfg.load(cfg_file)
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.root.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_1.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_2.parts[-1] == "config-dev.yaml"
+
+    data = data.get("c")
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.root.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_1.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.data.file_2 is None
+    data = data.__model_meta__.parent.__model_meta__.data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2.parts[-1] == "config-dev.yaml"
+
+    cfg.ini.env = "qa"
+    data = cfg.load(cfg_file)
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.file == data.__model_meta__.root
+    assert data.__model_meta__.data.file_1.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_2 is None
+
+    data = data.get("c")
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.root.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_1.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.data.file_2.parts[-1] == "config-2-qa.yaml"
+    data = data.__model_meta__.parent.__model_meta__.data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2 is None
+
+    cfg.ini.env = "dev-2"
+    data = cfg.load(cfg_file)
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.file == data.__model_meta__.root
+    assert data.__model_meta__.data.file_1.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_2 is None
+
+    data = data.get("c")
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.root.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_1.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.data.file_2 is None
+    data = data.__model_meta__.parent.__model_meta__.data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2 is None
+
+    env_dir = Path(os.path.join(cfg.ini.config_dir, "env_files"))
+    cfg.ini.add_env_dirs.append(env_dir)
+    cfg.ini.env = "dev-2"
+    data = cfg.load(cfg_file)
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.file == data.__model_meta__.root
+    assert data.__model_meta__.data.file_1.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_2.parts[-1] == "config-dev-2.yaml"
+
+    data = data.get("c")
+    assert data
+    assert data.__model_meta__
+    assert data.__model_meta__.file.name.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.root.name.parts[-1] == "config.yaml"
+    assert data.__model_meta__.data.file_1.parts[-1] == "config-2.yaml"
+    assert data.__model_meta__.data.file_2 is None
+    data = data.__model_meta__.parent.__model_meta__.data
+    assert data.file_1.parts[-1] == "config.yaml"
+    assert data.file_2.parts[-1] == "config-dev-2.yaml"
+
+
+def test_to_dict(monkeypatch):
     # config-2 is using some import placeholders, including dynamic ones,
     # where the actually path refers to config value.
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config2, ini_file=None)
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     # config-2 has imports. Make sure, it is available for imports.
     cfg.ini.config_dir = data_dir("configs-2")
@@ -348,146 +470,20 @@ def test_resolve_all(monkeypatch):
     monkeypatch.setenv("DB_PASS", "dbpass")
     monkeypatch.setenv("DB_NAME", "dbname")
 
-    assert cfg.get("db", None, resolve=False) == "oracle"
-    assert cfg.get("db", None, resolve=True) == "oracle"
-    assert cfg.get("database.DB_USER", None, resolve=False) == None
-    assert cfg.get("database.DB_USER", None, resolve=True) == "dbuser"
-    assert cfg.get("database.DB_PASS", None, resolve=False) == None
-    assert cfg.get("database.DB_PASS", None, resolve=True) == "dbpass"
-    assert cfg.get("database.DB_NAME", None, resolve=False) == None
-    assert cfg.get("database.DB_NAME", None, resolve=True) == "dbname"
-    assert cfg.get("database.connection_string", None, resolve=False) == None
-    assert (
-        cfg.get("database.connection_string", resolve=True)
-        == "oracle:dbuser/dbpass@dbname"
-    )
-    assert cfg.get("debug.log_progress_after", resolve=False) == 20_000
-    assert cfg.get("debug.log_progress_after", resolve=True) == 20_000
-
-    data = cfg.resolve_all()
-    assert data
-
-    assert cfg.get("db", resolve=False) == "oracle"
-    assert cfg.get("db", resolve=True) == "oracle"
-    assert cfg.get("database.DB_USER", resolve=False) == "dbuser"
-    assert cfg.get("database.DB_USER", resolve=True) == "dbuser"
-    assert cfg.get("database.DB_PASS", resolve=False) == "dbpass"
-    assert cfg.get("database.DB_PASS", resolve=True) == "dbpass"
-    assert cfg.get("database.DB_NAME", resolve=False) == "dbname"
-    assert cfg.get("database.DB_NAME", resolve=True) == "dbname"
-    assert (
-        cfg.get("database.connection_string", resolve=False)
-        == "oracle:dbuser/dbpass@dbname"
-    )
-    assert (
-        cfg.get("database.connection_string", resolve=True)
-        == "oracle:dbuser/dbpass@dbname"
-    )
-    assert cfg.get("debug.log_progress_after", resolve=False) == 20_000
-    assert cfg.get("debug.log_progress_after", resolve=True) == 20_000
-
-
-def test_separate_env_dir():
-    # Config-6 is all about env specific overlay files.
-
-    cfg = JDConfig(ini_file=None)
-    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
-    cfg.ini.config_dir = data_dir("configs-6")
-    assert cfg.ini.add_env_dirs == [Path.cwd()]
-
-    cfg_file = Path("config.yaml")
-
-    data = cfg.load(cfg_file)
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
-
-    data = data.get("c")
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
-
-    cfg.ini.env = "dev"
-    data = cfg.load(cfg_file)
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2.parts[-1] == "config-dev.yaml"
-    assert data.obj.data_1
-    assert data.obj.data_2
-
-    data = data.get("c")
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
-
-    cfg.ini.env = "qa"
-    data = cfg.load(cfg_file)
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
-
-    data = data.get("c")
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2.parts[-1] == "config-2-qa.yaml"
-    assert data.obj.data_1
-    assert data.obj.data_2
-
-    cfg.ini.env = "dev-2"
-    data = cfg.load(cfg_file)
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
-
-    data = data.get("c")
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
-
-    env_dir = Path(os.path.join(cfg.ini.config_dir, "env_files"))
-    cfg.ini.add_env_dirs.append(env_dir)
-    data = cfg.load(cfg_file)
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2.parts[-1] == "config-dev-2.yaml"
-    assert data.obj.data_1
-    assert data.obj.data_2
-
-    data = data.get("c")
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    data = cfg.config().to_dict()
+    assert data["db"] == "oracle"
+    assert data["database"]["DB_USER"] == "dbuser"
+    assert data["database"]["DB_PASS"] == "dbpass"
+    assert data["database"]["DB_NAME"] == "dbname"
+    assert data["database"]["connection_string"] == "oracle:dbuser/dbpass@dbname"
+    assert data["debug"]["log_progress_after"] == 20_000
 
 
 def test_path_separator():
     # Validate it is still working in main config level
     # config-4 is about simple {import:}, {ref:} and {global:}
 
-    cfg = JDConfig(ini_file=None)
+    cfg = JDConfig(Config4, ini_file=None)
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     cfg.ini.config_dir = data_dir("configs-4")  # configure the directory for imports
     data = cfg.load("config.yaml")

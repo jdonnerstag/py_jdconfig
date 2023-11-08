@@ -8,16 +8,14 @@ Main config module to load and access config values.
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
-from jd_config.config_base_model import BaseModel, ModelMeta
-
-
+from .config_base_model import BaseModel, ModelFile, ModelMeta
 from .resolvable_base_model import ResolvableBaseModel
 from .config_ini_mixin import ConfigIniMixin
-from .config_path import PathType, CfgPath
+from .config_path import PathType
 from .file_loader import ConfigFile
-from .utils import ContainerType
+from .utils import DEFAULT
 from .value_reader import RegistryType, ValueReader
 from .provider_registry import ProviderRegistry
 
@@ -156,12 +154,14 @@ class JDConfig(ConfigIniMixin):
         if fname is None:
             fname = self.ini.config_file
 
-        file = self.load_import(fname, config_dir, env, cache)
+        data = self.load_import(fname, config_dir, env, cache)
 
-        meta = ModelMeta(app=self, data=file)
+        file = ModelFile(name=data.file_1, data=data, obj=None)
+        meta = ModelMeta(app=self, data=data, file=file)
         self.data = self.model_type(meta=meta)
 
         return self.data
 
-    def get(self, path: PathType) -> Any:
-        return self.data.get(path)
+    def get(self, path: PathType, default=DEFAULT) -> Any:
+        """Deep get an attribute from the configs loaded"""
+        return self.data.get(path, default)

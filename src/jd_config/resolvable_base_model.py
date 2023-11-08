@@ -10,6 +10,7 @@ import dataclasses
 import logging
 from typing import Any, Optional, Type
 from jd_config.config_base_model import BaseModel, ModelFile, ModelMeta
+from jd_config.file_loader import ConfigFile
 from jd_config.placeholders import Placeholder
 from jd_config.utils import ConfigException, ContainerType
 
@@ -33,6 +34,12 @@ class ResolvableBaseModel(BaseModel):
         parent: Optional[BaseModel] = None,
         meta: Optional[ModelMeta] = None,
     ) -> None:
+        if parent is not None and meta is None and isinstance(data, ConfigFile):
+            file = ModelFile(name=data.file_1, data=data, obj=self)
+            meta = dataclasses.replace(
+                parent.__model_meta__, file=file, parent=parent, data=data
+            )
+
         super().__init__(data, parent, meta)
 
     @classmethod
@@ -133,13 +140,3 @@ class ResolvableBaseModel(BaseModel):
             return value
 
         return value
-
-    def new_meta(self, fname, model_obj, data) -> None:
-        """On {import:} we need to adjust the (local) file on the models
-        objects meta data"""
-
-        if isinstance(model_obj, BaseModel):
-            file = ModelFile(name=fname, data=data, obj=model_obj)
-            model_obj.__model_meta__ = dataclasses.replace(
-                model_obj.__model_meta__, file=file
-            )

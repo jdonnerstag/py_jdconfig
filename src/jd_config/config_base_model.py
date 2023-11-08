@@ -13,8 +13,6 @@ import dataclasses
 import logging
 import sys
 from dataclasses import dataclass
-from decimal import Decimal
-from enum import Enum
 from pathlib import Path
 from typing import (
     Any,
@@ -30,7 +28,7 @@ import yaml
 
 from .config_path import CfgPath, PathType
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
-from .type_checker import TypeChecker, TypeCheckerException, TypeCheckerResult
+from .type_checker import TypeChecker, TypeCheckerResult
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -72,7 +70,7 @@ class ModelMeta:
 
     def __post_init__(self):
         if self.file is None:
-            self.file = ModelFile(None, self.data, None)
+            self.file = ModelFile(name=None, data=self.data, obj=None)
 
         if self.root is None:
             self.root = self.file
@@ -132,10 +130,11 @@ class BaseModel(TypeChecker):
     ) -> None:
         TypeChecker.__init__(self)
 
-        if parent is None and meta is None:
-            meta = ModelMeta(app=None, parent=None, data=data, file=None, root=None)
-        elif parent is not None:
-            meta = dataclasses.replace(parent.__model_meta__, parent=parent, data=data)
+        if meta is None:
+            if parent is None:
+                meta = ModelMeta(app=None, parent=None, data=data, file=None, root=None)
+            else:
+                meta = dataclasses.replace(parent.__model_meta__, parent=parent, data=data)
 
         if meta.file.obj is None:
             meta.file.obj = self
@@ -276,12 +275,12 @@ class BaseModel(TypeChecker):
         if default != DEFAULT:
             return default
 
-        raise KeyError(f"Key not found: '{elem}' in '{path}'")
+        raise KeyError(f"Key not found: node:'{elem}' in path:'{path}'")
 
     def to_dict(self) -> Mapping[str, Any]:
         """Recursively create a dict from the model"""
         rtn = {}
-        for key in getattr(self, "__annotations__").keys():
+        for key in self.get_annotations(type(self)):
             if key.startswith("_"):
                 continue
 
