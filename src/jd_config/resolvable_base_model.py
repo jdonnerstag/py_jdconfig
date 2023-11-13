@@ -12,7 +12,7 @@ from typing import Any, Optional, Type
 from jd_config.config_base_model import BaseModel, ModelFile, ModelMeta
 from jd_config.file_loader import ConfigFile
 from jd_config.placeholders import Placeholder
-from jd_config.utils import ConfigException, ContainerType
+from jd_config.utils import DEFAULT, ConfigException, ContainerType
 
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -34,13 +34,16 @@ class ResolvableBaseModel(BaseModel):
         parent: Optional[BaseModel] = None,
         meta: Optional[ModelMeta] = None,
     ) -> None:
-        if parent is not None and meta is None and isinstance(data, ConfigFile):
-            file = ModelFile(name=data.file_1, data=data, obj=self)
-            meta = dataclasses.replace(
-                parent.__model_meta__, file=file, parent=parent, data=data
-            )
+        self.__cached_values__ = None
 
         super().__init__(data, parent, meta)
+
+    def new_meta(self, parent, data, **_kvargs):
+        if parent is not None and isinstance(data, ConfigFile):
+            file = ModelFile(name=data.file_1, data=data, obj=self)
+            return super().new_meta(parent, data, file=file)
+
+        return super().new_meta(parent, data)
 
     @classmethod
     def has_placeholder(cls, value) -> bool:
@@ -70,14 +73,14 @@ class ResolvableBaseModel(BaseModel):
 
         # We are only interested in "our" attributes
         type_hints = type(self).__type_hints__
-        if key not in type_hints:  # pylint: disable=unsupported-membership-test
+        # pylint: disable=unsupported-membership-test
+        if type_hints is None or key not in type_hints:
             return value
 
-        # Determine the expected type
-        # pylint: disable=unsubscriptable-object
-        expected_type = type_hints[key]
-
         if self.has_placeholder(value):
+            # Determine the expected type
+            # pylint: disable=unsubscriptable-object
+            expected_type = type_hints[key]
             value = self.analyze(key, value, expected_type)
 
         if value == "???":
@@ -118,7 +121,7 @@ class ResolvableBaseModel(BaseModel):
         the pieces together for the actuall yaml value.
         """
 
-        if isinstance(value, str) and value.find("{") != -1:
+        if self.has_placeholder(value):
             value = self.parse_value(value)
 
         if isinstance(value, list) and len(value) == 1:
@@ -127,11 +130,6 @@ class ResolvableBaseModel(BaseModel):
         if isinstance(value, Placeholder):
             logger.debug("resolve(%s)", value)
             placeholder = value
-            # if placeholder.memo_relevant():
-            #    if placeholder in memo:
-            #        raise ConfigException("Recursion ...")
-            #
-            #    memo.append(placeholder)
             value = placeholder.resolve(self, expected_type)
 
         if isinstance(value, list):

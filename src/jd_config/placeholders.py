@@ -55,10 +55,6 @@ class Placeholder(ABC):
     def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         """Resolve the placeholder"""
 
-    def memo_relevant(self) -> bool:
-        """If relevant for Placeholder recursion detection"""
-        return True
-
 
 LoaderType = Callable[[str], Mapping]
 
@@ -69,17 +65,15 @@ class ImportPlaceholder(Placeholder):
 
     file: str
     cache: bool = field(default=True, repr=False)
-    loader: Optional[LoaderType] = field(default=None, repr=False)
+
+    cache_key: str = field(default=None, repr=False)
+    cache_value: Any = field(default=None, repr=False)
 
     def __post_init__(self):
         assert self.file
         if isinstance(self.file, (str, Path)):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
-
-    def memo_relevant(self) -> bool:
-        """Not relevant for Placeholder recursion detection"""
-        return False
 
     def resolve(self, model: "ResolvableBaseModel", expected_type: Type):
         assert model.__model_meta__.app
@@ -89,8 +83,16 @@ class ImportPlaceholder(Placeholder):
 
         file = model.resolve(self.file, str)
         file = Path(file)
+
+        if self.cache_key == file:
+            return self.cache_value
+
         rtn = app.load_import(file, cache=self.cache)
         value = model.load_item(rtn, expected_type)
+
+        if self.cache:
+            self.cache_key = file
+            self.cache_value = value
 
         return value
 

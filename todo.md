@@ -12,7 +12,7 @@
     to dynamically resolve the value (always running the validator). Because I want to be able
     to change "db" and node importing data, will AUTOMATICALLY be updated.
   - How to still load into a dict?
-    Deep structures as well, AND with resolution.
+    Deep structures as well, AND with resolving.
     And support types, such as dict[str, str|int]
   - Support for Union types, with predicators to determine which type to apply.
   - class name and yaml var name can be different
@@ -20,8 +20,16 @@
     Why is that useful?
   - min_len, max_len, func, etc. to Field
 - improve error reporting and debugging as we did before
-- test case w/o any class, just dict
+- test case w/o any class, just dict => we need at leat a DummyModel with just
+  one dict attr. But we should test, that the dict values do get resolved.
 - test cases for subclasses with both having attributes
+- I don't think we have cli test cases?
+- A test case that combines Field and a placeholder
+- Support for ".." and "." in {ref:}
+- is there already support for: easy: container: dict[str, MyClass]
+  container:
+    abc: dict/node with data of type X
+    def: same base model a "abc"
 
 - It happens regularly to me, that I forget to put quotes around {..}.
   Maybe ${..} or $(..). How would a yaml parser handle ${..} ??

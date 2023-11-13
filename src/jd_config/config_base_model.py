@@ -45,8 +45,8 @@ class ModelFile:
     """Information about the (config) file, which was used to load
     the yaml, json, whatever data"""
 
-    name: Path | None  # E.g. StringIO does not have a file name. # TODO Should allow URLs as well.
-    data: Mapping  # The raw data as loaded from a file or url
+    name: Any  # A URL, filename, anything that refers to the source of the data
+    data: Any  # The raw data as loaded from a file or url
     obj: BaseModel | None  # The model associated with the root of the file
 
 
@@ -74,6 +74,10 @@ class ModelMeta:
 
         if self.root is None:
             self.root = self.file
+
+    def clone(self, **kvargs) -> Self:
+        """Create a shallow copy with the replacements provided"""
+        return dataclasses.replace(self, **kvargs)
 
 
 def type_hints(cls) -> dict:
@@ -128,20 +132,6 @@ class BaseModel(TypeChecker):
         parent: Optional[BaseModel] = None,
         meta: Optional[ModelMeta] = None,
     ) -> None:
-        TypeChecker.__init__(self)
-
-        if meta is None:
-            if parent is None:
-                meta = ModelMeta(app=None, parent=None, data=data, file=None, root=None)
-            else:
-                meta = dataclasses.replace(parent.__model_meta__, parent=parent, data=data)
-
-        if meta.file.obj is None:
-            meta.file.obj = self
-
-        self.__model_meta__ = meta
-        self.__extra_keys__ = None
-
         # It is IMPORTANT that the type hints and the name map are attached
         # to the user's subclass (and not BaseModel).
         cls = type(self)
@@ -151,7 +141,25 @@ class BaseModel(TypeChecker):
         if cls.__input_names_map__ is None:
             cls.__input_names_map__ = input_names_map(cls)
 
+        TypeChecker.__init__(self)
+
+        if meta is None:
+            meta = self.new_meta(parent, data)
+
+        if meta.file.obj is None:
+            meta.file.obj = self
+
+        self.__model_meta__ = meta
+        self.__extra_keys__ = None
+
         self.load(meta.data)
+
+    def new_meta(self, parent, data, **kvargs):
+        """Create the model meta object for the object"""
+        if parent is None:
+            return ModelMeta(app=None, parent=None, data=data, file=None, root=None)
+
+        return parent.__model_meta__.clone(parent=parent, data=data, **kvargs)
 
     def load(self, data: ContainerType) -> Self:
         """Import the data previously loaded from json-, yaml, whereever,
