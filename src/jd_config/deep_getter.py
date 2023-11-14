@@ -8,10 +8,10 @@ e.g. Mapping and NonStrSequence.
 Either the base class or a subclass should support:
 - Support for any container type, that can hold 0-N values (e.g. Mapping, Sequence)
 - Options to handle missing elements when walking the path. Default is to raise an
-  exception. But it should also be possible automatically add the missing elements.
+  exception. But it should also be possible to automatically add the missing elements.
   Whatever type they may require.
 - Optionally, but not strictly required, register the new object with the parent.
-- Support path search patterns, e.g. "a..c", "a.*.c", "a.b[*].c"
+- Support path search patterns, e.g. "a.*.c", "a.**.c", "a.b[*].c"
 - Support ways to evaluate the values retrieved, e.g. `{ref:a}`, and return what
   it evaluates to (replacing the original value).
 - In deep update scenarios it must be possible to replace existing nodes. E.g.
@@ -47,6 +47,7 @@ class GetterContext:
     key: str | int | None = None
 
     # Normalized full path as provided by the user
+    # CfgPath is derived from list, and thus should be created with a factory.
     path: CfgPath = field(default_factory=CfgPath)
 
     # While walking, the current index within the path
@@ -81,11 +82,13 @@ class GetterContext:
         return self.data[self.key]
 
     def cur_path(self) -> CfgPath:
-        """While walking, the path to the current parent element"""
+        """While walking, the path to the current element"""
+        # self.path might as well be a CfgPath or ExtendedCfgPath !!
         return type(self.path)(self.path[: self.idx] + (self.key,))
 
     def parent_path(self, offset: int) -> CfgPath:
-        """While walking, the path to the current parent element"""
+        """While walking, the path to the N-th parent element"""
+        # self.path might as well be a CfgPath or ExtendedCfgPath !!
         return type(self.path)(self.path[: self.idx - offset])
 
     def path_replace(self, replace, count=1) -> CfgPath:
@@ -98,6 +101,7 @@ class GetterContext:
         if not isinstance(replace, tuple):
             replace = (replace,)
 
+        # self.path might as well be a CfgPath or ExtendedCfgPath !!
         return type(self.path)(
             self.path[: self.idx] + replace + self.path[self.idx + count :]
         )
@@ -128,8 +132,7 @@ class DeepGetter:
         if callable(on_missing):
             self.on_missing = on_missing
 
-        # Allows to easily change and e.g. use ExtendedCfgPath with deep
-        # search support
+        # Can be changed to e.g. ExtendedCfgPath, for deep search support
         self.cfg_path_type = CfgPath
 
     def new_context(
@@ -141,9 +144,7 @@ class DeepGetter:
         global_file: Optional[ContainerType] = None,
         **kvargs,
     ) -> GetterContext:
-        """Assign a new context to the getter, optionally providing
-        `on_missing` and `getter` overrides
-        """
+        """Create a new context with the data provided"""
 
         if not callable(on_missing):
             on_missing = self.on_missing

@@ -18,7 +18,7 @@ Please see the readme.md file for details. In summary:
    or CLI args.
 """
 
-from .config_ini_mixin import ConfigIniMixin
+from .config_ini import ConfigIni
 from .config_path import CfgPath, PathType
 from .config_path_extended import ExtendedCfgPath
 from .deep_dict import DeepDict, DeepDictMixin, DefaultConfigGetter
@@ -48,7 +48,7 @@ from .placeholders import (
 )
 from .resolver_mixin import MissingConfigException, ResolverMixin
 from .stats import ConfigStats
-from .string_converter_mixin import StringConverterMixin
+from .string_converter import StringConverter
 from .utils import (
     DEFAULT,
     ConfigException,

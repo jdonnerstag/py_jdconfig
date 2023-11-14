@@ -32,9 +32,13 @@ class WalkerEvent:
     # The parent container (map, list), containing the node
     container: ContainerType
 
-    # Available to users. If true, all remaining nodes of the current
-    # parent container are skipped.
+    # Available for users to modify. If true, all remaining nodes of the
+    # current parent container are skipped. Will be reset automatically.
     skip: bool = False
+
+    def skip_remaining(self) -> None:
+        """Skip all remaining nodes of the current parent container"""
+        self.skip = True
 
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, WalkerEvent):
@@ -74,7 +78,7 @@ class DropContainerEvent(WalkerEvent):
 
 
 def objwalk(
-    obj: Mapping | NonStrSequence,
+    obj: ContainerType,
     *,
     nodes_only: bool = False,
     cb_get: Optional[Callable[[ContainerType, str | int, PathType], Any]] = None,
@@ -90,7 +94,7 @@ def objwalk(
     and 'b: {c: 99}'. "{ref:b}" is a reference to "b", and "b" is a map. Hence "a" is not a
     leaf-node and neither a string value. The 'cb_get' argument is an optional function to 'get'
     the item from a container and possibly post-process it: parse and interprete "{ref:b}" and
-    replace the return value with "b".
+    replace the return value with "{c: 99}".
 
     :param obj: The root container to start walking.
     :param nodes_only: If True, only the leaf node events are yielded
@@ -107,7 +111,7 @@ def objwalk(
 
     creator_map = {Mapping: NewMappingEvent, NonStrSequence: NewSequenceEvent}
 
-    path_ = CfgPath()  # Empty
+    path_ = CfgPath()  # Empty path
     iter_obj = [obj]
     iter_stack = [_container_iter(obj)]
 

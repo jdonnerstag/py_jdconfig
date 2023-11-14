@@ -58,7 +58,7 @@ def test_skip():
     def func_inner(path, data=data):
         for event in objwalk(data, nodes_only=False):
             if not path or event.path == path:
-                event.skip = True
+                event.skip_remaining()
             if not isinstance(event, DropContainerEvent):
                 yield event.path
 

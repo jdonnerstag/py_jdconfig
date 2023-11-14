@@ -58,7 +58,7 @@ class YamlFileProviderPlugin(ProviderPlugin):
         config_dir = kvargs.get("config_dir", None) or self.app.ini.config_dir
         env = kvargs.get("env", None) or self.app.ini.env
         cache = kvargs.get("cache", True)
-        add_env_dirs = self.app.ini.add_env_dirs
+        add_env_dirs = self.app.ini.env_dirs
 
         # Might as well be a StreamIO.
         if isinstance(fname, str):

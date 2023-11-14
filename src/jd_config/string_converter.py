@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-"""Little helpers to convert string into int, float and bool
+"""
+Little helpers to convert string into int, float and bool
 """
 
 import logging
@@ -11,15 +12,12 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class StringConverterMixin:
-    """Mixin adding support to evaluate string into int, float, bool or strring.
-
-    Dependencies: None
-    """
+class StringConverter:
+    """Convert string into int, float, bool if possible."""
 
     @classmethod
-    def convert(cls, strval: Any) -> int | float | str | bool:
-        """Convert a string into int, float or bool of possible, else
+    def convert(cls, strval: Any) -> Any:
+        """Convert a string into int, float or bool if possible, else
         return the string value.
 
         :param strval: Input yaml string value

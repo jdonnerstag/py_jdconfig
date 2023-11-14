@@ -51,7 +51,7 @@ class ConfigStats:
         self.files: list[Path] = []
         # Get from .ini[env]
         self.env_name: str | None = None
-        # from config_ini_mixin
+        # from config_ini
         self.ini_file: Path | None = None
 
     def create(self, cfg: "JDConfig"):

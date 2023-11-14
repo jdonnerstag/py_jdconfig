@@ -9,11 +9,11 @@ import logging
 from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Optional, Type
+from typing import Any, Iterator, Optional, Type
 
 from pydantic import BaseModel
 
-from .config_ini_mixin import ConfigIniMixin
+from .config_ini import ConfigIni
 from .config_path import PathType, CfgPath
 from .deep_dict import DeepDict, DefaultConfigGetter
 from .deep_getter import GetterContext
@@ -27,7 +27,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class JDConfig(ConfigIniMixin):
+class JDConfig:
     """Main class load and access config values."""
 
     def __init__(self, *, ini_file: str = "config.ini") -> None:
@@ -53,7 +53,7 @@ class JDConfig(ConfigIniMixin):
 
         :param ini_file: Path to JDConfig config file. Default: 'config.ini'
         """
-        ConfigIniMixin.__init__(self, ini_file=ini_file)
+        self.ini, self.ini_file = ConfigIni().load(ini_file, "config")
 
         # Providers are plugins, which can easily be added. By default,
         # only a yaml config file loader is available. Additional ones,
@@ -225,7 +225,7 @@ class JDConfig(ConfigIniMixin):
             config_dir=config_dir,
             env=env,
             cache=cache,
-            add_env_dirs=self.ini.add_env_dirs,
+            add_env_dirs=self.ini.env_dirs,
         )
 
         return data

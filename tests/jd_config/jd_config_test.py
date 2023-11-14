@@ -308,7 +308,7 @@ def test_separate_env_dir():
     cfg = JDConfig(ini_file=None)
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     cfg.ini.config_dir = data_dir("configs-6")
-    assert cfg.ini.add_env_dirs == [Path.cwd()]
+    assert cfg.ini.env_dirs == [Path.cwd()]
 
     cfg_file = Path("config.yaml")
 
@@ -380,7 +380,7 @@ def test_separate_env_dir():
     assert data.obj.data_2 is None
 
     env_dir = Path(os.path.join(cfg.ini.config_dir, "env_files"))
-    cfg.ini.add_env_dirs.append(env_dir)
+    cfg.ini.env_dirs.append(env_dir)
     data = cfg.load(cfg_file)
     assert data  # DeepDict
     assert data.obj  # The ConfigFile object containing the DeepDict data

@@ -19,13 +19,13 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # pylint: disable=wrong-import-position
 from jd_config.objwalk import NodeEvent
-from jd_config.config_ini_mixin import IniData
+from jd_config.config_ini import IniData
 from jd_config.config_path_extended import ExtendedCfgPath
 from jd_config.deep_dict import DeepDict
 from jd_config.file_loader import ConfigFile
 from jd_config.jd_config import JDConfig
 from jd_config.stats import ConfigStats
-from jd_config.string_converter_mixin import StringConverterMixin
+from jd_config.string_converter import StringConverter
 from jd_config.utils import ConfigException
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -45,7 +45,7 @@ def config_cli(args):
 
     cfg = JDConfig(ini_file=args.ini_file)
 
-    # TODO move into JDConfig or better even config_ini_mixin.
+    # TODO move into JDConfig or better even config_ini.
     update_ini_with_cli_args(cfg.ini, args)
 
     # TODO Maybe replace load() to return self, or ConfigFile?
@@ -125,7 +125,7 @@ def analyse_set_args(set_args: str | list[str]):
 
     key, value = set_args.split("=", maxsplit=1)
     key = ExtendedCfgPath(key)
-    value = StringConverterMixin.convert(value)
+    value = StringConverter.convert(value)
 
     elem = rtn
     for i in key[:-1]:
@@ -152,7 +152,7 @@ def update_ini_with_cli_args(ini: IniData, args):
         add_env_dir = args.add_env_dir
         if not isinstance(add_env_dir, list):
             add_env_dir = [add_env_dir]
-        ini.add_env_dirs = add_env_dir
+        ini.env_dirs = add_env_dir
 
     if args.default_env:
         ini.default_env = args.default_env

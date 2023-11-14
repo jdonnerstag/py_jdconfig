@@ -17,8 +17,8 @@ logger = logging.getLogger(__parent__name__)
 
 
 class ExtendedCfgPath(CfgPath):
-    """Dict-like get, set, delete and find operations on deep
-    Mapping- and Sequence-like structures.
+    """Extend the default CfgPath with support for search patterns, such
+    as "a.*.c", "a.b[*].c", or "a.**.c"
     """
 
     PAT_ANY_KEY: str = "*"
@@ -132,7 +132,7 @@ class ExtendedCfgPath(CfgPath):
     def match(self, other: object) -> bool:
         """Compare two paths, taking search pattern into account
 
-        E.g. "a.b.c" == "a..c" == "a.*.c"
+        E.g. "a.b.c" == "a.**.c" == "a.*.c"
         """
 
         if isinstance(other, (str, int, Sequence)):

@@ -19,8 +19,7 @@ PathType = Union[str, int, Iterable[str | int], "CfgPath"]
 
 
 class CfgPath(Sequence):
-    """Dict-like get, set, delete and find operations on deep
-    Mapping- and Sequence-like structures.
+    """A sequence of path elements, e.g. ["a", "*", "c]
     """
 
     # Allows to change the global default

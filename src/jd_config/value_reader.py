@@ -13,10 +13,10 @@ is a valid yaml/json construct.
 """
 
 import logging
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from . import placeholders as ph
-from .string_converter_mixin import StringConverterMixin
+from .string_converter import StringConverter
 from .utils import ConfigException
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -32,7 +32,7 @@ class ValueReaderException(ConfigException):
     """ValueReader related exception"""
 
 
-class ValueReader(StringConverterMixin):
+class ValueReader:
     """Maintain a registry of supported placeholders and parse a yaml value
     into its constituent parts.
 
@@ -64,6 +64,11 @@ class ValueReader(StringConverterMixin):
                 "env": ph.EnvPlaceholder,
                 "timestamp": ph.TimestampPlaceholder,
             }
+
+    @classmethod
+    def convert(cls, strval: Any) -> Any:
+        """Convert a string value into int, float, bool, or str"""
+        return StringConverter.convert(strval)
 
     def parse(self, strval: str, *, sep: str = ",") -> Iterator[ValueType]:
         """Parse a yaml value (leaf node) and yield the various parts.
@@ -267,7 +272,8 @@ class ValueReader(StringConverterMixin):
 
         Quoted text ("..", '..') will be skipped.
 
-        Brackets can be nested, e.g. {a: b:{..}}
+        Brackets can be nested, e.g. {a: b:{..}}, and it'll find the MATCHING
+        closing bracket.
 
         :param strval: Input yaml string value
         :param start: position where the bracket starts
