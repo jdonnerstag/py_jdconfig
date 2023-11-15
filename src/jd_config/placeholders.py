@@ -17,30 +17,15 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional
 
 from .config_path import CfgPath
-from .file_loader import ConfigFile
-from .utils import DEFAULT, ConfigException, ContainerType, Trace
-
-if TYPE_CHECKING:
-    from .deep_getter import GetterContext
+from .deep_getter import DeepGetter
+from .getter_context import GetterContext
+from .utils import DEFAULT, ConfigException, ContainerType, new_trace
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
-
-
-def new_trace(ctx: "GetterContext", placeholder: "Placeholder" = None):
-    """Create a new Trace or None"""
-
-    if not ctx:
-        return None
-
-    filename = None
-    if isinstance(ctx.current_file, ConfigFile):
-        filename = ctx.current_file.file_1
-
-    return Trace(path=ctx.cur_path(), placeholder=placeholder, file=filename)
 
 
 class PlaceholderException(ConfigException):
@@ -52,7 +37,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, getter, ctx: "GetterContext"):
+    def resolve(self, ctx: "GetterContext"):
         """Resolve the placeholder"""
 
     def memo_relevant(self) -> bool:
@@ -81,11 +66,9 @@ class ImportPlaceholder(Placeholder):
         """Not relevant for Placeholder recursion detection"""
         return False
 
-    def resolve(self, getter, ctx: "GetterContext"):
-        if hasattr(getter, "resolve") and callable(getter.resolve):
-            file = getter.resolve(self.file, ctx)
-        else:
-            logger.warning("ImportPlaceholder: No resolver configured")
+    def resolve(self, ctx: "GetterContext"):
+        getter = DeepGetter(ctx=ctx)
+        file = getter.get(ctx, self.file)
 
         assert (
             self.loader is not None
@@ -107,27 +90,26 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, getter, ctx: "GetterContext"):
+    def resolve(self, ctx: "GetterContext"):
         new_ctx = dataclasses.replace(ctx, data=ctx.current_file)
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
             path = ctx.parent_path(0) + path
 
-        return self._resolve_inner(getter, ctx, new_ctx, path)
+        return self._resolve_inner(ctx, new_ctx, path)
 
-    def _resolve_inner(
-        self, getter, parent_ctx: "GetterContext", ctx: "GetterContext", path
-    ):
+    def _resolve_inner(self, parent_ctx: "GetterContext", ctx: "GetterContext", path):
         try:
-            obj = getter.get(ctx, path)
-            return obj
+            getter = DeepGetter(ctx=ctx)
+            value = getter.get(ctx, path)
+            return value
         except (
             KeyError,
             IndexError,
             ConfigException,
         ) as exc:  # pylint: disable=bare-except  # noqa: E722
             if self.default_val is not None:
-                return obj
+                return self.default_val
 
             if isinstance(exc, ConfigException):
                 exc.trace.insert(0, new_trace(parent_ctx, self))
@@ -153,7 +135,7 @@ class GlobalRefPlaceholder(RefPlaceholder):
     # class(es) first then those of the child class.
     root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
-    def resolve(self, getter, ctx: "GetterContext"):
+    def resolve(self, ctx: "GetterContext"):
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
             raise ConfigException(
@@ -163,7 +145,7 @@ class GlobalRefPlaceholder(RefPlaceholder):
         new_ctx = dataclasses.replace(
             ctx, data=ctx.global_file, current_file=ctx.global_file
         )
-        return self._resolve_inner(getter, ctx, new_ctx, self.path)
+        return self._resolve_inner(ctx, new_ctx, self.path)
 
 
 class EnvvarConfigException(ConfigException):
@@ -180,7 +162,7 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, _getter, ctx) -> str:
+    def resolve(self, ctx) -> str:
         value = os.environ.get(self.env_var, self.default_val)
         if value is DEFAULT:
             raise EnvvarConfigException(

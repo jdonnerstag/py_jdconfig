@@ -7,19 +7,13 @@ import logging
 
 import pytest
 
-from jd_config import ConfigException, DeepGetter, DeepSearchMixin, GetterContext
+from jd_config import ConfigException, DeepGetter, DeepSearch, GetterContext
 from jd_config.config_path_extended import ExtendedCfgPath
 
 logger = logging.getLogger(__name__)
 
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
-
-
-class MyConfig(DeepSearchMixin, DeepGetter):
-    def __init__(self) -> None:
-        DeepGetter.__init__(self)
-        DeepSearchMixin.__init__(self)
 
 
 def test_simple():
@@ -29,7 +23,9 @@ def test_simple():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig()
+    getter = DeepGetter()
+    getter.getter_pipeline = (DeepSearch.cb_get,) + getter.getter_pipeline
+
     assert getter.get_path(GetterContext(cfg), "a") == ("a",)
     assert getter.get_path(GetterContext(cfg), "b") == ("b",)
     assert getter.get_path(GetterContext(cfg), "b.ba") == ("b", "ba")
@@ -46,7 +42,9 @@ def test_deep():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig()
+    getter = DeepGetter()
+    getter.getter_pipeline = (DeepSearch.cb_get,) + getter.getter_pipeline
+
     assert getter.get_path(GetterContext(cfg), "**.a") == ("a",)
     assert getter.get_path(GetterContext(cfg), "**.bbb") == ("b", "bb", "bbb")
     assert getter.get_path(GetterContext(cfg), "b.**.bbb") == ("b", "bb", "bbb")
@@ -75,7 +73,9 @@ def test_any_key_or_index():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig()
+    getter = DeepGetter()
+    getter.getter_pipeline = (DeepSearch.cb_get,) + getter.getter_pipeline
+
     getter.cfg_path_type = ExtendedCfgPath
     assert getter.get(GetterContext(cfg), "b.*.bbb") == 33
     assert getter.get(GetterContext(cfg), "b.*.ba", None) is None

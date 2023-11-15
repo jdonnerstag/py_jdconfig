@@ -22,7 +22,7 @@ from jd_config import (
     ImportPlaceholder,
     Placeholder,
     RefPlaceholder,
-    ResolverMixin,
+    Resolver,
 )
 from jd_config.provider_registry import ProviderPlugin
 

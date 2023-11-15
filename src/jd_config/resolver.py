@@ -11,9 +11,10 @@ and makes the config available under 'a'.
 import logging
 from typing import Any, Optional
 
-from .deep_getter import GetterContext
-from .placeholders import Placeholder, new_trace
-from .utils import ConfigException
+from .deep_getter import GetterFn
+from .getter_context import GetterContext
+from .placeholders import Placeholder
+from .utils import ConfigException, new_trace
 from .value_reader import ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -24,7 +25,7 @@ class MissingConfigException(ConfigException):
     """'???' denotes a mandatory value. Must be defined in an overlay."""
 
 
-class ResolverMixin:
+class Resolver:
     """A mixin that extends DeepGetter with a resolver. It resolves. e.g. 'a: {ref:b}'
     such that the reference placeholder gets virtually (not physically) replaced
     with the value from 'b'. Or 'a: {import:myfile.yaml}' which loads myfile.yaml
@@ -41,14 +42,21 @@ class ResolverMixin:
 
         self.value_reader.registry[name] = type_
 
-    def cb_get(self, data, key, ctx) -> Any:
+    @classmethod
+    def has_placeholder(cls, value) -> bool:
+        return isinstance(value, str) and value.find("{") != -1
+
+    def cb_get(
+        self, data, key: str | int, ctx: GetterContext, next_fn: GetterFn
+    ) -> Any:
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """
-        value = super().cb_get(data, key, ctx)
+        fn = next_fn()
+        value = fn(data, key, ctx, next_fn)
 
         if not ctx.args or not ctx.args.get("skip_resolver", False):
-            while isinstance(value, str) and value.find("{") != -1:
+            while self.has_placeholder(value):
                 value = list(self.value_reader.parse(value))
                 value = self.resolve(value, ctx)
 
@@ -82,7 +90,7 @@ class ResolverMixin:
             placeholder = value
             if placeholder.memo_relevant():
                 ctx.add_memo(placeholder)
-            value = placeholder.resolve(self, ctx)
+            value = placeholder.resolve(ctx)
 
         if isinstance(value, list):
             value = [self.resolve(x, ctx) for x in value]

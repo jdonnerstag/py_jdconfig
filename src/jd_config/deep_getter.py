@@ -19,12 +19,11 @@ Either the base class or a subclass should support:
 """
 
 import logging
-from dataclasses import dataclass, field
 from typing import Any, Callable, Iterator, Optional
 
 from .config_path import CfgPath, PathType
 from .file_loader import ConfigFile
-from .placeholders import Placeholder, new_trace
+from .getter_context import GetterContext
 from .utils import DEFAULT, ConfigException, ContainerType, relative_to_cwd
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -34,89 +33,7 @@ logger = logging.getLogger(__parent__name__)
 OnMissing = Callable[["GetterContext", Exception], Any]
 
 
-# pylint: disable=too-many-instance-attributes
-@dataclass
-class GetterContext:
-    """The current context while walking a deep structure"""
-
-    # Current parent container
-    data: ContainerType
-
-    # Current key to retrieve the element from the parent
-    # Note that 'key' may not be 'path[idx]'
-    key: str | int | None = None
-
-    # Normalized full path as provided by the user
-    # CfgPath is derived from list, and thus should be created with a factory.
-    path: CfgPath = field(default_factory=CfgPath)
-
-    # While walking, the current index within the path
-    idx: int = 0
-
-    # Callback function if key could not be found
-    on_missing: Optional[OnMissing] = None
-
-    # While walking, the yaml file associated with the container
-    current_file: Optional[ContainerType] = None
-
-    # The global (main) yaml file
-    global_file: Optional[ContainerType] = None
-
-    # I'm not a fan of dynamically adding attributes to a class.
-    # Arbitrary attributes which extensions may require.
-    args: Optional[dict] = None
-
-    # internal: detect recursions
-    memo: Optional[list] = None
-
-    def __post_init__(self) -> None:
-        if self.current_file is None:
-            self.current_file = self.data
-
-        if self.global_file is None:
-            self.global_file = self.current_file
-
-    @property
-    def value(self) -> Any:
-        """Given the current 'key', get the value from the underlying container"""
-        return self.data[self.key]
-
-    def cur_path(self) -> CfgPath:
-        """While walking, the path to the current element"""
-        # self.path might as well be a CfgPath or ExtendedCfgPath !!
-        return type(self.path)(self.path[: self.idx] + (self.key,))
-
-    def parent_path(self, offset: int) -> CfgPath:
-        """While walking, the path to the N-th parent element"""
-        # self.path might as well be a CfgPath or ExtendedCfgPath !!
-        return type(self.path)(self.path[: self.idx - offset])
-
-    def path_replace(self, replace, count=1) -> CfgPath:
-        """Replace the path element(s) at the current position (idx), with
-        the new ones provided.
-        """
-        if isinstance(replace, CfgPath):
-            replace = replace.path
-
-        if not isinstance(replace, tuple):
-            replace = (replace,)
-
-        # self.path might as well be a CfgPath or ExtendedCfgPath !!
-        return type(self.path)(
-            self.path[: self.idx] + replace + self.path[self.idx + count :]
-        )
-
-    def add_memo(self, placeholder: Placeholder) -> None:
-        """Identify recursions"""
-
-        if self.memo is None:
-            self.memo = []
-
-        if placeholder in self.memo:
-            self.memo.append(placeholder)
-            raise ConfigException(f"Config recursion detected: {self.memo}")
-
-        self.memo.append(placeholder)
+GetterFn = Callable[[Any, str | int, "GetterContext", Callable[[], "GetterFn"]], Any]
 
 
 class DeepGetter:
@@ -127,7 +44,17 @@ class DeepGetter:
     flexibility we need.
     """
 
-    def __init__(self, *, on_missing: Optional[Callable] = None) -> None:
+    def __init__(
+        self,
+        *,
+        ctx: Optional[GetterContext] = None,
+        on_missing: Optional[Callable] = None,
+    ) -> None:
+        if ctx is not None:
+            self.getter_pipeline = ctx.getter_pipeline
+        else:
+            self.getter_pipeline: tuple[GetterFn] = (self.cb_get,)
+
         self.on_missing = self.on_missing_default
         if callable(on_missing):
             self.on_missing = on_missing
@@ -154,10 +81,24 @@ class DeepGetter:
             current_file=current_file,
             global_file=global_file,
             on_missing=on_missing,
+            getter_pipeline=self.getter_pipeline,
             args=kvargs,
         )
 
-    def cb_get(self, data, key, ctx: GetterContext) -> Any:
+    def exec_pipeline(self, data, key, ctx):
+        ctx.getter_pipeline = self.getter_pipeline
+        idx = [0]
+
+        def next_fn() -> GetterFn:
+            idx[0] += 1
+            fn = self.getter_pipeline[idx[0]]
+            return fn
+
+        data = self.getter_pipeline[0](data, key, ctx, next_fn)
+        return data
+
+    @staticmethod
+    def cb_get(data, key: str | int, ctx: GetterContext, next_fn: GetterFn) -> Any:
         """Retrieve an element from its parent container.
 
         Subclasses may extend it, e.g. to resolve the value `{ref:a}`,
@@ -177,39 +118,45 @@ class DeepGetter:
         if isinstance(exc, ConfigException):
             raise exc
 
-        trace = new_trace(ctx)
-        raise ConfigException(f"Config not found: {ctx.cur_path()}", trace=trace)
+        raise ctx.exception(f"Config not found: {ctx.cur_path()}")
 
     def get_path(self, ctx: GetterContext, path: PathType) -> list[str | int]:
-        """Determine the real path.
+        """Determine the path if it exists, or throw an exception
 
-        The base implementation just returns the normalized path, without
-        validating, that the elements exist.
+        The implementation walks the path, to make sure the elements exist,
+        can be resolved, or added if missing.
 
-        Subclasses may extend the behavior and provide searching, e.g. `a..c`,
+        Subclasses may extend the behavior and provide searching, e.g. `a.**.c`,
         `a.*.c`, `a.b[*].c`, etc.. Returning the path to the element found.
 
-        :param path: A user provided (config) path like object, e.g. `a.b[2].c`
+        :param path: A user provided path like object, e.g. `a.b[2].c`
         :return: the normalized path
         """
 
-        try:
-            for ctx in self.walk_path(ctx, path):
-                ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
-        except (KeyError, IndexError) as exc:
-            trace = new_trace(ctx=ctx)
-            raise ConfigException(
-                f"Config not found: '{ctx.cur_path()}'", trace=trace
-            ) from exc
-
+        ctx = self._get(ctx, path)
         return ctx.path
 
     def get(self, ctx: GetterContext, path: PathType, default: Any = DEFAULT) -> Any:
-        """Walk the provided path and return whatever the value at that
-        end of that path is.
+        """Walk the provided path and return whatever the value is. Might be a
+        leaf node, or a container.
 
         :param path: A user provided (config) path like object, e.g. `a.b[2].c`
         :param default: Optional default value, if the value was not found
+        """
+
+        ctx = self._get(ctx, path, default)
+        return ctx.data
+
+    def _get(
+        self, ctx: GetterContext, path: PathType, default: Any = DEFAULT
+    ) -> GetterContext:
+        """Walk the provided path, resolve placeholders if needed, add
+        missing elements if needed, and return the context upon reaching
+        the end of the path. Or throw an exception.
+
+        :param path: A user provided (config) path like object, e.g. `a.b[2].c`
+        :param default: Optional default value, if the value was not found
+        :return: The context upon reaching the end of the path
         """
 
         path = self.cfg_path_type(path)
@@ -218,38 +165,39 @@ class DeepGetter:
 
         recursions = []
 
-        # pylint: disable=redefined-argument-from-local
-        for ctx in self.walk_path(ctx, path):
+        for _ in self.walk_path(ctx, path):
             if isinstance(ctx.current_file, ConfigFile):
                 logger.debug(
-                    "Current context is: %s", relative_to_cwd(ctx.current_file.file_1)
+                    "Context has changed to: %s",
+                    relative_to_cwd(ctx.current_file.file_1),
                 )
 
             try:
-                ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
+                # ctx.data = self.cb_get(ctx.data, ctx.key, ctx)
+                ctx.data = self.exec_pipeline(ctx.data, ctx.key, ctx)
             except (KeyError, IndexError, TypeError, ConfigException) as exc:
                 logger.debug("Failure: %s", repr(exc))
 
                 if default is not DEFAULT:
-                    return default
+                    ctx.data = default
+                    return ctx
 
                 if callable(ctx.on_missing):
                     ctx.data = ctx.on_missing(ctx, exc)
-                else:
+                elif callable(self.on_missing):
                     ctx.data = self.on_missing(ctx, exc)
+                else:
+                    raise ctx.exception(f"Config not found: {ctx.cur_path()}") from exc
 
                 if not isinstance(ctx.data, ContainerType):
-                    return ctx.data
+                    return ctx
 
             if ctx.data in recursions:
-                raise ConfigException(
-                    f"Recursion detected: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
-                )
+                raise ctx.exception(f"Recursion detected: '{ctx.cur_path()}'")
 
             recursions.append(ctx.data)
 
-        # pylint: disable=undefined-loop-variable
-        return ctx.data
+        return ctx
 
     def walk_path(self, ctx: GetterContext, path: PathType) -> Iterator[GetterContext]:
         """Walk the path and yield the current context.
@@ -272,7 +220,4 @@ class DeepGetter:
                 yield ctx
                 ctx.idx += 1
         except (KeyError, IndexError) as exc:
-            trace = new_trace(ctx=ctx)
-            raise ConfigException(
-                f"Config not found: '{ctx.cur_path()}'", trace=trace
-            ) from exc
+            raise ctx.exception(f"Config not found: '{ctx.cur_path()}'") from exc

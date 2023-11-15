@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from .config_ini import ConfigIni
 from .config_path import PathType, CfgPath
 from .deep_dict import DeepDict, DefaultConfigGetter
-from .deep_getter import GetterContext
+from .getter_context import GetterContext
 from .file_loader import ConfigFile
 from .objwalk import WalkerEvent
 from .utils import DEFAULT, ConfigException, ContainerType

@@ -5,18 +5,19 @@
 Load yaml config files
 """
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterator, Mapping, Optional, TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Iterator, Mapping, Optional, Sequence
 
 import yaml
 
 from .utils import ConfigException, ContainerType, relative_to_cwd
 
 if TYPE_CHECKING:
-    from .deep_getter import GetterContext
+    from .getter_context import GetterContext
+    from .deep_getter import GetterFn
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -26,9 +27,11 @@ logger = logging.getLogger(__parent__name__)
 class ConfigFileLoggerMixin:
     """Log a debug message if the key was found in the overlay file"""
 
-    def cb_get(self, data, key, ctx: "GetterContext") -> Any:
+    @staticmethod
+    def cb_get(data, key: str | int, ctx: "GetterContext", next_fn: "GetterFn") -> Any:
         """Log a debug message if the key was found in the overlay file"""
-        rtn = super().cb_get(data, key, ctx)
+        fn = next_fn()
+        rtn = fn(data, key, ctx, next_fn)
 
         if isinstance(data, ConfigFile) and data.file_2 is not None:
             if key in data.data_2:

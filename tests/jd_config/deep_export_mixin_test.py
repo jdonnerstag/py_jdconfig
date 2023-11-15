@@ -7,7 +7,7 @@ import logging
 import os
 import re
 
-from jd_config import DeepExportMixin, DeepGetter, ResolverMixin
+from jd_config import DeepExportMixin, DeepGetter, Resolver
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +19,9 @@ def data_dir(*args):
     return os.path.join(os.path.dirname(__file__), "data", *args)
 
 
-class MyMixinTestClass(DeepExportMixin, ResolverMixin, DeepGetter):
+class MyMixinTestClass(DeepExportMixin, DeepGetter):
     def __init__(self) -> None:
         DeepGetter.__init__(self)
-        ResolverMixin.__init__(self)
         DeepExportMixin.__init__(self)
 
 
@@ -41,6 +40,8 @@ def test_to_dict_to_yaml():
     }
 
     getter = MyMixinTestClass()
+    resolver = Resolver()
+    getter.getter_pipeline = (resolver.cb_get,) + getter.getter_pipeline
 
     data = getter.to_dict(cfg, resolve=False)
     assert data["a"] == "aa"
@@ -85,6 +86,9 @@ def test_lazy_resolve():
     }
 
     getter = MyMixinTestClass()
+    resolver = Resolver()
+    getter.getter_pipeline = (resolver.cb_get,) + getter.getter_pipeline
+
     data = getter.to_dict(cfg, resolve=False)
     assert data["b"]["b1"]["c2"] == "{ref:a}"
 

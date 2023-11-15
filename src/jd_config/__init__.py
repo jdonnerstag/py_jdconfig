@@ -23,10 +23,11 @@ from .config_path import CfgPath, PathType
 from .config_path_extended import ExtendedCfgPath
 from .deep_dict import DeepDict, DeepDictMixin, DefaultConfigGetter
 from .deep_export_mixin import DeepExportMixin
-from .deep_getter import DeepGetter, GetterContext
-from .deep_search_mixin import DeepSearchMixin
+from .deep_getter import DeepGetter
+from .deep_search import DeepSearch
 from .deep_update_mixin import DeepUpdateMixin
 from .file_loader import ConfigFile, ConfigFileLoader, ConfigFileLoggerMixin
+from .getter_context import GetterContext
 from .jd_config import JDConfig
 from .objwalk import (
     DropContainerEvent,
@@ -44,9 +45,8 @@ from .placeholders import (
     PlaceholderException,
     RefPlaceholder,
     TimestampPlaceholder,
-    new_trace,
 )
-from .resolver_mixin import MissingConfigException, ResolverMixin
+from .resolver import MissingConfigException, Resolver
 from .stats import ConfigStats
 from .string_converter import StringConverter
 from .utils import (
@@ -55,6 +55,7 @@ from .utils import (
     ContainerType,
     NonStrSequence,
     Trace,
+    new_trace,
     relative_to_cwd,
 )
 from .value_reader import RegistryType, ValueReader, ValueReaderException, ValueType

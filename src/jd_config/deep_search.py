@@ -10,37 +10,39 @@ import logging
 from dataclasses import replace
 from typing import Any, Iterator, Mapping
 
-from .config_path import CfgPath
 from .config_path_extended import ExtendedCfgPath
-from .deep_getter import GetterContext
+from .deep_getter import DeepGetter, GetterFn
+from .getter_context import GetterContext
 from .objwalk import WalkerEvent, objwalk
-from .placeholders import new_trace
-from .utils import ConfigException, ContainerType, NonStrSequence
+from .utils import ConfigException, ContainerType, NonStrSequence, new_trace
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepSearchMixin:
+class DeepSearch:
     """Extended standard dict like getter to also support deep paths, and also
-    search patterns, such as 'a..c', 'a.*.c'
+    search patterns, such as 'a.**.c', 'a.*.c'
     """
 
-    def cb_get(self, data, key, ctx: GetterContext) -> Any:
+    @classmethod
+    def cb_get(cls, data, key: str | int, ctx: GetterContext, next_fn: GetterFn) -> Any:
         """Retrieve an element from its parent container.
 
         See DeepGetter.cb_get() for more details.
         """
         if key == ExtendedCfgPath.PAT_ANY_KEY:
-            return self._on_any_key(ctx)
+            return cls._on_any_key(ctx)
         if key == ExtendedCfgPath.PAT_ANY_IDX:
-            return self._on_any_idx(ctx)
+            return cls._on_any_idx(ctx)
         if key == ExtendedCfgPath.PAT_DEEP:
-            return self._on_any_deep(ctx)
+            return cls._on_any_deep(ctx)
 
-        return super().cb_get(data, key, ctx)
+        fn = next_fn()
+        return fn(data, key, ctx, next_fn)
 
-    def _on_any_key(self, ctx: GetterContext) -> Any:
+    @classmethod
+    def _on_any_key(cls, ctx: GetterContext) -> Any:
         """Callback if 'a.*.c' was found"""
 
         if not isinstance(ctx.data, Mapping):
@@ -50,14 +52,15 @@ class DeepSearchMixin:
 
         find_key = ctx.path[ctx.idx + 1]
         for key in ctx.data.keys():
-            if self._for_each_key(ctx, key, find_key):
+            if cls._for_each_key(ctx, key, find_key):
                 return ctx.data
 
         raise ConfigException(
             f"Config not found: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
         )
 
-    def _on_any_idx(self, ctx: GetterContext) -> GetterContext:
+    @classmethod
+    def _on_any_idx(cls, ctx: GetterContext) -> GetterContext:
         """Callback if 'a[*].b' was found"""
 
         if not isinstance(ctx.data, NonStrSequence):
@@ -67,24 +70,27 @@ class DeepSearchMixin:
 
         find_key = ctx.path[ctx.idx + 1]
         for key, _ in enumerate(ctx.data):
-            if self._for_each_key(ctx, key, find_key):
+            if cls._for_each_key(ctx, key, find_key):
                 return ctx.data
 
         raise ConfigException(
             f"Config not found: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
         )
 
-    def _for_each_key(self, ctx: GetterContext, key: str | int, find_key) -> bool:
+    @classmethod
+    def _for_each_key(cls, ctx: GetterContext, key: str | int, find_key) -> bool:
         # Allow to resolve placeholder if necessary
         ctx.key = key
-        value = self.cb_get(ctx.data, ctx.key, ctx)
+
+        getter = DeepGetter(ctx=ctx)
+        value = getter.get(GetterContext(ctx.data), key)
 
         # Test "*.*.b" use cases
         if find_key == ExtendedCfgPath.PAT_ANY_KEY and isinstance(value, ContainerType):
             ctx.data = value
             ctx.path = ctx.path_replace(key)
             ctx.idx += 1
-            return self._on_any_key(ctx)
+            return cls._on_any_key(ctx)
 
         if isinstance(value, Mapping) and isinstance(find_key, str):
             if find_key in value:
@@ -101,11 +107,12 @@ class DeepSearchMixin:
 
         return False
 
-    def _on_any_deep(self, ctx: GetterContext) -> GetterContext:
+    @classmethod
+    def _on_any_deep(cls, ctx: GetterContext) -> GetterContext:
         """Callback if 'a..b' was found"""
 
         find_key = ctx.path[ctx.idx + 1]
-        for event in self.walk_tree(ctx, nodes_only=False):
+        for event in cls.walk_tree(ctx, nodes_only=False):
             if event.path and event.path[-1] == find_key:
                 ctx.data = event.value
                 ctx.path = ctx.path_replace(event.path, 2)
@@ -116,8 +123,9 @@ class DeepSearchMixin:
             f"Config not found: '{ctx.cur_path()}'", trace=new_trace(ctx=ctx)
         )
 
+    @classmethod
     def walk_tree(
-        self, ctx: GetterContext, *, nodes_only: bool = False
+        cls, ctx: GetterContext, *, nodes_only: bool = False
     ) -> Iterator[WalkerEvent]:
         """Like walking a deep filesystem, walk a deep object structure"""
 
@@ -138,6 +146,8 @@ class DeepSearchMixin:
             cur_ctx.memo = None
             cur_ctx.key = key
 
-            return self.cb_get(data, key, ctx=cur_ctx)
+            getter = DeepGetter(ctx=cur_ctx)
+            return getter.get(cur_ctx, key)
+            # return cls.cb_get(data, key, ctx=cur_ctx)
 
         yield from objwalk(ctx.data, nodes_only=nodes_only, cb_get=cb_get)

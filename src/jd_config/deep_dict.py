@@ -9,11 +9,12 @@ from typing import Any, Callable, Iterator, Mapping, Optional
 
 from .config_path import CfgPath, PathType
 from .deep_export_mixin import DeepExportMixin
-from .deep_getter import DeepGetter, GetterContext, OnMissing
-from .deep_search_mixin import DeepSearchMixin
+from .deep_getter import DeepGetter, GetterFn, OnMissing
+from .deep_search import DeepSearch
 from .deep_update_mixin import DeepUpdateMixin
 from .file_loader import ConfigFileLoggerMixin
-from .resolver_mixin import ResolverMixin
+from .getter_context import GetterContext
+from .resolver import Resolver
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
 from .value_reader import ValueReader
 
@@ -27,23 +28,17 @@ class DeepDictMixin:
     underlying container if it is a DeepDict
     """
 
-    def cb_get(self, data, key, ctx: GetterContext) -> Any:
+    @staticmethod
+    def cb_get(data, key: str | int, ctx: GetterContext, next_fn: GetterFn) -> Any:
         """Avoid recursive resolving ..."""
         if isinstance(data, DeepDict):
             data = data.obj
 
-        return super().cb_get(data, key, ctx)
+        fn = next_fn()
+        return fn(data, key, ctx, next_fn)
 
 
-# Note: the order of the subclasses is important !!!
-class DefaultConfigGetter(
-    DeepExportMixin,
-    DeepSearchMixin,
-    ResolverMixin,
-    DeepDictMixin,
-    ConfigFileLoggerMixin,
-    DeepGetter,
-):
+class DefaultConfigGetter(DeepExportMixin, DeepGetter):
     """Default Deep Container Getter for Configs"""
 
     def __init__(
@@ -53,10 +48,18 @@ class DefaultConfigGetter(
         on_missing: Optional[OnMissing] = None,
     ) -> None:
         DeepGetter.__init__(self, on_missing=on_missing)
-        DeepDictMixin.__init__(self)
-        ResolverMixin.__init__(self, value_reader)
-        DeepSearchMixin.__init__(self)
         DeepExportMixin.__init__(self)
+
+        self.resolver = Resolver(value_reader)
+
+        # Note: since it is the execution order, the order is important !!!
+        self.getter_pipeline = (
+            DeepSearch.cb_get,
+            self.resolver.cb_get,
+            DeepDictMixin.cb_get,
+            ConfigFileLoggerMixin.cb_get,
+            DeepGetter.cb_get,
+        )
 
 
 class DeepDict(Mapping, DeepUpdateMixin):
@@ -87,7 +90,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
     def register_placeholder_handler(self, name: str, type_: type) -> None:
         """Register (add or replace) a placeholder handler"""
 
-        self.getter.value_reader.registry[name] = type_
+        self.getter.resolver.value_reader.registry[name] = type_
 
     def clone(self, obj: ContainerType, path: PathType) -> "DeepDict":
         """Create a clone with just the obj and path changed"""
@@ -117,12 +120,8 @@ class DeepDict(Mapping, DeepUpdateMixin):
 
         path = CfgPath(path)
 
-        ctx = GetterContext(
-            current_file=self.root,
-            data=self.obj,
-            path=path,
-            args={"skip_resolver": not resolve},
-            on_missing=self.getter.on_missing,
+        ctx = self.getter.new_context(
+            current_file=self.root, data=self.obj, skip_resolver=not resolve
         )
 
         rtn = self.getter.get(ctx, path, default=default)
@@ -240,7 +239,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         for ctx in self.getter.walk_path(ctx, path):
             try:
                 last_parent = ctx.data
-                ctx.data = self.getter.cb_get(ctx.data, ctx.key, ctx)
+                ctx.data = self.getter.exec_pipeline(ctx.data, ctx.key, ctx)
                 old_value = ctx.data
 
                 raise_exc = self._replace_existing(

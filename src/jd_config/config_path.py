@@ -19,8 +19,7 @@ PathType = Union[str, int, Iterable[str | int], "CfgPath"]
 
 
 class CfgPath(Sequence):
-    """A sequence of path elements, e.g. ["a", "*", "c]
-    """
+    """A sequence of path elements, e.g. ["a", "*", "c]"""
 
     # Allows to change the global default
     # Test in the sequence provided
@@ -128,7 +127,8 @@ class CfgPath(Sequence):
         if sep is None:
             sep = cls.DEFAULT_SEP
 
-        if not path:
+        # Empty strings, empty lists or tuples, but not int(0), which is valid
+        if not path and not isinstance(path, int):
             return ()
 
         if isinstance(path, CfgPath):

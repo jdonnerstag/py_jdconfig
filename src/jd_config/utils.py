@@ -15,6 +15,7 @@ from typing import Mapping, Sequence, Optional
 
 if typing.TYPE_CHECKING:
     from .placeholders import Placeholder
+    from .getter_context import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -49,10 +50,24 @@ class Trace:
     file: str | None = None
 
 
+def new_trace(ctx: "GetterContext", placeholder: "Placeholder" = None):
+    """Create a new Trace or None"""
+
+    if not ctx:
+        return None
+
+    filename = None
+    # if isinstance(ctx.current_file, "ConfigFile"):
+    if type(ctx.current_file).__name__ == "ConfigFile":
+        filename = ctx.current_file.file_1
+
+    return Trace(path=ctx.cur_path(), placeholder=placeholder, file=filename)
+
+
 class ConfigException(Exception):
     """Base class for Config Exceptions"""
 
-    def __init__(self, *args: object, trace: "Trace" = None) -> None:
+    def __init__(self, *args: object, trace: Optional[Trace] = None) -> None:
         super().__init__(*args)
 
         self.trace = []

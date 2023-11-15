@@ -18,19 +18,13 @@ from jd_config import (
     ImportPlaceholder,
     Placeholder,
     RefPlaceholder,
-    ResolverMixin,
+    Resolver,
 )
 
 logger = logging.getLogger(__name__)
 
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
-
-
-class MyConfig(ResolverMixin, DeepGetter):
-    def __init__(self) -> None:
-        DeepGetter.__init__(self)
-        ResolverMixin.__init__(self)
 
 
 def test_ImportPlaceholder():
@@ -73,9 +67,12 @@ def test_EnvPlaceholder(monkeypatch):
 
     monkeypatch.setenv("ENV", "this is a test")
 
-    resolver = ResolverMixin()
+    resolver = Resolver()
+    ctx = GetterContext({})
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
+
     env = EnvPlaceholder("ENV")
-    assert env.resolve(resolver, None) == "this is a test"
+    assert env.resolve(ctx) == "this is a test"
 
 
 def test_resolve():
@@ -86,28 +83,34 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    resolver = MyConfig()
+    resolver = Resolver()
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
+
     ref = RefPlaceholder("a")
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(ctx) == "aa"
 
     ref = RefPlaceholder("b")
     ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
+    assert ref.resolve(ctx) == "aa"
 
     ref = RefPlaceholder("c")
     ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
+    assert ref.resolve(ctx) == "aa"
 
     ref = RefPlaceholder("d")
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+        ref.resolve(ctx)
 
     ref = RefPlaceholder("xxx")
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+        ref.resolve(ctx)
 
 
 def test_global_ref():
@@ -118,28 +121,33 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    resolver = MyConfig()
+    resolver = Resolver()
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = GlobalRefPlaceholder("a")
-    assert ref.resolve(resolver, ctx) == "aa"
+    assert ref.resolve(ctx) == "aa"
 
     ref = GlobalRefPlaceholder("b")
     ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
+    assert ref.resolve(ctx) == "aa"
 
     ref = GlobalRefPlaceholder("c")
     ctx = GetterContext(cfg)
-    assert ref.resolve(resolver, ctx) == "aa"
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
+    assert ref.resolve(ctx) == "aa"
 
     ref = GlobalRefPlaceholder("d")
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+        ref.resolve(ctx)
 
     ref = GlobalRefPlaceholder("xxx")
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(resolver, ctx)
+        ref.resolve(ctx)
 
 
 @dataclass
@@ -156,11 +164,12 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    resolver = MyConfig()
-    ctx = GetterContext(cfg)
+    resolver = Resolver()
     resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")
-    assert ref.resolve(resolver, ctx) == "it's me"
+    assert ref.resolve(ctx) == "it's me"
 
 
 def test_mandatory_value():
@@ -169,16 +178,18 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    resolver = MyConfig()
+    resolver = Resolver()
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, ctx)
+        assert ref.resolve(ctx)
 
     ref = RefPlaceholder("b")
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, ctx)
+        assert ref.resolve(ctx)
 
 
 def test_detect_recursion():
@@ -188,8 +199,9 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    resolver = MyConfig()
+    resolver = Resolver()
     ctx = GetterContext(cfg)
+    ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
-        assert ref.resolve(resolver, ctx)
+        assert ref.resolve(ctx)

@@ -12,7 +12,7 @@ import yaml
 
 from .config_path import PathType
 
-from .deep_search_mixin import DeepSearchMixin
+from .deep_search import DeepSearch
 from .objwalk import DropContainerEvent, NewMappingEvent, NewSequenceEvent, NodeEvent
 from .utils import ContainerType
 
@@ -20,7 +20,7 @@ __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
 
 
-class DeepExportMixin(DeepSearchMixin):
+class DeepExportMixin:
     """A mixin to export configs into dict or yaml structures.
 
     Dependencies:
@@ -45,7 +45,7 @@ class DeepExportMixin(DeepSearchMixin):
         cur: Mapping | Sequence = {}
         stack = [cur]
 
-        for event in self.walk_tree(ctx, nodes_only=False):
+        for event in DeepSearch.walk_tree(ctx, nodes_only=False):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 new = event.new()
                 stack.append(new)

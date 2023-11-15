@@ -12,10 +12,10 @@ import pytest
 from jd_config import (
     ConfigException,
     DeepGetter,
-    DeepSearchMixin,
+    DeepSearch,
     GetterContext,
     Placeholder,
-    ResolverMixin,
+    Resolver,
 )
 from jd_config.config_path_extended import ExtendedCfgPath
 
@@ -25,12 +25,15 @@ logger = logging.getLogger(__name__)
 # show logs: pytest --log-cli-level=DEBUG
 
 
-# Note: the order of the subclasses is relevant !!!
-class MyConfig(DeepSearchMixin, ResolverMixin, DeepGetter):
-    def __init__(self) -> None:
-        DeepGetter.__init__(self)
-        ResolverMixin.__init__(self)
-        DeepSearchMixin.__init__(self)
+def new_getter():
+    getter = DeepGetter()
+    resolver = Resolver()
+    getter.getter_pipeline = (
+        DeepSearch.cb_get,
+        resolver.cb_get,
+    ) + getter.getter_pipeline
+
+    return getter
 
 
 def test_no_placeholders():
@@ -40,7 +43,7 @@ def test_no_placeholders():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     assert getter.get_path(GetterContext(cfg), "a") == ("a",)
     assert getter.get_path(GetterContext(cfg), "b") == ("b",)
     assert getter.get_path(GetterContext(cfg), "b.ba") == ("b", "ba")
@@ -68,7 +71,7 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     assert getter.get(GetterContext(cfg), "a") == "aa"
     assert getter.get(GetterContext(cfg), "b") == "aa"
     assert getter.get(GetterContext(cfg), "c") == "aa"
@@ -88,7 +91,7 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     assert getter.get(GetterContext(cfg), "a") == "aa"
     assert getter.get(GetterContext(cfg), "b") == "aa"
     assert getter.get(GetterContext(cfg), "c") == "aa"
@@ -114,8 +117,14 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    getter = MyConfig()
-    getter.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    getter = DeepGetter()
+    resolver = Resolver()
+    resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
+    getter.getter_pipeline = (
+        DeepSearch.cb_get,
+        resolver.cb_get,
+    ) + getter.getter_pipeline
+
     assert getter.get(GetterContext(cfg), "a") == "it's me"
 
 
@@ -125,7 +134,7 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     with pytest.raises(ConfigException):
         assert getter.get(GetterContext(cfg), "a")
 
@@ -140,7 +149,7 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     with pytest.raises(ConfigException):
         getter.get(GetterContext(cfg), "a")
 
@@ -153,7 +162,7 @@ def test_resolve_2():
         "d": {"da": "{ref:a}"},
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     assert isinstance(getter.get(GetterContext(cfg), "c"), Mapping)
     assert getter.get(GetterContext(cfg), "a") == "aa"
     assert getter.get(GetterContext(cfg), "b") == "aa"
@@ -170,7 +179,7 @@ def test_deep_getter_1():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     assert getter.get_path(GetterContext(cfg), "a") == ("a",)
     assert getter.get_path(GetterContext(cfg), "b") == ("b",)
     assert getter.get_path(GetterContext(cfg), "b.ba") == ("b", "ba")
@@ -197,7 +206,7 @@ def test_deep_getter_2():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     assert getter.get_path(GetterContext(cfg), "**.a") == ("a",)
     assert getter.get_path(GetterContext(cfg), "**.bbb") == ("b", "bb", "bbb")
     assert getter.get_path(GetterContext(cfg), "b.**.bbb") == ("b", "bb", "bbb")
@@ -226,7 +235,7 @@ def test_deep_getter_3():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    getter = MyConfig()
+    getter = new_getter()
     getter.cfg_path_type = ExtendedCfgPath
     assert getter.get(GetterContext(cfg), "b.*.bbb") == 33
     assert getter.get(GetterContext(cfg), "b.*.ba", None) is None
