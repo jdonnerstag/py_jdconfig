@@ -18,7 +18,7 @@ from jd_config import (
     ImportPlaceholder,
     Placeholder,
     RefPlaceholder,
-    Resolver,
+    ResolverMixin,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def test_EnvPlaceholder(monkeypatch):
 
     monkeypatch.setenv("ENV", "this is a test")
 
-    resolver = Resolver()
+    resolver = ResolverMixin()
     ctx = GetterContext({})
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
 
@@ -83,7 +83,7 @@ def test_resolve():
         "d": "{ref:xxx}",
     }
 
-    resolver = Resolver()
+    resolver = ResolverMixin()
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
 
@@ -121,7 +121,7 @@ def test_global_ref():
         "d": "{global:xxx}",
     }
 
-    resolver = Resolver()
+    resolver = ResolverMixin()
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = GlobalRefPlaceholder("a")
@@ -164,7 +164,7 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    resolver = Resolver()
+    resolver = ResolverMixin()
     resolver.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
@@ -178,7 +178,7 @@ def test_mandatory_value():
         "b": "{ref:a}",
     }
 
-    resolver = Resolver()
+    resolver = ResolverMixin()
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")
@@ -199,7 +199,7 @@ def test_detect_recursion():
         "c": "{ref:a}",
     }
 
-    resolver = Resolver()
+    resolver = ResolverMixin()
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")

@@ -24,7 +24,7 @@ from .config_path_extended import ExtendedCfgPath
 from .deep_dict import DeepDict, DeepDictMixin, DefaultConfigGetter
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter import DeepGetter
-from .deep_search import DeepSearch
+from .deep_search_mixin import DeepSearchMixin
 from .deep_update_mixin import DeepUpdateMixin
 from .file_loader import ConfigFile, ConfigFileLoader, ConfigFileLoggerMixin
 from .getter_context import GetterContext
@@ -46,7 +46,7 @@ from .placeholders import (
     RefPlaceholder,
     TimestampPlaceholder,
 )
-from .resolver import MissingConfigException, Resolver
+from .resolver_mixin import MissingConfigException, ResolverMixin
 from .stats import ConfigStats
 from .string_converter import StringConverter
 from .utils import (

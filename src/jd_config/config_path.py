@@ -36,7 +36,7 @@ class CfgPath(Sequence):
     def flatten(cls, path: PathType) -> Iterator[str | int]:
         """Flatten a list of list"""
 
-        if isinstance(path, (list, tuple, range)):
+        if isinstance(path, (list, tuple, range, Iterator)):
             for elem in path:
                 yield from cls.flatten(elem)
         else:

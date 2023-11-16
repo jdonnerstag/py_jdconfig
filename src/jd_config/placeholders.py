@@ -10,22 +10,23 @@ Placeholders can only occur in yaml values. They are not allowed in keys.
 And it must be a yaml *string* value, surrounded by quotes.
 """
 
-import dataclasses
 import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, TYPE_CHECKING
 
 from .config_path import CfgPath
-from .deep_getter import DeepGetter
-from .getter_context import GetterContext
-from .utils import DEFAULT, ConfigException, ContainerType, new_trace
+from .utils import DEFAULT, ConfigException, ContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+if TYPE_CHECKING:
+    from jd_config.resolver_mixin import ResolverMixin
 
 
 class PlaceholderException(ConfigException):
@@ -37,7 +38,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, ctx: "GetterContext", resolver):
+    def resolve(self, model: "ResolverMixin", memo: list):
         """Resolve the placeholder"""
 
     def memo_relevant(self) -> bool:
@@ -66,16 +67,14 @@ class ImportPlaceholder(Placeholder):
         """Not relevant for Placeholder recursion detection"""
         return False
 
-    def resolve(self, ctx: "GetterContext", resolver):
-        file = resolver.resolve(self.file, ctx)
+    def resolve(self, model: "ResolverMixin", memo: list):
+        file = model.resolve(self.file)
 
         assert (
             self.loader is not None
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
         rtn = self.loader.load_import(file, cache=self.cache)
-        ctx.current_file = rtn
-
         return rtn
 
 
@@ -89,18 +88,13 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, ctx: "GetterContext", resolver):
-        new_ctx = dataclasses.replace(ctx, data=ctx.current_file)
-        path = CfgPath(self.path)
-        if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
-            path = ctx.parent_path(0) + path
+    def resolve(self, model: "ResolverMixin", memo: list):
+        local_root = model.get_local_root()
+        return self._resolve_inner(local_root, model.path_type(self.path), memo)
 
-        return self._resolve_inner(ctx, new_ctx, path)
-
-    def _resolve_inner(self, parent_ctx: "GetterContext", ctx: "GetterContext", path):
+    def _resolve_inner(self, local_root, path, memo):
         try:
-            getter = DeepGetter(ctx=ctx)
-            value = getter.get(ctx, path)
+            value = local_root.get(path, memo=memo)
             return value
         except (
             KeyError,
@@ -111,7 +105,7 @@ class RefPlaceholder(Placeholder):
                 return self.default_val
 
             if isinstance(exc, ConfigException):
-                exc.trace.insert(0, new_trace(parent_ctx, self))
+                # exc.trace.insert(0, new_trace(parent_ctx, self))
                 raise exc
 
             raise PlaceholderException(
@@ -134,17 +128,9 @@ class GlobalRefPlaceholder(RefPlaceholder):
     # class(es) first then those of the child class.
     root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
-    def resolve(self, ctx: "GetterContext", resolver):
-        path = CfgPath(self.path)
-        if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
-            raise ConfigException(
-                f"Relativ config paths are not allowed with global refs: '{path}'"
-            )
-
-        new_ctx = dataclasses.replace(
-            ctx, data=ctx.global_file, current_file=ctx.global_file
-        )
-        return self._resolve_inner(ctx, new_ctx, self.path)
+    def resolve(self, model: "ResolverMixin", memo: list):
+        global_root = model.get_global_root()
+        return self._resolve_inner(global_root, model.path_type(self.path), memo)
 
 
 class EnvvarConfigException(ConfigException):
@@ -161,12 +147,12 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, ctx, resolver) -> str:
+    def resolve(self, model: "ResolverMixin", memo: list):
         value = os.environ.get(self.env_var, self.default_val)
         if value is DEFAULT:
             raise EnvvarConfigException(
                 f"Environment does not exist: '{self.env_var}'",
-                trace=new_trace(ctx=ctx, placeholder=self),
+                # trace=new_trace(ctx=ctx, placeholder=self),
             )
 
         return value
@@ -181,7 +167,7 @@ class TimestampPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.format
 
-    def resolve(self, *_, **__) -> str:
+    def resolve(self, model: "ResolverMixin", memo: list):
         now = datetime.now()
         value = now.strftime(self.format)
         return value

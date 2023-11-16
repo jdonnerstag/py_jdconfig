@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from .config_ini import ConfigIni
 from .config_path import CfgPath, PathType
 from .deep_dict import DeepDict, DefaultConfigGetter
-from .deep_search import DeepSearch
+from .deep_search_mixin import DeepSearchMixin
 from .file_loader import ConfigFile
 from .getter_context import GetterContext
 from .objwalk import WalkerEvent
@@ -155,7 +155,7 @@ class JDConfig:
             data=root, current_file=self.data, skip_resolver=not resolve
         )
 
-        yield from DeepSearch.walk_tree(ctx, nodes_only=nodes_only)
+        yield from DeepSearchMixin.walk_tree(ctx, nodes_only=nodes_only)
 
     def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
         """Walk the config items with an optional starting point, and create a

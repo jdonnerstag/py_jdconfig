@@ -10,11 +10,11 @@ from typing import Any, Callable, Iterator, Mapping, Optional
 from .config_path import CfgPath, PathType
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter import DeepGetter, GetterFn, OnMissing
-from .deep_search import DeepSearch
+from .deep_search_mixin import DeepSearchMixin
 from .deep_update_mixin import DeepUpdateMixin
 from .file_loader import ConfigFileLoggerMixin
 from .getter_context import GetterContext
-from .resolver import Resolver
+from .resolver_mixin import ResolverMixin
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
 from .value_reader import ValueReader
 
@@ -54,7 +54,7 @@ class DefaultConfigGetter(DeepExportMixin, DeepGetter):
 
         # Note: since it is the execution order, the order is important !!!
         self.getter_pipeline = (
-            DeepSearch.cb_get,
+            DeepSearchMixin.cb_get,
             self.resolver.cb_get,
             DeepDictMixin.cb_get,
             ConfigFileLoggerMixin.cb_get,
@@ -127,7 +127,7 @@ class DeepDict(Mapping, DeepUpdateMixin):
         rtn = self.getter.get(ctx, path, default=default)
 
         if isinstance(rtn, ContainerType):
-            rtn = self.clone(rtn, self.path + path)
+            rtn = self.clone(rtn, self.path(path))
 
         return rtn
 

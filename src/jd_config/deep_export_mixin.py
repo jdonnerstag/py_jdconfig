@@ -12,7 +12,7 @@ import yaml
 
 from .config_path import PathType
 
-from .deep_search import DeepSearch
+from .deep_search_mixin import DeepSearchMixin
 from .objwalk import DropContainerEvent, NewMappingEvent, NewSequenceEvent, NodeEvent
 from .utils import ContainerType
 
@@ -45,7 +45,7 @@ class DeepExportMixin:
         cur: Mapping | Sequence = {}
         stack = [cur]
 
-        for event in DeepSearch.walk_tree(ctx, nodes_only=False):
+        for event in DeepSearchMixin.walk_tree(ctx, nodes_only=False):
             if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
                 new = event.new()
                 stack.append(new)

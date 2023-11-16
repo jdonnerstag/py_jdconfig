@@ -7,7 +7,7 @@ import logging
 import os
 import re
 
-from jd_config import DeepExportMixin, DeepGetter, Resolver
+from jd_config import DeepExportMixin, DeepGetter, ResolverMixin
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def test_to_dict_to_yaml():
     }
 
     getter = MyMixinTestClass()
-    resolver = Resolver()
+    resolver = ResolverMixin()
     getter.getter_pipeline = (resolver.cb_get,) + getter.getter_pipeline
 
     data = getter.to_dict(cfg, resolve=False)
@@ -86,7 +86,7 @@ def test_lazy_resolve():
     }
 
     getter = MyMixinTestClass()
-    resolver = Resolver()
+    resolver = ResolverMixin()
     getter.getter_pipeline = (resolver.cb_get,) + getter.getter_pipeline
 
     data = getter.to_dict(cfg, resolve=False)

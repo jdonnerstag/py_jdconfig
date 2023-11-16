@@ -9,12 +9,11 @@ and makes the config available under 'a'.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any, Callable, Optional, Self
 
-from .deep_getter import GetterFn
-from .getter_context import GetterContext
+from .config_path import CfgPath
 from .placeholders import Placeholder
-from .utils import ConfigException, new_trace
+from .utils import DEFAULT, ConfigException, ContainerType
 from .value_reader import ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -25,17 +24,33 @@ class MissingConfigException(ConfigException):
     """'???' denotes a mandatory value. Must be defined in an overlay."""
 
 
-class Resolver:
+class ResolverMixin:
     """A mixin that extends DeepGetter with a resolver. It resolves. e.g. 'a: {ref:b}'
     such that the reference placeholder gets virtually (not physically) replaced
     with the value from 'b'. Or 'a: {import:myfile.yaml}' which loads myfile.yaml
     and makes the config available under 'a'.
     """
 
-    def __init__(self, value_reader: Optional[ValueReader] = None) -> None:
+    def __init__(
+        self,
+        data: ContainerType,
+        path: Optional[CfgPath] = None,
+        *,
+        value_reader: Optional[ValueReader] = None,
+        **kvargs,
+    ) -> None:
+        super().__init__(data, path, **kvargs)
+
         # ValueReader parses a yaml value and returns a list of literals
         # and placeholders.
         self.value_reader = ValueReader() if value_reader is None else value_reader
+        self.skip_resolver = False
+
+    def clone(self, data, key) -> Self:
+        rtn = super().clone(data, key)
+        rtn.value_reader = self.value_reader
+        rtn.skip_resolver = self.skip_resolver
+        return rtn
 
     def register_placeholder_handler(self, name: str, type_: type) -> None:
         """Register (add or replace) a placeholder handler"""
@@ -46,37 +61,44 @@ class Resolver:
     def has_placeholder(cls, value) -> bool:
         return isinstance(value, str) and value.find("{") != -1
 
-    def cb_get(
-        self, data, key: str | int, ctx: GetterContext, next_fn: GetterFn
-    ) -> Any:
+    # @override
+    def _get(
+        self,
+        path: CfgPath,
+        default,
+        *,
+        on_missing: Callable,
+        memo=None,
+        **kvargs,
+    ) -> (Any, CfgPath):
         """Retrieve the element. Subclasses may expand it, e.g. to resolve
         placeholders
         """
-        fn = next_fn()
-        value = fn(data, key, ctx, next_fn)
+        if memo is None:
+            memo = []
 
-        value = self.resolve(value, ctx)
+        value, rest_path = super()._get(path, default, on_missing=on_missing, memo=memo, **kvargs)
+
+        value = self.resolve(value, memo)
 
         if value == "???":
+            cur_path = self.path(path[0])
             raise MissingConfigException(
-                f"Mandatory config value missing: '{ctx.cur_path()}'",
-                trace=new_trace(ctx),
+                f"Mandatory config value missing: '{cur_path}'"
             )
 
-        return value
+        return value, rest_path
 
-
-    def resolve(self, value: Any, ctx: GetterContext) -> Any:
+    def resolve(self, value: Any, memo) -> Any:
         """Lazily resolve Placeholders"""
 
-        if not ctx.args or not ctx.args.get("skip_resolver", False):
+        if not self.skip_resolver:
             while self.has_placeholder(value):
-                value = list(self.value_reader.parse(value))
-                value = self.resolve_single(value, ctx)
+                value = self.resolve_single(value, memo)
 
         return value
 
-    def resolve_single(self, value: Any, ctx: GetterContext) -> Any:
+    def resolve_single(self, value: Any, memo) -> Any:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -88,7 +110,7 @@ class Resolver:
         if isinstance(value, list) and len(value) == 1:
             value = value[0]
 
-        if isinstance(value, str) and value.find("{") != -1:
+        if self.has_placeholder(value):
             value = list(self.value_reader.parse(value))
             if len(value) == 1:
                 value = value[0]
@@ -96,12 +118,15 @@ class Resolver:
         if isinstance(value, Placeholder):
             logger.debug("resolve(%s)", value)
             placeholder = value
-            if placeholder.memo_relevant():
-                ctx.add_memo(placeholder)
-            value = placeholder.resolve(ctx, self)
+            if placeholder.memo_relevant() and placeholder in memo:
+                memo.append(placeholder)
+                raise ConfigException(f"Config recursion detected: {memo}")
+
+            memo.append(placeholder)
+            value = placeholder.resolve(self, memo)
 
         if isinstance(value, list):
-            value = [self.resolve_single(x, ctx) for x in value]
+            value = [self.resolve_single(x, memo) for x in value]
             value = "".join(value)
             return value
 

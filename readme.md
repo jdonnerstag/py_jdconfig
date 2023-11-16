@@ -1,6 +1,21 @@
 
 # The idea of this branch/version
 
+We have the "deep getter + context" approach, and a pydantic inspired one.
+As discussed further below, I prefer clean separation and flexibility. E.g.
+let attrs and pydantic do, what they can do best. Which is part of a settings
+or config mgmt system. I want *.ini support, and optionally a template system
+to resolve references or import other files. I have no preference if someone
+wants to it in the template, or in attrs/pydantic. I want envrionment specific
+overlays, in whatever form. But flexible to allow for different options.
+
+Both current implementations have pros and cons. Am not 100% happy with either.
+This version/branch applies lessons learnt from both. I call it the "wrapper"
+approach for now.
+
+
+# The idea of this branch/version (old)
+
 We have different implementations so far:
 - deep getter based and with template engine
 - My own, pydantic inspired, BaseModel and runtime type checker
