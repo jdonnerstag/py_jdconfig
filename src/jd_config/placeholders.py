@@ -37,7 +37,7 @@ class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
     @abstractmethod
-    def resolve(self, ctx: "GetterContext"):
+    def resolve(self, ctx: "GetterContext", resolver):
         """Resolve the placeholder"""
 
     def memo_relevant(self) -> bool:
@@ -66,9 +66,8 @@ class ImportPlaceholder(Placeholder):
         """Not relevant for Placeholder recursion detection"""
         return False
 
-    def resolve(self, ctx: "GetterContext"):
-        getter = DeepGetter(ctx=ctx)
-        file = getter.get(ctx, self.file)
+    def resolve(self, ctx: "GetterContext", resolver):
+        file = resolver.resolve(self.file, ctx)
 
         assert (
             self.loader is not None
@@ -90,7 +89,7 @@ class RefPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.path
 
-    def resolve(self, ctx: "GetterContext"):
+    def resolve(self, ctx: "GetterContext", resolver):
         new_ctx = dataclasses.replace(ctx, data=ctx.current_file)
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
@@ -135,7 +134,7 @@ class GlobalRefPlaceholder(RefPlaceholder):
     # class(es) first then those of the child class.
     root_cfg: Optional[ConfigFn] = field(default=None, repr=False)
 
-    def resolve(self, ctx: "GetterContext"):
+    def resolve(self, ctx: "GetterContext", resolver):
         path = CfgPath(self.path)
         if path and path[0] in [CfgPath.PARENT_DIR, CfgPath.CURRENT_DIR]:
             raise ConfigException(
@@ -162,7 +161,7 @@ class EnvPlaceholder(Placeholder):
     def __post_init__(self):
         assert self.env_var
 
-    def resolve(self, ctx) -> str:
+    def resolve(self, ctx, resolver) -> str:
         value = os.environ.get(self.env_var, self.default_val)
         if value is DEFAULT:
             raise EnvvarConfigException(

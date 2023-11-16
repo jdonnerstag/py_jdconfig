@@ -72,7 +72,7 @@ def test_EnvPlaceholder(monkeypatch):
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
 
     env = EnvPlaceholder("ENV")
-    assert env.resolve(ctx) == "this is a test"
+    assert env.resolve(ctx, None) == "this is a test"
 
 
 def test_resolve():
@@ -88,29 +88,29 @@ def test_resolve():
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
 
     ref = RefPlaceholder("a")
-    assert ref.resolve(ctx) == "aa"
+    assert ref.resolve(ctx, None) == "aa"
 
     ref = RefPlaceholder("b")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
-    assert ref.resolve(ctx) == "aa"
+    assert ref.resolve(ctx, None) == "aa"
 
     ref = RefPlaceholder("c")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
-    assert ref.resolve(ctx) == "aa"
+    assert ref.resolve(ctx, None) == "aa"
 
     ref = RefPlaceholder("d")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(ctx)
+        ref.resolve(ctx, None)
 
     ref = RefPlaceholder("xxx")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(ctx)
+        ref.resolve(ctx, None)
 
 
 def test_global_ref():
@@ -125,29 +125,29 @@ def test_global_ref():
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = GlobalRefPlaceholder("a")
-    assert ref.resolve(ctx) == "aa"
+    assert ref.resolve(ctx, None) == "aa"
 
     ref = GlobalRefPlaceholder("b")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
-    assert ref.resolve(ctx) == "aa"
+    assert ref.resolve(ctx, None) == "aa"
 
     ref = GlobalRefPlaceholder("c")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
-    assert ref.resolve(ctx) == "aa"
+    assert ref.resolve(ctx, None) == "aa"
 
     ref = GlobalRefPlaceholder("d")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(ctx)
+        ref.resolve(ctx, None)
 
     ref = GlobalRefPlaceholder("xxx")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        ref.resolve(ctx)
+        ref.resolve(ctx, None)
 
 
 @dataclass
@@ -169,7 +169,7 @@ def test_bespoke_placeholder():
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")
-    assert ref.resolve(ctx) == "it's me"
+    assert ref.resolve(ctx, None) == "it's me"
 
 
 def test_mandatory_value():
@@ -183,13 +183,13 @@ def test_mandatory_value():
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
-        assert ref.resolve(ctx)
+        assert ref.resolve(ctx, None)
 
     ref = RefPlaceholder("b")
     ctx = GetterContext(cfg)
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     with pytest.raises(ConfigException):
-        assert ref.resolve(ctx)
+        assert ref.resolve(ctx, None)
 
 
 def test_detect_recursion():
@@ -204,4 +204,4 @@ def test_detect_recursion():
     ctx.getter_pipeline = (resolver.cb_get, DeepGetter.cb_get)
     ref = RefPlaceholder("a")
     with pytest.raises(ConfigException):
-        assert ref.resolve(ctx)
+        assert ref.resolve(ctx, None)

@@ -14,14 +14,15 @@ from typing import Any, Iterator, Optional, Type
 from pydantic import BaseModel
 
 from .config_ini import ConfigIni
-from .config_path import PathType, CfgPath
+from .config_path import CfgPath, PathType
 from .deep_dict import DeepDict, DefaultConfigGetter
-from .getter_context import GetterContext
+from .deep_search import DeepSearch
 from .file_loader import ConfigFile
+from .getter_context import GetterContext
 from .objwalk import WalkerEvent
+from .provider_registry import ProviderRegistry
 from .utils import DEFAULT, ConfigException, ContainerType
 from .value_reader import RegistryType, ValueReader
-from .provider_registry import ProviderRegistry
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -154,7 +155,7 @@ class JDConfig:
             data=root, current_file=self.data, skip_resolver=not resolve
         )
 
-        yield from self.getter.walk_tree(ctx, nodes_only=nodes_only)
+        yield from DeepSearch.walk_tree(ctx, nodes_only=nodes_only)
 
     def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
         """Walk the config items with an optional starting point, and create a

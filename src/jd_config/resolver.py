@@ -55,10 +55,7 @@ class Resolver:
         fn = next_fn()
         value = fn(data, key, ctx, next_fn)
 
-        if not ctx.args or not ctx.args.get("skip_resolver", False):
-            while self.has_placeholder(value):
-                value = list(self.value_reader.parse(value))
-                value = self.resolve(value, ctx)
+        value = self.resolve(value, ctx)
 
         if value == "???":
             raise MissingConfigException(
@@ -68,7 +65,18 @@ class Resolver:
 
         return value
 
+
     def resolve(self, value: Any, ctx: GetterContext) -> Any:
+        """Lazily resolve Placeholders"""
+
+        if not ctx.args or not ctx.args.get("skip_resolver", False):
+            while self.has_placeholder(value):
+                value = list(self.value_reader.parse(value))
+                value = self.resolve_single(value, ctx)
+
+        return value
+
+    def resolve_single(self, value: Any, ctx: GetterContext) -> Any:
         """Lazily resolve Placeholders
 
         Yaml values may contain our Placeholder. Upon loading a yaml file,
@@ -90,10 +98,10 @@ class Resolver:
             placeholder = value
             if placeholder.memo_relevant():
                 ctx.add_memo(placeholder)
-            value = placeholder.resolve(ctx)
+            value = placeholder.resolve(ctx, self)
 
         if isinstance(value, list):
-            value = [self.resolve(x, ctx) for x in value]
+            value = [self.resolve_single(x, ctx) for x in value]
             value = "".join(value)
             return value
 
