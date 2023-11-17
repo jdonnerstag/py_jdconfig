@@ -21,7 +21,7 @@ Please see the readme.md file for details. In summary:
 from .config_ini import ConfigIni
 from .config_path import CfgPath, PathType
 from .config_path_extended import ExtendedCfgPath
-from .deep_dict import DeepDict, DeepDictMixin, DefaultConfigGetter
+from .deep_dict_mixin import DeepDictMixin
 from .deep_export_mixin import DeepExportMixin
 from .deep_getter import DeepGetter
 from .deep_search_mixin import DeepSearchMixin

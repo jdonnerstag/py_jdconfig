@@ -21,7 +21,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from jd_config.objwalk import NodeEvent
 from jd_config.config_ini import IniData
 from jd_config.config_path_extended import ExtendedCfgPath
-from jd_config.deep_dict import DeepDict
+from jd_config.deep_dict_mixin import DeepDictMixin
 from jd_config.file_loader import ConfigFile
 from jd_config.jd_config import JDConfig
 from jd_config.stats import ConfigStats
@@ -77,7 +77,7 @@ def exec_print(cfg: JDConfig, path: str, print_yaml=False, out=sys.stdout):
     """Execute the --print cli argument"""
 
     data = cfg.get(path, resolve=True)
-    if isinstance(data, DeepDict):
+    if isinstance(data, DeepDictMixin):
         data = data.obj
 
     if print_yaml is True:

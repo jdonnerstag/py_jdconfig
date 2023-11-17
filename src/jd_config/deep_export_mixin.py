@@ -6,14 +6,12 @@ Mixin to export deep config data
 """
 
 import logging
-from typing import Any, Mapping, Optional, Sequence
+from typing import Optional
 
 import yaml
 
+from .base_model import BaseModel
 from .config_path import PathType
-
-from .deep_search_mixin import DeepSearchMixin
-from .objwalk import DropContainerEvent, NewMappingEvent, NewSequenceEvent, NodeEvent
 from .utils import ContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -29,54 +27,49 @@ class DeepExportMixin:
     - self.get(): acces a (deep) config node
     """
 
-    def __init__(self) -> None:
-        assert hasattr(self, "get"), "Mixin depends on self.get()"
-        assert hasattr(self, "cb_get"), "Mixin depends on self.cb_get()"
-
-    def to_dict(
-        self, data: ContainerType, path: Optional[PathType] = None, resolve: bool = True
-    ) -> dict:
+    def to_dict(self, path: Optional[PathType] = None) -> dict | list:
         """Walk the config items with an optional starting point, and create a
         dict from it.
         """
+        if path is not None:
+            return self.get(path).to_dict()
 
-        ctx = self.new_context(data, current_file=data, skip_resolver=not resolve)
-        ctx.data = self.get(ctx, path)
-        cur: Mapping | Sequence = {}
-        stack = [cur]
+        if self.is_mapping():
+            return self._to_dict_dict()
+        if self.is_sequence():
+            return self._to_dict_list()
 
-        for event in DeepSearchMixin.walk_tree(ctx, nodes_only=False):
-            if isinstance(event, (NewMappingEvent, NewSequenceEvent)):
-                new = event.new()
-                stack.append(new)
-                if event.path:
-                    self._add_to_dict_or_list(cur, event.path[-1], new)
-                cur = new
-            elif isinstance(event, DropContainerEvent):
-                stack.pop()
-                if stack:
-                    cur = stack[-1]
-            elif isinstance(event, NodeEvent):
-                value = event.value
-                self._add_to_dict_or_list(cur, event.path[-1], value)
+        raise AttributeError(f"Expected a ContainerType: '{self.data}'")
 
-        return cur
+    def _to_dict_dict(self) -> dict:
+        rtn = {}
+        for k, v in self.items():
+            if isinstance(v, ContainerType):
+                child = self.clone(v, k)
+                rtn[k] = child.to_dict()
+            elif isinstance(v, BaseModel):
+                rtn[k] = child.to_dict()
+            else:
+                # Make sure we resolve or whatever else is necessary
+                rtn[k] = self.get(k)
 
-    @classmethod
-    def _add_to_dict_or_list(cls, obj: Mapping | Sequence, key: str, value: Any):
-        if isinstance(obj, Mapping):
-            obj[key] = value
-        elif isinstance(obj, Sequence):
-            obj.append(value)
+        return rtn
 
-    def to_yaml(
-        self,
-        data: ContainerType,
-        path: Optional[PathType] = None,
-        stream=None,
-        **kvargs
-    ):
+    def _to_dict_list(self) -> list:
+        rtn = []
+        for i, v in self.items():
+            if isinstance(v, ContainerType):
+                child = self.clone(v, i)
+                rtn.append(child.to_dict())
+            elif isinstance(v, BaseModel):
+                rtn.append(child.to_dict())
+            else:
+                rtn.append(v)
+
+        return rtn
+
+    def to_yaml(self, path: Optional[PathType] = None, stream=None, **kvargs):
         """Convert the configs (or part of it), into a yaml document"""
 
-        data = self.to_dict(data, path, resolve=True)
+        data = self.to_dict(path)
         return yaml.dump(data, stream, **kvargs)

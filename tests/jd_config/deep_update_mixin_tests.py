@@ -6,7 +6,7 @@
 import logging
 from copy import deepcopy
 
-from jd_config import DeepDict
+from jd_config import DeepDictMixin
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ DATA = dict(
 
 
 def test_deep_update():
-    data = DeepDict(deepcopy(DATA))
+    data = DeepDictMixin(deepcopy(DATA))
     assert data.deep_update({"a": "AA"}).get("a") == "AA"
     assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"
     assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"

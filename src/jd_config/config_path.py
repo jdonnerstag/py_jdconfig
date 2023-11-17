@@ -32,6 +32,10 @@ class CfgPath(Sequence):
     def __init__(self, path: PathType = (), sep: str = DEFAULT_SEP) -> None:
         self.path = self.normalize(path, sep=sep)
 
+    def is_relativ(self) -> bool:
+        """True if path is relativ"""
+        return self.path and self.path[0] in [self.PARENT_DIR, self.CURRENT_DIR]
+
     @classmethod
     def flatten(cls, path: PathType) -> Iterator[str | int]:
         """Flatten a list of list"""

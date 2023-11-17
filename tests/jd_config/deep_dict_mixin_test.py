@@ -7,16 +7,30 @@
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List, Mapping
 
 import pytest
 
-from jd_config import ConfigException, DeepDict, GetterContext, Placeholder
+from jd_config import ConfigException, DeepDictMixin, Placeholder
+from jd_config.base_model import BaseModel
+from jd_config.deep_search_mixin import DeepSearchMixin
+from jd_config.deep_update_mixin import DeepUpdateMixin
+from jd_config.resolver_mixin import ResolverMixin
 
 logger = logging.getLogger(__name__)
 
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
+
+
+class MyClass(
+    DeepDictMixin,
+    DeepUpdateMixin,
+    DeepSearchMixin,
+    ResolverMixin,
+    BaseModel,
+):
+    pass
+
 
 DATA = dict(
     a="aa",
@@ -30,11 +44,11 @@ DATA = dict(
 
 
 def test_get():
-    data = DeepDict({})
-    with pytest.raises(ConfigException):
+    data = MyClass({})
+    with pytest.raises(KeyError):
         data.get("a")
 
-    data = DeepDict(deepcopy(DATA))
+    data = MyClass(deepcopy(DATA))
     assert data.get("a") == "aa"
     assert data.get("c.c1") == "c11"
     assert data.get("c.c2.c23") == 23
@@ -44,12 +58,12 @@ def test_get():
     assert data.get("c.xxx", "abc") == "abc"
     assert data.get("c.c3[99].a", 123) == 123
 
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         data.get("c.xxx")
 
 
 def test_set():
-    data = DeepDict(deepcopy(DATA))
+    data = MyClass(deepcopy(DATA))
     assert data.set("add_x", "xx") is None
     assert data.get("add_x") == "xx"
     assert data.set("add_x", "yy") == "xx"
@@ -61,46 +75,46 @@ def test_set():
     assert data.get("c.c3[4].a") == 200
 
     # Parts of the tree are missing
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         data.set("z.a.b", 11)
 
     assert data.set("z.a.b", 11, create_missing=True) is None
     assert data.get("z.a.b") == 11
 
     # 'a' exists, but is no container. Even with create_missing, it will not change the structure
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         data.set("a.new", 11, create_missing=True, replace_path=False)
 
     data.set("a.new", 11, create_missing=True, replace_path=True)
     assert data.get("a.new") == 11
 
     # 'c.c3' is not a mapping. Even with create_missing, it will not change the structure
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         data.set("c.c3.a", 11, create_missing=True, replace_path=False)
 
     data.set("c.c3.a", 11, create_missing=True, replace_path=True)
     assert data.get("c.c3.a") == 11
 
-    data.set("x.a[0]", 22, create_missing=True)
+    with pytest.raises(KeyError):
+        data.set("x.a[0]", 22, create_missing=True, replace_path=False)
+
+    data.set("x.a[0]", 22, create_missing=True, replace_path=True)
     assert data.get("x.a[0]") == 22
 
     # This won't work: {x: a: {0: ..}}  0 is not subscriptable
-    with pytest.raises(ConfigException):
-        data.set("x.a[0].b", 22, create_missing=True)
+    with pytest.raises(KeyError):
+        data.set("x.a[0].b", 22, create_missing=True, replace_path=False)
 
-    def missing_1(ctx: GetterContext, _exc):
-        if ctx.key == "a":
+    data.set("x.a[0].b", 22, create_missing=True, replace_path=True)
+
+    def missing_1(_data, key, _cur_path, _exc, **_kvargs):
+        if key == "a":
             return [None] * 1
 
         return {}
 
     assert data.set("y.a[0]", 12, create_missing=missing_1) is None
-
-    # Note that missing_1() is not updating the config; which is perfectly
-    # fine. But a subsequent call w/o create_missing will fail, because
-    # it can not find the elem.
-    with pytest.raises(ConfigException):
-        data.get("y.a[0]")
+    assert data.get("y.a[0]") == 12
 
     # My preference and most easiest way: provide a dict with the
     # non-Mapping keys only.
@@ -122,7 +136,7 @@ def test_set():
 
 
 def test_delete():
-    data = DeepDict(deepcopy(DATA))
+    data = MyClass(deepcopy(DATA))
     assert data.delete("a") == "aa"
     assert data.delete("does-not-exist", exception=False) is None
 
@@ -131,10 +145,10 @@ def test_delete():
 
     assert data.delete("c.c3[4].c32") == "c322"
 
-    assert isinstance(data.delete("c.c3[4]"), Mapping)
+    assert data.delete("c.c3[4]") == {}
     assert len(data.get("c.c3")) == 4
 
-    assert isinstance(data.delete("c.c3"), List)
+    assert data.delete("c.c3") == [11, 22, 33, "4a"]
     assert data.get("c.c3", None) is None
 
     assert data.delete("c")
@@ -143,9 +157,8 @@ def test_delete():
 
 
 def test_deep_update():
-    data = DeepDict(deepcopy(DATA))
+    data = MyClass(deepcopy(DATA))
     assert data.deep_update({"a": "AA"}).get("a") == "AA"
-    assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"
     assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"
     assert data.deep_update({"c": {"c2": {"c22": "C_222"}}}).get("c.c2.c22") == "C_222"
     assert data.deep_update({"z": "new"})["z"] == "new"
@@ -158,7 +171,7 @@ def test_deep_update():
 
 
 def test_lazy_resolve():
-    data = DeepDict(deepcopy(DATA))
+    data = MyClass(deepcopy(DATA))
     data["c"]["c2"]["c22"] = "{ref:a}"
     assert data["c"]["c2"]["c22"] == "aa"  # pylint: disable=unsubscriptable-object
     assert data.get("c.c2.c22", resolve=True) == "aa"
@@ -179,18 +192,19 @@ def test_bespoke_placeholder():
         "b": "{bespoke:}",
     }
 
-    data = DeepDict(cfg)
+    data = MyClass(cfg)
     data.register_placeholder_handler("bespoke", MyBespokePlaceholder)
     assert data.get("a") == "it's me"
 
 
 def test_read_only():
-    data = DeepDict(deepcopy(DATA))
+    data = MyClass(deepcopy(DATA))
     assert not data.read_only
     data.set("a", "aa")
     data.read_only = True
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         data.set("a", "aa")
+
 
 def test_parent_dir():
     cfg = {
@@ -199,11 +213,11 @@ def test_parent_dir():
         "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
     }
 
-    data = DeepDict(cfg)
+    data = MyClass(cfg)
     assert data.get("b/..") == cfg
     assert data.get("b.bb.bbb") == 11
     assert data.get("b.bb.bbc") == 22
 
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         # We are already at the root element
         data.get("../a")

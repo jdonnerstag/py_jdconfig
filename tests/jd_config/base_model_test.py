@@ -88,6 +88,7 @@ def test_get_default():
     assert data.get("does_not_exist", default="me") == "me"
     assert data.get("b.bb.does_not_exist", default="me") == "me"
     assert data.get("c[3].does_not_exist", default="me") == "me"
+    assert data.get("c[99].c4b", 123) == 123
 
 
 def test_on_missing():
@@ -125,3 +126,21 @@ def test_iter():
         (2, 3),
         (3, {"c4a": 44, "c4b": 55}),
     ]
+
+
+def test_relativ():
+    cfg = {
+        "a": "aa",
+        "b": {"ba": 11, "bb": {"bba": 22, "bbb": 33}},
+        "c": [1, 2, 3, {"c4a": 44, "c4b": 55}],
+    }
+
+    data = BaseModel(cfg)
+    data = data.get("b")
+    assert data.get("ba") == 11
+    assert data.get("./ba") == 11
+    assert data.get("../a") == "aa"
+
+    # Must also work with leaf ("a") followed by ".."
+    data = BaseModel(cfg)
+    assert data.get("a/../b/ba") == 11

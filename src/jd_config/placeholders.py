@@ -89,8 +89,12 @@ class RefPlaceholder(Placeholder):
         assert self.path
 
     def resolve(self, model: "ResolverMixin", memo: list):
-        local_root = model.get_local_root()
-        return self._resolve_inner(local_root, model.path_type(self.path), memo)
+        path = model.path_type(self.path)
+        if path.is_relativ():
+            local_root = model
+        else:
+            local_root = model.get_local_root()
+        return self._resolve_inner(local_root, path, memo)
 
     def _resolve_inner(self, local_root, path, memo):
         try:
@@ -130,7 +134,8 @@ class GlobalRefPlaceholder(RefPlaceholder):
 
     def resolve(self, model: "ResolverMixin", memo: list):
         global_root = model.get_global_root()
-        return self._resolve_inner(global_root, model.path_type(self.path), memo)
+        path = model.path_type(self.path)
+        return self._resolve_inner(global_root, path, memo)
 
 
 class EnvvarConfigException(ConfigException):

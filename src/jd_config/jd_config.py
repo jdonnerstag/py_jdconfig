@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from .config_ini import ConfigIni
 from .config_path import CfgPath, PathType
-from .deep_dict import DeepDict, DefaultConfigGetter
+from .deep_dict_mixin import DeepDictMixin
 from .deep_search_mixin import DeepSearchMixin
 from .file_loader import ConfigFile
 from .getter_context import GetterContext
@@ -180,7 +180,7 @@ class JDConfig:
 
         return self.to_dict(path, resolve=True)
 
-    def resolve_all(self, path: Optional[PathType] = None) -> DeepDict:
+    def resolve_all(self, path: Optional[PathType] = None) -> DeepDictMixin:
         """Resolve configs in memory and replace in memory the current one.
 
         Different to 'to_dict()' which creates a copy of the tree and returns
@@ -195,8 +195,8 @@ class JDConfig:
         data = self.getter.to_dict(self.data, path, resolve=True)
 
         if not path:
-            if not isinstance(data, DeepDict) and isinstance(data, ContainerType):
-                data = DeepDict(data, getter=self.getter)
+            if not isinstance(data, DeepDictMixin) and isinstance(data, ContainerType):
+                data = DeepDictMixin(data, getter=self.getter)
 
             self.data = data
         else:
@@ -237,7 +237,7 @@ class JDConfig:
         config_dir: Optional[Path] = None,
         env: str | None = None,
         cache: bool = True,
-    ) -> DeepDict:
+    ) -> DeepDictMixin:
         """Main entry point to load configs"
 
         The filename can be relativ or absolute. If relativ, it will be loaded
@@ -257,6 +257,6 @@ class JDConfig:
 
         file = self.load_import(fname, config_dir, env, cache)
 
-        self.data = DeepDict(file, getter=self.getter)
+        self.data = DeepDictMixin(file, getter=self.getter)
 
         return self.data

@@ -82,36 +82,56 @@ class BaseModel:
         if not path:
             return self
 
-        value, rest_path = self._get(path, default, on_missing=on_missing, **kvargs)
+        try:
+            value, rest_path = self._get(path, on_missing=on_missing, **kvargs)
 
-        if not rest_path:
-            if isinstance(value, ContainerType):
-                value = self.clone(value, path[0])
+            if not rest_path:
+                if isinstance(value, ContainerType):
+                    value = self.clone(value, path[0])
 
-            return value
+                return value
 
-        if not isinstance(value, BaseModel):
-            if not isinstance(value, ContainerType):
-                raise ConfigException(f"Expected a ContainerType: '{value}'")
+            if not isinstance(value, BaseModel):
+                if not isinstance(value, ContainerType):
+                    raise ConfigException(f"Expected a ContainerType: '{value}'")
 
-            child = self.clone(value, path[0])
-        else:
-            child = value
+                child = self.clone(value, path[0])
+            else:
+                child = value
 
-        return child.get(rest_path, default, on_missing=on_missing, **kvargs)
+            return child.get(rest_path, on_missing=on_missing, **kvargs)
+        except KeyError:
+            if default is DEFAULT:
+                raise
+
+            return default
 
     def _get(
-        self, path: CfgPath, default, *, on_missing: Callable, **_kvargs
+        self, path: CfgPath, *, on_missing: Callable, **kvargs
     ) -> (Any, CfgPath):
         key = path[0]
+
+        if key == CfgPath.CURRENT_DIR:
+            return self, path[1:]
+
+        if key == CfgPath.PARENT_DIR:
+            if self.parent is None:
+                raise KeyError(f"Reached the root. No parent found: '{self}'")
+
+            return self.parent, path[1:]
+
         try:
-            value = self.data[key]
+            try:
+                value = self.data[key]
+            except (IndexError, TypeError) as exc:
+                raise KeyError(str(exc)) from exc
         except KeyError as exc:
-            if default is not DEFAULT:
-                value = default
-            else:
-                cur_path = self.path(key)
-                value = on_missing(self.data, key, cur_path, exc)
+            cur_path = self.path(key)
+            if not callable(on_missing):
+                raise
+
+            value = on_missing(self.data, key, cur_path, exc, **kvargs)
+            self.data[key] = value
 
         return value, path[1:]
 

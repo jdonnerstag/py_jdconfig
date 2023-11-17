@@ -11,12 +11,12 @@ changes to the 'prod' one.
 """
 
 import logging
-from typing import TYPE_CHECKING, Mapping, Optional
+from typing import TYPE_CHECKING, Mapping, Optional, Self
 
 from .objwalk import objwalk
 
 if TYPE_CHECKING:
-    from .deep_dict import DeepDict
+    from .deep_dict_mixin import DeepDictMixin
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -32,7 +32,7 @@ class DeepUpdateMixin:
     changes to the 'prod' one.
     """
 
-    def deep_update(self, updates: Optional[Mapping]) -> "DeepDict":
+    def deep_update(self, updates: Optional[Mapping]) -> Self:
         """Deep update the 'obj' with only the leafs from 'updates'. Create
         missing paths.
 

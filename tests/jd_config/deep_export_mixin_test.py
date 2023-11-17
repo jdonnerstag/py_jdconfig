@@ -7,7 +7,8 @@ import logging
 import os
 import re
 
-from jd_config import DeepExportMixin, DeepGetter, ResolverMixin
+from jd_config import DeepExportMixin, ResolverMixin
+from jd_config.base_model import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +20,8 @@ def data_dir(*args):
     return os.path.join(os.path.dirname(__file__), "data", *args)
 
 
-class MyMixinTestClass(DeepExportMixin, DeepGetter):
-    def __init__(self) -> None:
-        DeepGetter.__init__(self)
-        DeepExportMixin.__init__(self)
+class MyClass(DeepExportMixin, ResolverMixin, BaseModel):
+    pass
 
 
 def test_to_dict_to_yaml():
@@ -39,11 +38,8 @@ def test_to_dict_to_yaml():
         "d": "{ref:b.b1}",
     }
 
-    getter = MyMixinTestClass()
-    resolver = ResolverMixin()
-    getter.getter_pipeline = (resolver.cb_get,) + getter.getter_pipeline
-
-    data = getter.to_dict(cfg, resolve=False)
+    data = MyClass(cfg)
+    data.skip_resolver = True
     assert data["a"] == "aa"
     assert data["b"]["b1"]["c1"] == "1cc"
     assert data["b"]["b1"]["c2"] == "{ref:a}"
@@ -54,22 +50,23 @@ def test_to_dict_to_yaml():
     assert data["c"][2]["z2"] == "2zz"
     assert data["d"] == "{ref:b.b1}"
 
-    data = getter.to_dict(cfg, resolve=True)
-    assert data["b"]["b1"]["c2"] == "aa"
-    assert data["d"]["c1"] == "1cc"
-    assert data["d"]["c2"] == "aa"
+    data.skip_resolver = False
+    obj = data.to_dict()
+    assert obj["b"]["b1"]["c2"] == "aa"
+    assert obj["d"]["c1"] == "1cc"
+    assert obj["d"]["c2"] == "aa"
 
-    data = getter.to_dict(cfg, "b.b1")
-    assert data["c1"] == "1cc"
-    assert data["c2"] == "aa"
+    obj = data.to_dict("b.b1")
+    assert obj["c1"] == "1cc"
+    assert obj["c2"] == "aa"
 
-    data = getter.to_dict(cfg, "d")
-    assert data["c1"] == "1cc"
-    assert data["c2"] == "aa"
+    obj = data.to_dict("d")
+    assert obj["c1"] == "1cc"
+    assert obj["c2"] == "aa"
 
-    data = getter.to_yaml(cfg, "b.b1")
-    data = re.sub(r"[\r\n]+", r"\n", data)
-    assert data == "c1: 1cc\nc2: aa\n"
+    obj = data.to_yaml("b.b1")
+    obj = re.sub(r"[\r\n]+", r"\n", obj)
+    assert obj == "c1: 1cc\nc2: aa\n"
 
 
 def test_lazy_resolve():
@@ -85,12 +82,11 @@ def test_lazy_resolve():
         "c": ["x", "y", {"z1": "zz", "z2": "2zz"}],
     }
 
-    getter = MyMixinTestClass()
-    resolver = ResolverMixin()
-    getter.getter_pipeline = (resolver.cb_get,) + getter.getter_pipeline
+    data = MyClass(cfg)
+    data.skip_resolver = True
+    obj = data.to_dict()
+    assert obj["b"]["b1"]["c2"] == "{ref:a}"
 
-    data = getter.to_dict(cfg, resolve=False)
-    assert data["b"]["b1"]["c2"] == "{ref:a}"
-
-    data = getter.to_dict(cfg, resolve=True)
+    data.skip_resolver = False
+    obj = data.to_dict()
     assert data["b"]["b1"]["c2"] == "aa"

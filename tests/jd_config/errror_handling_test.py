@@ -7,7 +7,7 @@ import logging
 import os
 from pathlib import Path
 
-from jd_config import ConfigException, DeepDict, JDConfig
+from jd_config import ConfigException, DeepDictMixin, JDConfig
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def assertTrace(trace, path, placeholder=None, file=None) -> None:
 
 
 def test_not_found_simple():
-    data = DeepDict({})
+    data = DeepDictMixin({})
     try:
         data.get("a")
     except ConfigException as exc:
@@ -45,7 +45,9 @@ def test_not_found_simple():
         assert exc.trace[0].path == ("a",)
         assert exc.trace[0].file is None
 
-    data = DeepDict({"a": "aa", "b": "bb", "c": {"ca": "caa", "cb": {"cba": "cba"}}})
+    data = DeepDictMixin(
+        {"a": "aa", "b": "bb", "c": {"ca": "caa", "cb": {"cba": "cba"}}}
+    )
     try:
         data.get("xx")
     except ConfigException as exc:
@@ -83,7 +85,7 @@ def test_not_found_simple():
 
 
 def test_not_found_ref_same_file():
-    data = DeepDict(
+    data = DeepDictMixin(
         {
             "a": "aa",
             "b": "{ref:x}",
@@ -189,7 +191,7 @@ def test_not_found_import():
 
 
 def test_not_found_env():
-    data = DeepDict({"a": "{env:DOES_NOT_EXIST}", "b": "{ref:a}"})
+    data = DeepDictMixin({"a": "{env:DOES_NOT_EXIST}", "b": "{ref:a}"})
 
     try:
         data.get("a")
@@ -206,7 +208,7 @@ def test_not_found_env():
 
 
 def test_not_found_question_mark():
-    data = DeepDict({"a": "???", "b": "{ref:a}"})
+    data = DeepDictMixin({"a": "???", "b": "{ref:a}"})
 
     try:
         data.get("a")
@@ -223,7 +225,7 @@ def test_not_found_question_mark():
 
 
 def test_local_recursion():
-    data = DeepDict({"a": "{ref:b}", "b": "{ref:c}", "c": "{ref:a}"})
+    data = DeepDictMixin({"a": "{ref:b}", "b": "{ref:c}", "c": "{ref:a}"})
 
     try:
         data.get("a")

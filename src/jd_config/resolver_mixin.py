@@ -13,7 +13,7 @@ from typing import Any, Callable, Optional, Self
 
 from .config_path import CfgPath
 from .placeholders import Placeholder
-from .utils import DEFAULT, ConfigException, ContainerType
+from .utils import ConfigException, ContainerType
 from .value_reader import ValueReader
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -65,9 +65,9 @@ class ResolverMixin:
     def _get(
         self,
         path: CfgPath,
-        default,
         *,
         on_missing: Callable,
+        resolve: bool = True,
         memo=None,
         **kvargs,
     ) -> (Any, CfgPath):
@@ -77,9 +77,12 @@ class ResolverMixin:
         if memo is None:
             memo = []
 
-        value, rest_path = super()._get(path, default, on_missing=on_missing, memo=memo, **kvargs)
+        value, rest_path = super()._get(
+            path, on_missing=on_missing, memo=memo, **kvargs
+        )
 
-        value = self.resolve(value, memo)
+        if resolve:
+            value = self.resolve(value, memo)
 
         if value == "???":
             cur_path = self.path(path[0])
