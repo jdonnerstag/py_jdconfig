@@ -88,7 +88,7 @@ class ResolverMixin:
             value = self.resolve(value, memo)
 
         if value == "???":
-            cur_path = self.path(path[0])
+            cur_path = self.cur_path(path[0])
             raise MissingConfigException(
                 f"Mandatory config value missing: '{cur_path}'"
             )
@@ -124,11 +124,12 @@ class ResolverMixin:
         if isinstance(value, Placeholder):
             logger.debug("resolve(%s)", value)
             placeholder = value
-            if placeholder.memo_relevant() and placeholder in memo:
-                memo.append(placeholder)
-                raise ConfigException(f"Config recursion detected: {memo}")
+            if placeholder.MEMO_RELEVANT:
+                if placeholder in memo:
+                    memo.append(placeholder)
+                    raise ConfigException(f"Config recursion detected: {memo}")
 
-            memo.append(placeholder)
+                memo.append(placeholder)
             value = placeholder.resolve(self, memo)
 
         if isinstance(value, list):

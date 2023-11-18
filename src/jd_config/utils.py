@@ -15,7 +15,7 @@ from typing import Mapping, Sequence, Optional
 
 if typing.TYPE_CHECKING:
     from .placeholders import Placeholder
-    from .getter_context import GetterContext
+    #from .getter_context import GetterContext
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

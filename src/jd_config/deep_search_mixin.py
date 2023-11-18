@@ -23,8 +23,6 @@ class DeepSearchMixin:
     search patterns, such as 'a.**.c', 'a.*.c'
     """
 
-    path_type = ExtendedCfgPath
-
     # @override
     def _get(self, path: CfgPath, **kvargs) -> (Any, CfgPath):
         """Retrieve an element from its parent container.
@@ -32,7 +30,7 @@ class DeepSearchMixin:
         See DeepGetter.cb_get() for more details.
         """
         key = path[0]
-        cur_path = self.path(key)
+        cur_path = self.cur_path(key)
         if key == ExtendedCfgPath.PAT_ANY_KEY:
             if not self.is_mapping():
                 raise KeyError(
@@ -70,7 +68,7 @@ class DeepSearchMixin:
             except KeyError:
                 pass  # ignore
 
-        cur_path = self.path_type(self.path(path[0:2]))
+        cur_path = self.path_obj(self.cur_path(path[0:2]))
         raise KeyError(f"Config not found: '{cur_path}'")  # , trace=new_trace(ctx=ctx)
 
     def _on_any_deep(self, path: CfgPath, **kvargs) -> (Any, CfgPath):
@@ -91,5 +89,5 @@ class DeepSearchMixin:
             except (KeyError, IndexError, TypeError):
                 pass  # ignore
 
-        cur_path = self.path_type(self.path(path[0:2]))
+        cur_path = self.path_obj(self.cur_path(path[0:2]))
         raise KeyError(f"Config not found: '{cur_path}'")  # , trace=new_trace(ctx=ctx)

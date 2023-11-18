@@ -40,13 +40,13 @@ class DeepDictMixin:
 
     def check_read_only(self):
         if self.read_only:
-            raise KeyError(f"Object instance is read_only: 'path={self.path()}'")
+            raise KeyError(f"Object instance is read_only: 'path={self.cur_path()}'")
 
     def delete(self, path: PathType, *, exception: bool = True) -> Any:
         """Similar to 'del dict[key]', but with deep path support"""
 
-        path = self.path_type(path)
-        parent_path = self.path_type(path + ("..",))
+        path = self.path_obj(path)
+        parent_path = self.path_obj(path + ("..",))
 
         try:
             parent = self.get(parent_path)
@@ -100,11 +100,11 @@ class DeepDictMixin:
         :return: the old value
         """
 
-        path = self.path_type(path)
+        path = self.path_obj(path)
         if not path:
             raise KeyError("Empty path not allowed for set()")
 
-        parent_path = self.path_type(path + ("..",))
+        parent_path = self.path_obj(path + ("..",))
 
         parent = self.get(
             parent_path,
@@ -172,7 +172,7 @@ class DeepDictMixin:
 
             return elem
         if isinstance(create_missing, Mapping):
-            elem = create_missing.get(self.path(key), None)
+            elem = create_missing.get(self.cur_path(key), None)
             if elem is None:
                 elem = create_missing.get(key, None)
             if elem is None:
@@ -214,6 +214,6 @@ class DeepDictMixin:
             return value
 
         key = path[0]
-        value = self.on_missing(self.data, key, self.path(key), None, **kvargs)
+        value = self.on_missing(self.data, key, self.cur_path(key), None, **kvargs)
         self.data[key] = value
         return super().get(key)

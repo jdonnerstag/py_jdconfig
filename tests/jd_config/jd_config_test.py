@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from jd_config import ConfigException, JDConfig, NodeEvent, Placeholder
+from jd_config import JDConfig, NodeEvent, Placeholder
 from jd_config.config_path import CfgPath
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def test_load_jdconfig_2(monkeypatch):
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file
     # config-2 has imports. Make sure, it is available for imports.
     cfg.ini.config_dir = data_dir("configs-2")
-    # if config_dir provided to load() it is only used for this one file
+    # if config_dir provided to load(), it is only used for this one file
     data = cfg.load("main_config.yaml")
     assert data
 
@@ -178,9 +178,8 @@ def test_load_jdconfig_3():
     assert cfg.get("1b.2b.3a") == "aaa"
     assert cfg.get("1b.2b.3b.1a") == "a"
 
-    with pytest.raises(ConfigException):
-        # Recursion with imports in between
-        cfg.get("1b.2b.3b.1b")
+    # Recursion is only a problem with {ref:} and {global:}
+    cfg.get("1b.2b.3b.1b")
 
 
 def test_walk():

@@ -77,6 +77,13 @@ class DropContainerEvent(WalkerEvent):
     """Step out of a Mapping or Sequence"""
 
 
+def my_isinstance(data, klass) -> bool:
+    try:
+        return data.__isinstance__(klass)
+    except:  # pylint: disable=bare-except
+        return isinstance(data, klass)
+
+
 def objwalk(
     obj: ContainerType,
     *,
@@ -105,7 +112,7 @@ def objwalk(
     if not obj:
         return
 
-    if not isinstance(obj, (Mapping, NonStrSequence)):
+    if not my_isinstance(obj, (Mapping, NonStrSequence)):
         yield NodeEvent(path=(), value=obj, container=None)
         return
 
@@ -124,7 +131,7 @@ def objwalk(
 
             event = None
             for type_, event_type in creator_map.items():
-                if not isinstance(value, type_):
+                if not my_isinstance(value, type_):
                     continue
 
                 path_ = path_ + key
@@ -151,10 +158,10 @@ def objwalk(
 
 
 def _container_iter(obj: Mapping | NonStrSequence) -> Iterator:
-    if isinstance(obj, Mapping):
+    if my_isinstance(obj, Mapping):
         return iter(obj.keys())
 
-    if isinstance(obj, NonStrSequence):
+    if my_isinstance(obj, NonStrSequence):
         return iter(range(len(obj)))
 
     raise ConfigException(f"Bug? Expected either Mapping or NonStrSequence: {obj}")

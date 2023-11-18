@@ -23,7 +23,7 @@ from .deep_search_mixin import DeepSearchMixin
 from .file_loader import ConfigFile
 from .objwalk import WalkerEvent
 from .provider_registry import ProviderRegistry
-from .utils import DEFAULT, ConfigException
+from .utils import DEFAULT, ConfigException, ContainerType
 from .value_reader import RegistryType, ValueReader
 from .objwalk import objwalk
 
@@ -123,8 +123,11 @@ class JDConfig:
     ) -> Iterator[WalkerEvent]:
         """Walk a subtree, with lazily resolving node values"""
 
-        path = CfgPath(path)
+        path = self.data.path_obj(path)    # TDOD need CfgPath.from(..)
         root = self.get(path, resolve=True)
+
+        if not isinstance(root, BaseModel):
+            raise KeyError(f"Not a ContainerType: '{root}'")
 
         yield from objwalk(root, nodes_only=nodes_only)
 

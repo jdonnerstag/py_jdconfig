@@ -4,6 +4,7 @@
 # pylint: disable=C
 
 import logging
+from typing import Mapping, Sequence
 
 from jd_config.base_model import BaseModel
 
@@ -35,6 +36,24 @@ def test_get_from_dict():
     assert data.get("c[3]") == {"c4a": 44, "c4b": 55}
     assert data.get("c[3].c4a") == 44
     assert data.get("c[3].c4b") == 55
+
+
+def test_isinstance():
+    data = BaseModel({"a": "aa"})
+    assert data.is_mapping() is True
+    assert data.is_sequence() is False
+    assert data.__isinstance__(Mapping) is True
+    assert data.__isinstance__(Sequence) is False
+    # assert isinstance(data, Mapping) is True
+    # assert isinstance(data, Sequence) is False
+
+    data = BaseModel([1])
+    assert data.is_mapping() is False
+    assert data.is_sequence() is True
+    assert data.__isinstance__(Mapping) is False
+    assert data.__isinstance__(Sequence) is True
+    # assert isinstance(data, Mapping) is False
+    # assert isinstance(data, Sequence) is True
 
 
 def test_list_root():
@@ -99,9 +118,9 @@ def test_on_missing():
     }
 
     data = BaseModel(cfg)
-    assert data.get("does_not_exist", on_missing=lambda *_: "me") == "me"
-    assert data.get("b.bb.does_not_exist", on_missing=lambda *_: "me") == "me"
-    assert data.get("c[3].does_not_exist", on_missing=lambda *_: "me") == "me"
+    assert data.get("does_not_exist", on_missing=lambda *_, **__: "me") == "me"
+    assert data.get("b.bb.does_not_exist", on_missing=lambda *_, **__: "me") == "me"
+    assert data.get("c[3].does_not_exist", on_missing=lambda *_, **__: "me") == "me"
 
 
 def test_iter():

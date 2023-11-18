@@ -8,7 +8,7 @@ Normalize config paths such as "a.b.c", "a.b[2].c", "a..c", "a.*.c", "a.b[*].c",
 
 import logging
 import re
-from typing import Any, Iterable, Iterator, Optional, Sequence, Union
+from typing import Any, Iterable, Iterator, Optional, Self, Sequence, Union
 
 from .utils import ConfigException
 
@@ -31,6 +31,15 @@ class CfgPath(Sequence):
 
     def __init__(self, path: PathType = (), sep: str = DEFAULT_SEP) -> None:
         self.path = self.normalize(path, sep=sep)
+
+    @classmethod
+    def new(cls, path: PathType, sep: str = DEFAULT_SEP) -> Self:
+        """A bit like the constructor, except if 'path' is already a CfgPath"""
+
+        if isinstance(path, CfgPath):
+            return path
+
+        return cls(path, sep)
 
     def is_relativ(self) -> bool:
         """True if path is relativ"""

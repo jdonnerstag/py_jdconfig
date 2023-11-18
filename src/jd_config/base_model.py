@@ -8,6 +8,8 @@ Load config settings from *.ini
 import logging
 from typing import Any, Callable, Iterator, Mapping, Optional, Self, Sequence
 
+from jd_config.config_path_extended import ExtendedCfgPath
+
 from .config_path import CfgPath, PathType
 from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
 
@@ -17,8 +19,6 @@ logger = logging.getLogger(__parent__name__)
 
 class BaseModel:
     """A wrapper around the config/setting object"""
-
-    path_type = CfgPath
 
     def __init__(
         self,
@@ -37,6 +37,9 @@ class BaseModel:
         self.parent = parent
         self.is_local_root = parent is None or local_root
 
+    def __isinstance__(self, klass) -> bool:
+        return isinstance(self.data, klass)
+
     def clone(self, data, key) -> Self:
         return type(self)(data, key, parent=self)
 
@@ -52,7 +55,16 @@ class BaseModel:
 
         return self.parent.get_local_root()
 
-    def path(self, key: Optional[str | int | Sequence[str | int]] = None) -> CfgPath:
+    @classmethod
+    def path_obj(cls, path: PathType, *adds: PathType, sep: str = CfgPath.DEFAULT_SEP):
+        if adds:
+            path = (path, *adds)
+
+        return ExtendedCfgPath.new(path, sep)
+
+    def cur_path(
+        self, key: Optional[str | int | Sequence[str | int]] = None
+    ) -> CfgPath:
         rtn = []
         obj = self
         while obj.parent is not None:
@@ -73,12 +85,18 @@ class BaseModel:
         default=DEFAULT,
         *,
         on_missing: Optional[Callable] = None,
+        memo: Optional[list] = None,
         **kvargs,
     ) -> Any:
+        if memo is None:
+            memo = []
+
         if on_missing is None:
             on_missing = self.on_missing
 
-        path = self.path_type(path)
+        kvargs["memo"] = memo
+
+        path = self.path_obj(path)
         if not path:
             return self
 
@@ -119,7 +137,7 @@ class BaseModel:
             except (IndexError, TypeError) as exc:
                 raise KeyError(str(exc)) from exc
         except KeyError as exc:
-            cur_path = self.path(key)
+            cur_path = self.cur_path(key)
             if not callable(on_missing):
                 raise
 
@@ -157,6 +175,13 @@ class BaseModel:
             return enumerate(self.data)
 
         raise ConfigException(f"Bug? Don't how to iterate over: '{self.data}'")
+
+    def keys(self):
+        if self.is_mapping():
+            return self.data.keys()
+
+        if self.is_sequence():
+            return range(len(self.data))
 
     def __eq__(self, other: Mapping) -> bool:
         return self.data == other

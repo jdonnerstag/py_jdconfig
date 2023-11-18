@@ -18,7 +18,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, TYPE_CHECKING
 
-from .config_path import CfgPath
 from .utils import DEFAULT, ConfigException, ContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
@@ -37,16 +36,15 @@ class PlaceholderException(ConfigException):
 class Placeholder(ABC):
     """A common base class for all Placeholders"""
 
+    MEMO_RELEVANT = False
+
     @abstractmethod
     def resolve(self, model: "ResolverMixin", memo: list):
         """Resolve the placeholder"""
 
-    def memo_relevant(self) -> bool:
-        """If relevant for Placeholder recursion detection"""
-        return True
-
 
 LoaderType = Callable[[str], Mapping]
+ConfigFn = Callable[[], ContainerType]
 
 
 @dataclass
@@ -63,12 +61,8 @@ class ImportPlaceholder(Placeholder):
             if Path(self.file).is_absolute():
                 logger.warning("Absolut import file path detected: '%s'", self.file)
 
-    def memo_relevant(self) -> bool:
-        """Not relevant for Placeholder recursion detection"""
-        return False
-
     def resolve(self, model: "ResolverMixin", memo: list):
-        file = model.resolve(self.file, None)
+        file = model.resolve(self.file, memo=[])
 
         assert (
             self.loader is not None
@@ -85,26 +79,25 @@ class RefPlaceholder(Placeholder):
     path: str
     default_val: Any = None
 
+    MEMO_RELEVANT = True
+
     def __post_init__(self):
         assert self.path
 
     def resolve(self, model: "ResolverMixin", memo: list):
-        path = model.path_type(self.path)
+        path = model.path_obj(self.path)
         if path.is_relativ():
             local_root = model
         else:
             local_root = model.get_local_root()
+
         return self._resolve_inner(local_root, path, memo)
 
     def _resolve_inner(self, local_root, path, memo):
         try:
             value = local_root.get(path, memo=memo)
             return value
-        except (
-            KeyError,
-            IndexError,
-            ConfigException,
-        ) as exc:  # pylint: disable=bare-except  # noqa: E722
+        except KeyError as exc:
             if self.default_val is not None:
                 return self.default_val
 
@@ -115,9 +108,6 @@ class RefPlaceholder(Placeholder):
             raise PlaceholderException(
                 f"Failed to resolve RefPlaceholder: '{self.path}'"
             ) from exc
-
-
-ConfigFn = Callable[[], ContainerType]
 
 
 @dataclass
@@ -134,7 +124,7 @@ class GlobalRefPlaceholder(RefPlaceholder):
 
     def resolve(self, model: "ResolverMixin", memo: list):
         global_root = model.get_global_root()
-        path = model.path_type(self.path)
+        path = model.path_obj(self.path)
         return self._resolve_inner(global_root, path, memo)
 
 
