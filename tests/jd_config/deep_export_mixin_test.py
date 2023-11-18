@@ -38,8 +38,8 @@ def test_to_dict_to_yaml():
         "d": "{ref:b.b1}",
     }
 
-    data = MyClass(cfg)
-    data.skip_resolver = True
+    root = MyClass(cfg)
+    data = root.data  # raw data => no resolve
     assert data["a"] == "aa"
     assert data["b"]["b1"]["c1"] == "1cc"
     assert data["b"]["b1"]["c2"] == "{ref:a}"
@@ -50,8 +50,19 @@ def test_to_dict_to_yaml():
     assert data["c"][2]["z2"] == "2zz"
     assert data["d"] == "{ref:b.b1}"
 
-    data.skip_resolver = False
-    obj = data.to_dict()
+    data = root  # resolve by default
+    assert data["a"] == "aa"
+    assert data["b"]["b1"]["c1"] == "1cc"
+    assert data["b"]["b1"]["c2"] == "aa"
+    assert data["b"]["b2"] == 22
+    assert data["c"][0] == "x"
+    assert data["c"][1] == "y"
+    assert data["c"][2]["z1"] == "zz"
+    assert data["c"][2]["z2"] == "2zz"
+    # Does not to_dict() before comparing
+    assert data["d"] == {"c1": "1cc", "c2": "{ref:a}"}
+
+    obj = data.to_dict(resolve=True)
     assert obj["b"]["b1"]["c2"] == "aa"
     assert obj["d"]["c1"] == "1cc"
     assert obj["d"]["c2"] == "aa"
@@ -83,10 +94,8 @@ def test_lazy_resolve():
     }
 
     data = MyClass(cfg)
-    data.skip_resolver = True
-    obj = data.to_dict()
+    obj = data.to_dict(resolve=False)
     assert obj["b"]["b1"]["c2"] == "{ref:a}"
 
-    data.skip_resolver = False
-    obj = data.to_dict()
+    obj = data.to_dict(resolve=True)
     assert data["b"]["b1"]["c2"] == "aa"

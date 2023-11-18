@@ -32,7 +32,7 @@ class DeepExportMixin:
         dict from it.
         """
         if path is not None:
-            return self.get(path).to_dict()
+            return self.get(path).to_dict(**kvargs)
 
         if self.is_mapping():
             return self._to_dict_dict(**kvargs)
@@ -46,9 +46,9 @@ class DeepExportMixin:
         for k, v in self.items():
             if isinstance(v, ContainerType):
                 child = self.clone(v, k)
-                rtn[k] = child.to_dict()
+                rtn[k] = child.to_dict(**kvargs)
             elif isinstance(v, BaseModel):
-                rtn[k] = child.to_dict()
+                rtn[k] = child.to_dict(**kvargs)
             else:
                 # Make sure we resolve or whatever else is necessary
                 rtn[k] = self.get(k, **kvargs)
@@ -60,9 +60,9 @@ class DeepExportMixin:
         for i, v in self.items():
             if isinstance(v, ContainerType):
                 child = self.clone(v, i)
-                rtn.append(child.to_dict())
+                rtn.append(child.to_dict(**kvargs))
             elif isinstance(v, BaseModel):
-                rtn.append(child.to_dict())
+                rtn.append(child.to_dict(**kvargs))
             else:
                 v = self.get(i, **kvargs)
                 rtn.append(v)

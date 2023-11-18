@@ -25,7 +25,7 @@ from .deep_dict_mixin import DeepDictMixin
 from .deep_export_mixin import DeepExportMixin
 from .deep_search_mixin import DeepSearchMixin
 from .deep_update_mixin import DeepUpdateMixin
-from .file_loader import ConfigFile, ConfigFileLoader, ConfigFileLoggerMixin
+from .file_loader import ConfigFile, ConfigFileLoader
 from .jd_config import JDConfig
 from .objwalk import (
     DropContainerEvent,

@@ -7,14 +7,14 @@ only a yaml config file loaded is available. Additional ones,
 may leverage VFS, etcd, git, web-servers, AWS parameter stores, etc..
 """
 
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
 from io import StringIO
+from os import PathLike
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence
 
 from .file_loader import ConfigFileLoader
-from .utils import ConfigException
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -49,26 +49,26 @@ class YamlFileProviderPlugin(ProviderPlugin):
 
         self.loader = ConfigFileLoader()
 
-    def load(self, name: Optional[Path | StringIO], **kvargs) -> Mapping | None:
+    def load(
+        self,
+        name: Optional[Path | StringIO],
+        config_dir: Optional[PathLike | Sequence[PathLike]] = None,
+        env: Optional[str] = None,
+        **kvargs,
+    ) -> Mapping | None:
         """Load and return the data, or return None to indicate that the
         provider does not know how to handle this URL/file
         """
 
         fname = self.app.ini.config_file if name is None else name
-        config_dir = kvargs.get("config_dir", None) or self.app.ini.config_dir
-        env = kvargs.get("env", None) or self.app.ini.env
-        cache = kvargs.get("cache", True)
-        add_env_dirs = self.app.ini.env_dirs
+        config_dir = self.app.ini.config_dir if config_dir is None else config_dir
+        env = self.app.ini.env if env is None else env
 
         # Might as well be a StreamIO.
         if isinstance(fname, str):
             fname = Path(fname)
 
-        config_dir = Path(config_dir)
-
-        file = self.loader.load(
-            fname, config_dir, env, cache, add_env_dirs=add_env_dirs
-        )
+        file = self.loader.load(fname, config_dir, env)
 
         if hasattr(self.app, "files_loaded"):
             self.app.files_loaded = self.loader.files_loaded
@@ -107,11 +107,14 @@ class ProviderRegistry:
         """
 
         for plugin in self.registry:
-            rtn = plugin.load(fname, **kvargs)
-            if rtn is not None:
-                return rtn
+            try:
+                rtn = plugin.load(fname, **kvargs)
+                if rtn is not None:
+                    return rtn
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                logger.warning(str(exc))
 
-        raise ConfigException(
-            f"None of the config providers wants to load: '{fname}'. "
+        raise FileNotFoundError(
+            f"None of the config providers was able to load: '{fname}'. "
             f"Registered providers: {self.provider_names()}"
         )

@@ -111,25 +111,24 @@ class JDConfig:
         In case path requires a special separator, use e.g.
         'CfgPath(path, sep="/")' to create the path.
         """
-        rtn = self.data.get(path, default=default, resolve=resolve)  # TODO resolve=..
+        rtn = self.data.get(path, default=default, resolve=resolve)
         return rtn
 
     def walk(
-        self,
-        path: PathType = (),
-        *,
-        nodes_only: bool = False,
-        resolve: bool = True,
+        self, path: PathType = (), *, nodes_only: bool = False, **kvargs
     ) -> Iterator[WalkerEvent]:
         """Walk a subtree, with lazily resolving node values"""
 
-        path = self.data.path_obj(path)    # TDOD need CfgPath.from(..)
+        path = self.data.path_obj(path)  # TDOD need CfgPath.from(..)
         root = self.get(path, resolve=True)
 
         if not isinstance(root, BaseModel):
             raise KeyError(f"Not a ContainerType: '{root}'")
 
-        yield from objwalk(root, nodes_only=nodes_only)
+        def cb_get(data: BaseModel, key: str | int, path: PathType) -> Any:
+            return data.get(key, **kvargs)
+
+        yield from objwalk(root, nodes_only=nodes_only, cb_get=cb_get)
 
     def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
         """Walk the config items with an optional starting point, and create a
@@ -176,9 +175,7 @@ class JDConfig:
         self,
         fname: Path | StringIO,
         config_dir: Optional[Path] = None,
-        parent: Optional[BaseModel] = None,
         env: str | None = None,
-        cache: bool = True,
     ) -> ConfigFile:
         """Used by {import:} to laod a config file
 
@@ -190,13 +187,13 @@ class JDConfig:
         :param env: environment name (optional)
         """
 
-        data = self.provider_registry.load(
-            fname,
-            config_dir=config_dir,
-            env=env,
-            cache=cache,
-            add_env_dirs=self.ini.env_dirs,
-        )
+        if config_dir is None:
+            config_dir = self.ini.config_dir
+
+        if env is not None:
+            config_dir = [config_dir] + self.ini.env_dirs
+
+        data = self.provider_registry.load(fname, config_dir=config_dir, env=env)
 
         return data
 
@@ -205,7 +202,6 @@ class JDConfig:
         fname: Optional[Path | StringIO] = None,
         config_dir: Optional[Path] = None,
         env: str | None = None,
-        cache: bool = True,
     ) -> DeepDictMixin:
         """Main entry point to load configs"
 
@@ -224,7 +220,7 @@ class JDConfig:
         if fname is None:
             fname = self.ini.config_file
 
-        data = self.load_import(fname, config_dir, env, cache)
+        data = self.load_import(fname, config_dir, env)
 
         data = DeepDict(data, value_reader=self.value_reader)
 

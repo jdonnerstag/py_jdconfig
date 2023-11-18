@@ -46,12 +46,10 @@ class ResolverMixin:
         # ValueReader parses a yaml value and returns a list of literals
         # and placeholders.
         self.value_reader = ValueReader() if value_reader is None else value_reader
-        self.skip_resolver = False
 
     def clone(self, data, key) -> Self:
         rtn = super().clone(data, key)
         rtn.value_reader = self.value_reader
-        rtn.skip_resolver = self.skip_resolver
         rtn.is_local_root = isinstance(data, ConfigFile)
         return rtn
 
@@ -98,9 +96,8 @@ class ResolverMixin:
     def resolve(self, value: Any, memo) -> Any:
         """Lazily resolve Placeholders"""
 
-        if not self.skip_resolver:
-            while self.has_placeholder(value):
-                value = self.resolve_single(value, memo)
+        while self.has_placeholder(value):
+            value = self.resolve_single(value, memo)
 
         return value
 

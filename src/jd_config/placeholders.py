@@ -52,7 +52,6 @@ class ImportPlaceholder(Placeholder):
     """Import Placeholder: '{import: <file>[, <replace=False>]}'"""
 
     file: str
-    cache: bool = field(default=True, repr=False)
     loader: Optional[LoaderType] = field(default=None, repr=False)
 
     def __post_init__(self):
@@ -68,7 +67,7 @@ class ImportPlaceholder(Placeholder):
             self.loader is not None
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
-        rtn = self.loader.load_import(file, parent=model, cache=self.cache)
+        rtn = self.loader.load_import(file)
         return rtn
 
 
