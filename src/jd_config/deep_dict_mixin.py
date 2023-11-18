@@ -183,7 +183,7 @@ class DeepDictMixin:
 
                 return elem
 
-        raise KeyError(f"Unable to add missing value for: '{self.path()}'") from exc
+        super().on_missing(data, key, cur_path, exc, **kvargs)
 
     def __setitem__(self, key: Any, item: Any) -> None:
         self.set(key, item)

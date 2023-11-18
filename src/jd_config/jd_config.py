@@ -10,22 +10,36 @@ from functools import partial
 from io import StringIO
 from pathlib import Path
 from typing import Any, Iterator, Optional, Type
+from jd_config.base_model import BaseModel
+from jd_config.deep_export_mixin import DeepExportMixin
 
-from pydantic import BaseModel
+from jd_config.deep_update_mixin import DeepUpdateMixin
+from jd_config.resolver_mixin import ResolverMixin
 
 from .config_ini import ConfigIni
 from .config_path import CfgPath, PathType
 from .deep_dict_mixin import DeepDictMixin
 from .deep_search_mixin import DeepSearchMixin
 from .file_loader import ConfigFile
-from .getter_context import GetterContext
 from .objwalk import WalkerEvent
 from .provider_registry import ProviderRegistry
-from .utils import DEFAULT, ConfigException, ContainerType
+from .utils import DEFAULT, ConfigException
 from .value_reader import RegistryType, ValueReader
+from .objwalk import objwalk
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
+
+
+class DeepDict(
+    DeepDictMixin,
+    DeepExportMixin,
+    DeepUpdateMixin,
+    DeepSearchMixin,
+    ResolverMixin,
+    BaseModel,
+):
+    pass
 
 
 class JDConfig:
@@ -64,8 +78,8 @@ class JDConfig:
         # We want access to the placeholder registry which is maintained by ValueReader.
         self.value_reader = ValueReader()
 
-        # We want the same Getter with the same configuration everywhere
-        self.getter = DefaultConfigGetter(value_reader=self.value_reader)
+        # The global config root object
+        self.data: BaseModel = DeepDict({}, value_reader=self.value_reader)
 
         # The ImportPlaceholder need to know how to load files
         orig_import_placeholder = self.value_reader.registry["import"]
@@ -79,56 +93,17 @@ class JDConfig:
             orig_global_placeholder, root_cfg=self.config
         )
 
-        # The global config root object
-        self.data = None
-
         # Files loaded by the yaml file loader
         self.files_loaded: list[str | Path] = []
 
-    def config(self) -> ContainerType:
+    def config(self) -> BaseModel:
         """Get the config object"""
         return self.data
-
-    @property
-    def config_dir(self) -> str | None:
-        """Default working directory to load/import files"""
-        return self.ini.config_dir
-
-    @property
-    def config_file(self) -> str | None:
-        """The main config file"""
-        return self.ini.config_file
-
-    @property
-    def env(self) -> str | None:
-        """The config environment, such as dev, test, prod"""
-        return self.ini.env
 
     @property
     def placeholder_registry(self) -> RegistryType:
         """The registry of supported Placeholder handlers"""
         return self.value_reader.registry
-
-    def get_into(self, path: PathType, into: Optional[Type]) -> Any:
-        """Get a config value (or node)
-
-        In case path requires a special separator, use e.g.
-        'CfgPath(path, sep="/")' to create the path.
-        """
-
-        if isinstance(into, type):
-            if not issubclass(into, BaseModel):
-                raise ConfigException(
-                    f"Expected a class subclassed from pydantic.BaseModel: '{into.__name__}'"
-                )
-        else:
-            raise ConfigException(
-                f"Expected a class, not an instance of a class: '{into}'"
-            )
-
-        rtn = self.data.get(path, resolve=True)
-        rtn = into(**rtn)
-        return rtn
 
     def get(self, path: PathType, default: Any = DEFAULT, resolve: bool = True) -> Any:
         """Get a config value (or node)
@@ -136,7 +111,7 @@ class JDConfig:
         In case path requires a special separator, use e.g.
         'CfgPath(path, sep="/")' to create the path.
         """
-        rtn = self.data.get(path, default=default, resolve=resolve)
+        rtn = self.data.get(path, default=default, resolve=resolve)  # TODO resolve=..
         return rtn
 
     def walk(
@@ -145,29 +120,25 @@ class JDConfig:
         *,
         nodes_only: bool = False,
         resolve: bool = True,
-        ctx: Optional[GetterContext] = None,
     ) -> Iterator[WalkerEvent]:
         """Walk a subtree, with lazily resolving node values"""
 
         path = CfgPath(path)
         root = self.get(path, resolve=True)
-        ctx = self.getter.new_context(
-            data=root, current_file=self.data, skip_resolver=not resolve
-        )
 
-        yield from DeepSearchMixin.walk_tree(ctx, nodes_only=nodes_only)
+        yield from objwalk(root, nodes_only=nodes_only)
 
     def to_dict(self, path: Optional[PathType] = None, resolve: bool = True) -> dict:
         """Walk the config items with an optional starting point, and create a
         dict from it.
         """
 
-        return self.getter.to_dict(self.data, path, resolve=resolve)
+        return self.data.to_dict(path, resolve=resolve)
 
     def to_yaml(self, path: Optional[PathType] = None, stream=None, **kvargs):
         """Convert the configs (or part of it), into a yaml document"""
 
-        return self.getter.to_yaml(self.data, path, stream=stream, **kvargs)
+        return self.data.to_yaml(path, stream=stream, **kvargs)
 
     def validate(self, path: Optional[PathType] = None) -> dict:
         """Validate the configuration by accessing and resolving all values,
@@ -180,7 +151,7 @@ class JDConfig:
 
         return self.to_dict(path, resolve=True)
 
-    def resolve_all(self, path: Optional[PathType] = None) -> DeepDictMixin:
+    def resolve_all(self, path: Optional[PathType] = None) -> DeepDict:
         """Resolve configs in memory and replace in memory the current one.
 
         Different to 'to_dict()' which creates a copy of the tree and returns
@@ -192,22 +163,17 @@ class JDConfig:
 
         path = CfgPath(path)
         logger.debug("Resolve all config placeholders for '%s'", path)
-        data = self.getter.to_dict(self.data, path, resolve=True)
+        data = self.data.to_dict(path, resolve=True)
+        self.data.set(path, data)
 
-        if not path:
-            if not isinstance(data, DeepDictMixin) and isinstance(data, ContainerType):
-                data = DeepDictMixin(data, getter=self.getter)
-
-            self.data = data
-        else:
-            self.data.set(path, data)
-
+        data = DeepDict(data)
         return data
 
     def load_import(
         self,
         fname: Path | StringIO,
         config_dir: Optional[Path] = None,
+        parent: Optional[BaseModel] = None,
         env: str | None = None,
         cache: bool = True,
     ) -> ConfigFile:
@@ -255,8 +221,33 @@ class JDConfig:
         if fname is None:
             fname = self.ini.config_file
 
-        file = self.load_import(fname, config_dir, env, cache)
+        data = self.load_import(fname, config_dir, env, cache)
 
-        self.data = DeepDictMixin(file, getter=self.getter)
+        data = DeepDict(data, value_reader=self.value_reader)
+
+        self.data = data
 
         return self.data
+
+    def get_into(self, path: PathType, into: Optional[Type]) -> Any:
+        """Get a config value (or node)
+
+        In case path requires a special separator, use e.g.
+        'CfgPath(path, sep="/")' to create the path.
+        """
+
+        if isinstance(into, type):
+            # Don't like. People should be able to use attrs or pydantic or ...
+            # if not issubclass(into, BaseModel):
+            #    raise ConfigException(
+            #        f"Expected a class subclassed from pydantic.BaseModel: '{into.__name__}'"
+            #    )
+            pass
+        else:
+            raise ConfigException(
+                f"Expected a class, not an instance of a class: '{into}'"
+            )
+
+        rtn = self.data.get(path, resolve=True)
+        rtn = into(**rtn)
+        return rtn

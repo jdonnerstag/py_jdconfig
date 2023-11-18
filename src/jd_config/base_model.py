@@ -84,21 +84,16 @@ class BaseModel:
 
         try:
             value, rest_path = self._get(path, on_missing=on_missing, **kvargs)
+            if isinstance(value, ContainerType):
+                value = self.clone(value, path[0])
 
             if not rest_path:
-                if isinstance(value, ContainerType):
-                    value = self.clone(value, path[0])
-
                 return value
 
             if not isinstance(value, BaseModel):
-                if not isinstance(value, ContainerType):
-                    raise ConfigException(f"Expected a ContainerType: '{value}'")
+                raise ConfigException(f"Expected a ContainerType: '{value}'")
 
-                child = self.clone(value, path[0])
-            else:
-                child = value
-
+            child = value
             return child.get(rest_path, on_missing=on_missing, **kvargs)
         except KeyError:
             if default is DEFAULT:
@@ -106,9 +101,7 @@ class BaseModel:
 
             return default
 
-    def _get(
-        self, path: CfgPath, *, on_missing: Callable, **kvargs
-    ) -> (Any, CfgPath):
+    def _get(self, path: CfgPath, *, on_missing: Callable, **kvargs) -> (Any, CfgPath):
         key = path[0]
 
         if key == CfgPath.CURRENT_DIR:
@@ -135,8 +128,8 @@ class BaseModel:
 
         return value, path[1:]
 
-    def on_missing(self, data, key, cur_path, exc) -> Any:
-        raise exc
+    def on_missing(self, data, key, cur_path, exc, **kvargs) -> Any:
+        raise KeyError(f"Key not found: '{cur_path}'") from exc
 
     def __getitem__(self, key: Any) -> Any:
         return self.get(key)

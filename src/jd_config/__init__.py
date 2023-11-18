@@ -23,11 +23,9 @@ from .config_path import CfgPath, PathType
 from .config_path_extended import ExtendedCfgPath
 from .deep_dict_mixin import DeepDictMixin
 from .deep_export_mixin import DeepExportMixin
-from .deep_getter import DeepGetter
 from .deep_search_mixin import DeepSearchMixin
 from .deep_update_mixin import DeepUpdateMixin
 from .file_loader import ConfigFile, ConfigFileLoader, ConfigFileLoggerMixin
-from .getter_context import GetterContext
 from .jd_config import JDConfig
 from .objwalk import (
     DropContainerEvent,

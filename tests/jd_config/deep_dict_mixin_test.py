@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from jd_config import ConfigException, DeepDictMixin, Placeholder
+from jd_config import DeepDictMixin, Placeholder
 from jd_config.base_model import BaseModel
 from jd_config.deep_search_mixin import DeepSearchMixin
 from jd_config.deep_update_mixin import DeepUpdateMixin

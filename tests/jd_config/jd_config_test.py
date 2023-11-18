@@ -105,7 +105,7 @@ def test_load_jdconfig_4():
     assert cfg.get("e") == "2aa"
     assert cfg.get("f") == "aa"
 
-    with pytest.raises(ConfigException):
+    with pytest.raises(KeyError):
         cfg.get("g")
 
 

@@ -7,23 +7,9 @@ from io import StringIO
 import os
 import logging
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Mapping, Optional
 
-import pytest
-
-from jd_config import (
-    JDConfig,
-    DEFAULT,
-    ConfigException,
-    DeepGetter,
-    EnvPlaceholder,
-    GetterContext,
-    GlobalRefPlaceholder,
-    ImportPlaceholder,
-    Placeholder,
-    RefPlaceholder,
-    ResolverMixin,
-)
+from jd_config import JDConfig
 from jd_config.provider_registry import ProviderPlugin
 
 logger = logging.getLogger(__name__)

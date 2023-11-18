@@ -27,7 +27,7 @@ class DeepExportMixin:
     - self.get(): acces a (deep) config node
     """
 
-    def to_dict(self, path: Optional[PathType] = None) -> dict | list:
+    def to_dict(self, path: Optional[PathType] = None, **kvargs) -> dict | list:
         """Walk the config items with an optional starting point, and create a
         dict from it.
         """
@@ -35,13 +35,13 @@ class DeepExportMixin:
             return self.get(path).to_dict()
 
         if self.is_mapping():
-            return self._to_dict_dict()
+            return self._to_dict_dict(**kvargs)
         if self.is_sequence():
-            return self._to_dict_list()
+            return self._to_dict_list(**kvargs)
 
         raise AttributeError(f"Expected a ContainerType: '{self.data}'")
 
-    def _to_dict_dict(self) -> dict:
+    def _to_dict_dict(self, **kvargs) -> dict:
         rtn = {}
         for k, v in self.items():
             if isinstance(v, ContainerType):
@@ -51,11 +51,11 @@ class DeepExportMixin:
                 rtn[k] = child.to_dict()
             else:
                 # Make sure we resolve or whatever else is necessary
-                rtn[k] = self.get(k)
+                rtn[k] = self.get(k, **kvargs)
 
         return rtn
 
-    def _to_dict_list(self) -> list:
+    def _to_dict_list(self, **kvargs) -> list:
         rtn = []
         for i, v in self.items():
             if isinstance(v, ContainerType):
@@ -64,6 +64,7 @@ class DeepExportMixin:
             elif isinstance(v, BaseModel):
                 rtn.append(child.to_dict())
             else:
+                v = self.get(i, **kvargs)
                 rtn.append(v)
 
         return rtn
@@ -71,5 +72,5 @@ class DeepExportMixin:
     def to_yaml(self, path: Optional[PathType] = None, stream=None, **kvargs):
         """Convert the configs (or part of it), into a yaml document"""
 
-        data = self.to_dict(path)
+        data = self.to_dict(path, **kvargs)
         return yaml.dump(data, stream, **kvargs)

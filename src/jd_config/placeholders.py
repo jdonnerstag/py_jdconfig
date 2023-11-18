@@ -68,13 +68,13 @@ class ImportPlaceholder(Placeholder):
         return False
 
     def resolve(self, model: "ResolverMixin", memo: list):
-        file = model.resolve(self.file)
+        file = model.resolve(self.file, None)
 
         assert (
             self.loader is not None
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
-        rtn = self.loader.load_import(file, cache=self.cache)
+        rtn = self.loader.load_import(file, parent=model, cache=self.cache)
         return rtn
 
 

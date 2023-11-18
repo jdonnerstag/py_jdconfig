@@ -11,9 +11,7 @@ import pytest
 from jd_config import (
     DEFAULT,
     ConfigException,
-    DeepGetter,
     EnvPlaceholder,
-    GetterContext,
     GlobalRefPlaceholder,
     ImportPlaceholder,
     Placeholder,

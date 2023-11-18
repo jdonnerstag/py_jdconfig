@@ -11,6 +11,8 @@ and makes the config available under 'a'.
 import logging
 from typing import Any, Callable, Optional, Self
 
+from jd_config.file_loader import ConfigFile
+
 from .config_path import CfgPath
 from .placeholders import Placeholder
 from .utils import ConfigException, ContainerType
@@ -50,6 +52,7 @@ class ResolverMixin:
         rtn = super().clone(data, key)
         rtn.value_reader = self.value_reader
         rtn.skip_resolver = self.skip_resolver
+        rtn.is_local_root = isinstance(data, ConfigFile)
         return rtn
 
     def register_placeholder_handler(self, name: str, type_: type) -> None:
