@@ -6,7 +6,7 @@
 import logging
 import os
 from pathlib import Path
-from pydantic import BaseModel, ConfigDict
+import pydantic
 
 from jd_config import JDConfig
 
@@ -20,29 +20,29 @@ def data_dir(*args) -> Path:
     return Path(os.path.join(os.path.dirname(__file__), "data", *args))
 
 
-class AppMetaConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class AppMetaConfig(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="forbid")
 
     version: str  # TODO define type that matches 0.6.0
     contact: str  # TODO define email type
     git_repo: str  # TODO define github repo type
 
 
-class LoggingConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class LoggingConfig(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="forbid")
 
     xyz: str
 
 
-class AppConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class AppConfig(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="forbid")
 
     input_directory: str
     crm_database: str
     logging: LoggingConfig
 
 
-class MyConfig(BaseModel):
+class MyConfig(pydantic.BaseModel):
     # model_config = ConfigDict(extra="forbid")
 
     app_meta: AppMetaConfig
@@ -57,7 +57,7 @@ class MyConfig(BaseModel):
 
 
 def test_load_structured_from_7():
-    # config-4 is about simple {import:}, {ref:} and {global:}
+    # config-7 is fairly simple
 
     cfg = JDConfig(ini_file=None)
     cfg.ini.env = None  # Make sure, we are not even trying to load an env file

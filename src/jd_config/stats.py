@@ -50,20 +50,18 @@ class ConfigStats:
         # The file loader creates this list anyways
         self.files: list[Path] = []
         # Get from .ini[env]
-        self.env_name: str | None = None
+        self.env: str | None = None
         # from config_ini
         self.ini_file: Path | None = None
 
     def create(self, cfg: "JDConfig"):
         """Create the stats"""
 
-        self.env_name = cfg.env
         self.ini_file = cfg.ini_file
-
-        self.files = cfg.files_loaded
+        self.env = cfg.ini.env
 
         self.value_count = 0
-        self.dict_count = 1 if isinstance(cfg.config(), Mapping) else 0
+        self.dict_count = 1 if cfg.config().is_mapping() else 0
         self.list_count = 0
         self.max_depth = 0
         for event in cfg.walk(nodes_only=False, resolve=True):
@@ -77,10 +75,11 @@ class ConfigStats:
 
         self.envvars = set()
         self.placeholders = {}
+        self.files = cfg.files_loaded.copy() # We want a shallow copy!!
 
         for i, fd in enumerate(self.files):
             if i == 0:
-                data = cfg.config().obj
+                data = cfg.config().data
             else:
                 data = cfg.load_import(fd)
 

@@ -15,7 +15,9 @@ from jd_config.deep_export_mixin import DeepExportMixin
 
 from jd_config.deep_update_mixin import DeepUpdateMixin
 from jd_config.env_overlay_mixin import EnvOverlayMixin
+from jd_config.placeholders import ImportPlaceholder
 from jd_config.resolver_mixin import ResolverMixin
+from jd_config.stats import ConfigStats
 
 from .config_ini import ConfigIni
 from .config_path import CfgPath, PathType
@@ -93,6 +95,8 @@ class JDConfig:
         self.value_reader.registry["global"] = partial(
             orig_global_placeholder, root_cfg=self.config
         )
+
+        ImportPlaceholder.cache_data.clear()
 
         # Files loaded by the yaml file loader
         self.files_loaded: list[str | Path] = []
@@ -265,6 +269,9 @@ class JDConfig:
                 f"Expected a class, not an instance of a class: '{into}'"
             )
 
-        rtn = self.data.get(path, resolve=True)
+        rtn = self.data.to_dict(path, resolve=True)
         rtn = into(**rtn)
         return rtn
+
+    def stats(self):
+        return ConfigStats().create(self)

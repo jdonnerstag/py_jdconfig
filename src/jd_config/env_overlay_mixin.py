@@ -48,20 +48,26 @@ class EnvOverlayMixin:
         **kvargs,
     ) -> (Any, CfgPath):
         """..."""
+        null = object()
+        value = null
         if self.env_data:
             try:
                 value = self.get_from_env_data(path)
-                return value, path[1:]
+                if not isinstance(value, BaseModel):
+                    return value, path[1:]
             except KeyError:
                 pass  # Not value found
 
-        return super()._get(path, **kvargs)
+        try:
+            return super()._get(path, **kvargs)
+        except KeyError:
+            if value is not null:
+                return value, path[1:]
+
+            raise
 
     def get_from_env_data(self, path: CfgPath):
         key = path[0]
         path = self.cur_path(key)  # The env_data is always the env root
         data = self.env_data.get(path)
-        if isinstance(data, BaseModel):
-            raise KeyError(repr(path))
-
         return data

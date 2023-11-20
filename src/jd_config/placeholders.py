@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, TYPE_CHECKING
+from typing import Any, Callable, ClassVar, Mapping, Optional, TYPE_CHECKING
 
 from .utils import DEFAULT, ConfigException, ContainerType
 
@@ -49,10 +49,11 @@ ConfigFn = Callable[[], ContainerType]
 
 @dataclass
 class ImportPlaceholder(Placeholder):
-    """Import Placeholder: '{import: <file>[, <replace=False>]}'"""
+    """Import Placeholder: '{import: <file>}'"""
 
     file: str
     loader: Optional[LoaderType] = field(default=None, repr=False)
+    cache_data: ClassVar[dict[Path, Any]] = {}
 
     def __post_init__(self):
         assert self.file
@@ -62,12 +63,16 @@ class ImportPlaceholder(Placeholder):
 
     def resolve(self, model: "ResolverMixin", memo: list):
         file = model.resolve(self.file, memo=[])
+        file = Path(file)
+        if file in self.cache_data:
+            return self.cache_data[file]
 
         assert (
             self.loader is not None
         ), "ImportPlaceholder: Bug. No file 'loader' configured"
 
         rtn = self.loader.load_import(file)
+        self.cache_data[file] = rtn
         return rtn
 
 

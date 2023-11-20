@@ -27,7 +27,7 @@ class DemoProviderPlugin(ProviderPlugin):
         """Load and return the data, or return None to indicate that the
         provider does not know how to handle this URL/file
         """
-        if name != "config-2.yaml":
+        if str(name) != "config-2.yaml":
             return None
 
         data = {
