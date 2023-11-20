@@ -11,7 +11,7 @@ from typing import Any, Callable, Iterator, Mapping, Optional, Self, Sequence
 from jd_config.config_path_extended import ExtendedCfgPath
 
 from .config_path import CfgPath, PathType
-from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
+from .utils import DEFAULT, ContainerType, NonStrSequence
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)
@@ -30,7 +30,7 @@ class BaseModel:
         **_,
     ) -> None:
         if not isinstance(data, ContainerType):
-            raise ConfigException(f"Not a ContainerType: '{data}'")
+            raise AttributeError(f"Not a ContainerType: '{data}'")
 
         self.data = data
         self.key = key
@@ -109,7 +109,7 @@ class BaseModel:
                 return value
 
             if not isinstance(value, BaseModel):
-                raise ConfigException(f"Expected a ContainerType: '{value}'")
+                raise KeyError(f"Expected a ContainerType: '{value}'")
 
             child = value
             return child.get(rest_path, on_missing=on_missing, **kvargs)
@@ -174,7 +174,7 @@ class BaseModel:
         if self.is_sequence():
             return enumerate(self.data)
 
-        raise ConfigException(f"Bug? Don't how to iterate over: '{self.data}'")
+        raise AttributeError(f"Bug? Don't how to iterate over: '{self.data}'")
 
     def keys(self):
         if self.is_mapping():

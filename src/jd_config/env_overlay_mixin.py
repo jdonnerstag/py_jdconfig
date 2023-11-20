@@ -62,6 +62,6 @@ class EnvOverlayMixin:
         path = self.cur_path(key)  # The env_data is always the env root
         data = self.env_data.get(path)
         if isinstance(data, BaseModel):
-            return data.data
+            raise KeyError(repr(path))
 
         return data

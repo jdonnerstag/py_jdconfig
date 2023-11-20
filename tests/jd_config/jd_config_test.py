@@ -310,91 +310,67 @@ def test_separate_env_dir():
     assert cfg.ini.env_dirs == [Path.cwd()]
 
     cfg_file = Path("config.yaml")
-
     data = cfg.load(cfg_file)
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config.yaml"
 
     data = data.get("c")
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config-2.yaml"
 
     cfg.ini.env = "dev"
     data = cfg.load(cfg_file)
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2.parts[-1] == "config-dev.yaml"
-    assert data.obj.data_1
-    assert data.obj.data_2
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config.yaml"
+    assert data.env == "dev"
+    assert data.env_data.data.file.parts[-1] == "config-dev.yaml"
 
     data = data.get("c")
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config-2.yaml"
 
     cfg.ini.env = "qa"
     data = cfg.load(cfg_file)
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config.yaml"
+    assert data.env == "qa"
+    assert data.env_data.data.file.parts[-1] == "config-qa.yaml"
 
     data = data.get("c")
-    assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2.parts[-1] == "config-2-qa.yaml"
-    assert data.obj.data_1
-    assert data.obj.data_2
+    assert data == "2aa"
 
+    # Will not find the file in ./config dir
     cfg.ini.env = "dev-2"
     data = cfg.load(cfg_file)
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config.yaml"
+    assert data.env == "dev-2"
+    assert data.env_data == None # File not found
 
     data = data.get("c")
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config-2.yaml"
 
     env_dir = Path(os.path.join(cfg.ini.config_dir, "env_files"))
     cfg.ini.env_dirs.append(env_dir)
     data = cfg.load(cfg_file)
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config.yaml"
-    assert data.obj.file_2.parts[-1] == "config-dev-2.yaml"
-    assert data.obj.data_1
-    assert data.obj.data_2
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config.yaml"
+    assert data.env == "dev-2"
+    assert data.env_data.data.file.parts[-1] == "config-dev-2.yaml"
 
     data = data.get("c")
     assert data  # DeepDict
-    assert data.obj  # The ConfigFile object containing the DeepDict data
-    assert data.obj.file_1.parts[-1] == "config-2.yaml"
-    assert data.obj.file_2 is None
-    assert data.obj.data_1
-    assert data.obj.data_2 is None
+    assert data.data  # The ConfigFile object containing the DeepDict data
+    assert data.data.file.parts[-1] == "config-2.yaml"
 
 
 def test_path_separator():

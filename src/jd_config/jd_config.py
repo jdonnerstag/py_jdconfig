@@ -168,9 +168,7 @@ class JDConfig:
         logger.debug("Resolve all config placeholders for '%s'", path)
         data = self.data.to_dict(path, resolve=True)
         self.data.set(path, data)
-
-        data = DeepDict(data)
-        return data
+        return self.data
 
     def load_import(
         self,
@@ -231,9 +229,10 @@ class JDConfig:
             env = self.ini.env
 
         if env:
+            # We'll set the env in any case
+            data.env = env
             try:
                 env_data = self.load_env_data(fname, config_dir, env)
-                data.env = env
                 data.env_data = env_data
             except FileNotFoundError:
                 pass

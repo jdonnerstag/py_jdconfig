@@ -31,7 +31,7 @@ class DeepExportMixin:
         """Walk the config items with an optional starting point, and create a
         dict from it.
         """
-        if path is not None:
+        if path:
             return self.get(path).to_dict(**kvargs)
 
         if self.is_mapping():
@@ -44,27 +44,29 @@ class DeepExportMixin:
     def _to_dict_dict(self, **kvargs) -> dict:
         rtn = {}
         for k, v in self.items():
+            # Make sure we resolve or whatever else is necessary
+            v = self.get(k, **kvargs)
             if isinstance(v, ContainerType):
                 child = self.clone(v, k)
                 rtn[k] = child.to_dict(**kvargs)
             elif isinstance(v, BaseModel):
-                rtn[k] = child.to_dict(**kvargs)
+                rtn[k] = v.to_dict(**kvargs)
             else:
-                # Make sure we resolve or whatever else is necessary
-                rtn[k] = self.get(k, **kvargs)
+                rtn[k] = v
 
         return rtn
 
     def _to_dict_list(self, **kvargs) -> list:
         rtn = []
         for i, v in self.items():
+            # Make sure we resolve or whatever else is necessary
+            v = self.get(i, **kvargs)
             if isinstance(v, ContainerType):
                 child = self.clone(v, i)
                 rtn.append(child.to_dict(**kvargs))
             elif isinstance(v, BaseModel):
-                rtn.append(child.to_dict(**kvargs))
+                rtn.append(v.to_dict(**kvargs))
             else:
-                v = self.get(i, **kvargs)
                 rtn.append(v)
 
         return rtn

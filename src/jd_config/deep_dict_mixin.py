@@ -102,7 +102,14 @@ class DeepDictMixin:
 
         path = self.path_obj(path)
         if not path:
-            raise KeyError("Empty path not allowed for set()")
+            if isinstance(value, BaseModel):
+                value = value.data
+            if not isinstance(value, ContainerType):
+                raise KeyError(f"Expected value to be of ContainerType: '{value}'")
+
+            old_value = self.data
+            self.data = value
+            return old_value
 
         parent_path = self.path_obj(path + ("..",))
 
@@ -159,9 +166,7 @@ class DeepDictMixin:
     # @override
     def on_missing(self, data, key, cur_path, exc, **kvargs):
         create_missing = kvargs.get("create_missing", False)
-        missing_container = kvargs.get("missing_container", {})
         missing_container_default = kvargs.get("missing_container_default", dict)
-        replace_path = kvargs.get("replace_path", False)
 
         if callable(create_missing):
             return create_missing(data, key, cur_path, exc, **kvargs)
