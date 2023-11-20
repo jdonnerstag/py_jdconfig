@@ -6,12 +6,18 @@
 import logging
 from copy import deepcopy
 
-from jd_config import DeepDictMixin
+from jd_config.base_model import BaseModel
+from jd_config.deep_dict_mixin import DeepDictMixin
+from jd_config.deep_update_mixin import DeepUpdateMixin
 
 logger = logging.getLogger(__name__)
 
 # Notes:
 # show logs: pytest --log-cli-level=DEBUG
+
+
+class MyClass(DeepDictMixin, DeepUpdateMixin, BaseModel):
+    pass
 
 
 DATA = dict(
@@ -26,7 +32,7 @@ DATA = dict(
 
 
 def test_deep_update():
-    data = DeepDictMixin(deepcopy(DATA))
+    data = MyClass(deepcopy(DATA))
     assert data.deep_update({"a": "AA"}).get("a") == "AA"
     assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"
     assert data.deep_update({"b": {"b1": "BB"}}).get("b.b1") == "BB"
@@ -38,3 +44,9 @@ def test_deep_update():
 
     # This one is tricky
     assert data.deep_update({"b": {"b1": [1, 2, 3, 4]}}).get("b.b1") == [1, 2, 3, 4]
+
+
+def test_set_dotted():
+    data = MyClass(deepcopy(DATA))
+    assert data.deep_update({"b.b1": "AA"}).get("b.b1") == "AA"
+    assert data.deep_update({"z.new": "zz"}).get("z.new") == "zz"

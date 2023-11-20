@@ -31,7 +31,7 @@ def test_load_jdconfig_1():
     cfg = JDConfig(ini_file=None)
     cfg.ini.config_dir = data_dir("configs-1")
     cfg.ini.config_file = "config.yaml"
-    cfg.ini.default_env = "dev"
+    cfg.ini.env = "dev"
 
     data = cfg.load()
     assert data
@@ -229,7 +229,7 @@ def test_load_jdconfig_2_with_env(monkeypatch):
 
     # Since we lazy resolve, run to_dict(resolve=True) ones
     cfg.to_dict(resolve=True)
-    assert len(cfg.files_loaded) == 6
+    assert len(cfg.files_loaded) == 5
     assert cfg.files_loaded[0].parts[-2:] == ("configs-2", "main_config.yaml")
     assert cfg.files_loaded[1].parts[-2:] == ("configs-2", "main_config-jd_dev.yaml")
 

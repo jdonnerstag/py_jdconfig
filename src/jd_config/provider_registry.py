@@ -60,19 +60,13 @@ class YamlFileProviderPlugin(ProviderPlugin):
         provider does not know how to handle this URL/file
         """
 
-        fname = self.app.ini.config_file if name is None else name
-        config_dir = self.app.ini.config_dir if config_dir is None else config_dir
-        env = self.app.ini.env if env is None else env
+        fname = name
 
         # Might as well be a StreamIO.
         if isinstance(fname, str):
             fname = Path(fname)
 
         file = self.loader.load(fname, config_dir, env)
-
-        if hasattr(self.app, "files_loaded"):
-            self.app.files_loaded = self.loader.files_loaded
-
         return file
 
 

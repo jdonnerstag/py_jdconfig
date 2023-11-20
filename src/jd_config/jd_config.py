@@ -14,6 +14,7 @@ from jd_config.base_model import BaseModel
 from jd_config.deep_export_mixin import DeepExportMixin
 
 from jd_config.deep_update_mixin import DeepUpdateMixin
+from jd_config.env_overlay_mixin import EnvOverlayMixin
 from jd_config.resolver_mixin import ResolverMixin
 
 from .config_ini import ConfigIni
@@ -23,7 +24,7 @@ from .deep_search_mixin import DeepSearchMixin
 from .file_loader import ConfigFile
 from .objwalk import WalkerEvent
 from .provider_registry import ProviderRegistry
-from .utils import DEFAULT, ConfigException, ContainerType
+from .utils import DEFAULT, ConfigException
 from .value_reader import RegistryType, ValueReader
 from .objwalk import objwalk
 
@@ -32,6 +33,7 @@ logger = logging.getLogger(__parent__name__)
 
 
 class DeepDict(
+    EnvOverlayMixin,
     DeepDictMixin,
     DeepExportMixin,
     DeepUpdateMixin,
@@ -58,8 +60,7 @@ class JDConfig:
         [config]
         config_dir = .
         config_file = config.yaml
-        env_var =
-        default_env = prod
+        env = prod
         ```
 
         Some of the JDConfig configs determine where to find the user
@@ -194,6 +195,8 @@ class JDConfig:
             config_dir = [config_dir] + self.ini.env_dirs
 
         data = self.provider_registry.load(fname, config_dir=config_dir, env=env)
+        if hasattr(data, "file"):
+            self.files_loaded.append(data.file)
 
         return data
 
@@ -220,13 +223,29 @@ class JDConfig:
         if fname is None:
             fname = self.ini.config_file
 
-        data = self.load_import(fname, config_dir, env)
+        data = self.load_import(fname, config_dir)
 
         data = DeepDict(data, value_reader=self.value_reader)
+
+        if env is None:
+            env = self.ini.env
+
+        if env:
+            try:
+                env_data = self.load_env_data(fname, config_dir, env)
+                data.env = env
+                data.env_data = env_data
+            except FileNotFoundError:
+                pass
 
         self.data = data
 
         return self.data
+
+    def load_env_data(self, fname, config_dir, env) -> DeepDict:
+        env_data = self.load_import(fname, config_dir, env)
+        env_data = DeepDict(env_data, value_reader=self.value_reader)
+        return env_data
 
     def get_into(self, path: PathType, into: Optional[Type]) -> Any:
         """Get a config value (or node)

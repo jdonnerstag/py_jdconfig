@@ -61,6 +61,12 @@ def test_load_jdconfig_4():
     assert cfg.get("e") == "2aa"
     assert cfg.get("f") == "aa"
 
+def test_plugin():
+
+    cfg = JDConfig(ini_file=None)
+    cfg.ini.env = None  # Make sure, we are not even trying to load an env file
+    cfg.ini.config_dir = data_dir("configs-4")  # configure the directory for imports
+
     # Add the provider
     cfg.provider_registry.insert(0, DemoProviderPlugin(cfg))
     data = cfg.load("config.yaml")

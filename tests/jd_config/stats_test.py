@@ -62,7 +62,7 @@ def test_load_jdconfig_1(monkeypatch):
     cfg = JDConfig(ini_file=None)
     cfg.ini.config_dir = data_dir("configs-1")
     cfg.ini.config_file = "config.yaml"
-    cfg.ini.default_env = "dev"
+    cfg.ini.env = "dev"
     data = cfg.load()
     assert data
 

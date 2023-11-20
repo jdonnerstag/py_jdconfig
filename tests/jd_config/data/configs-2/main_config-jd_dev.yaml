@@ -1,4 +1,4 @@
-
 # Import the mysql specific configs. Requires to redo the import!!
 db: mysql
 
+database.password: another_secret

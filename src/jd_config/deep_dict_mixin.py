@@ -10,7 +10,7 @@ from typing import Any, Callable, Mapping, Optional, Self
 from jd_config.base_model import BaseModel
 
 from .config_path import CfgPath, PathType
-from .utils import DEFAULT, ConfigException, ContainerType, NonStrSequence
+from .utils import DEFAULT, ContainerType
 
 __parent__name__ = __name__.rpartition(".")[0]
 logger = logging.getLogger(__parent__name__)

@@ -29,15 +29,6 @@ class ConfigFile(dict):
 class ConfigFileLoader:
     """Load the yaml config files."""
 
-    def __init__(self) -> None:
-        # List of all files loaded
-        self.files_loaded = []
-
-    def clear(self) -> None:
-        """Clear the files list and the cache"""
-
-        self.files_loaded.clear()
-
     def make_filename(
         self, fname: Path, config_dir: str | Path, env: Optional[str] = None
     ) -> Path:
@@ -69,7 +60,7 @@ class ConfigFileLoader:
         # File name or stream?
         if not isinstance(fname, Path):
             data = self.load_one_file(fname)
-            data = ConfigFile(data, None)
+            data = ConfigFile(data, "<data>")
             return data
 
         if config_dir is None:
@@ -103,11 +94,9 @@ class ConfigFileLoader:
 
         if isinstance(fname, Path):
             fname = fname.resolve(fname)
-            self.files_loaded.append(fname)
             data = self.load_yaml_raw_with_filename(fname)
         else:
             # Assuming it is an IO stream of some sort
-            self.files_loaded.append("<data>")
             data = self.load_yaml_raw_with_fd(fname)
 
         return data

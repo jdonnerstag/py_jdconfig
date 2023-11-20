@@ -154,9 +154,6 @@ def update_ini_with_cli_args(ini: IniData, args):
             add_env_dir = [add_env_dir]
         ini.env_dirs = add_env_dir
 
-    if args.default_env:
-        ini.default_env = args.default_env
-
     return ini
 
 
@@ -182,11 +179,6 @@ def parse_cli_args(args):
         nargs="+",
         metavar="DIR",
         help="Additional directories to scan for environment overlay files. Default: './'",
-    )
-    parser.add_argument(
-        "--default_env",
-        metavar="ENV",
-        help="If default config environment, if not nothing else defined",
     )
     parser.add_argument(
         "--set",
